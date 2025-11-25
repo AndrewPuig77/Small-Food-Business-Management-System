@@ -1,5 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { setupIPC } = require('../backend/ipc');
 
 let mainWindow;
 
@@ -29,7 +30,11 @@ function createWindow() {
 }
 
 // Create window when app is ready
-app.on('ready', createWindow);
+app.on('ready', async () => {
+  // Setup IPC handlers for backend communication
+  await setupIPC();
+  createWindow();
+});
 
 // Quit when all windows are closed
 app.on('window-all-closed', () => {

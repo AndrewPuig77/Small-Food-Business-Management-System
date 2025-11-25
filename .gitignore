@@ -20,6 +20,9 @@ pnpm-lock.yaml
 *.sqlite3
 database/*.db
 data/
+foodbusiness.db
+*.db-shm
+*.db-wal
 
 # Build Output
 dist/

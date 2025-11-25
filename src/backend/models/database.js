@@ -1,0 +1,115 @@
+const initSqlJs = require('sql.js');
+const path = require('path');
+const fs = require('fs');
+const { app } = require('electron');
+
+// Get user data directory for storing database
+const getUserDataPath = () => {
+  try {
+    return app.getPath('userData');
+  } catch (e) {
+    // Fallback for when app is not available
+    return path.join(__dirname, '../../../database');
+  }
+};
+
+const dbPath = path.join(getUserDataPath(), 'foodbusiness.db');
+
+// Ensure directory exists
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+let db;
+let SQL;
+
+// Initialize database
+const initDatabase = async () => {
+  SQL = await initSqlJs();
+  
+  // Load existing database or create new one
+  if (fs.existsSync(dbPath)) {
+    const buffer = fs.readFileSync(dbPath);
+    db = new SQL.Database(buffer);
+  } else {
+    db = new SQL.Database();
+  }
+  
+  createTables();
+  saveDatabase();
+};
+
+// Save database to file
+const saveDatabase = () => {
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(dbPath, buffer);
+};
+
+// Create tables
+const createTables = () => {
+  // Businesses table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS businesses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      address TEXT,
+      phone TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Users table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      email TEXT,
+      role TEXT NOT NULL DEFAULT 'staff',
+      active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id)
+    )
+  `);
+
+  // Sessions table for JWT tokens
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  saveDatabase();
+  console.log('Database tables created successfully');
+};
+
+// Export database instance and helper methods
+module.exports = {
+  getDb: () => db,
+  saveDatabase,
+  
+  // Check if setup is complete (any users exist)
+  isSetupComplete() {
+    if (!db) return false;
+    const result = db.exec('SELECT COUNT(*) as count FROM users');
+    return result.length > 0 && result[0].values[0][0] > 0;
+  },
+  
+  // Get database path for debugging
+  getDbPath() {
+    return dbPath;
+  },
+  
+  // Initialize (must be called before use)
+  init: initDatabase
+};

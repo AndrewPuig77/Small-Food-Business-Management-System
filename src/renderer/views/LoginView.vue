@@ -67,17 +67,31 @@ const handleLogin = async () => {
   loading.value = true;
   errorMessage.value = '';
 
-  // Simulate authentication delay
-  setTimeout(() => {
-    // Demo credentials for testing
-    if (username.value === 'admin' && password.value === 'admin') {
-      console.log('Login successful!');
+  try {
+    const { ipcRenderer } = window.require('electron');
+    
+    // Authenticate via IPC
+    const result = await ipcRenderer.invoke('login', {
+      username: username.value,
+      password: password.value
+    });
+
+    if (result.success) {
+      // Store token and user info
+      localStorage.setItem('authToken', result.token);
+      localStorage.setItem('currentUser', JSON.stringify(result.user));
+      
+      console.log('Login successful!', result.user);
       // TODO: Navigate to dashboard
-      alert('Login successful! Dashboard coming soon...');
+      alert(`Welcome ${result.user.fullName}! Dashboard coming soon...`);
     } else {
-      errorMessage.value = 'Invalid username or password';
+      errorMessage.value = result.error || 'Invalid username or password';
     }
+  } catch (error) {
+    console.error('Login error:', error);
+    errorMessage.value = 'An error occurred during login';
+  } finally {
     loading.value = false;
-  }, 1000);
+  }
 };
 </script>

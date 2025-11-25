@@ -314,23 +314,43 @@ const previousStep = () => {
   }
 };
 
-const completeSetup = () => {
-  // TODO: Save to database via backend API
-  console.log('Setup Complete!', {
-    business: businessInfo.value,
-    owner: {
-      ...ownerInfo.value,
-      password: '[HIDDEN]',
-      confirmPassword: '[HIDDEN]'
+const completeSetup = async () => {
+  try {
+    const { ipcRenderer } = window.require('electron');
+    
+    // Convert reactive objects to plain objects for IPC
+    const setupData = {
+      business: {
+        name: businessInfo.value.name,
+        type: businessInfo.value.type,
+        address: businessInfo.value.address,
+        phone: businessInfo.value.phone
+      },
+      owner: {
+        fullName: ownerInfo.value.fullName,
+        username: ownerInfo.value.username,
+        email: ownerInfo.value.email,
+        password: ownerInfo.value.password
+      }
+    };
+    
+    // Save to database via IPC
+    const result = await ipcRenderer.invoke('complete-setup', setupData);
+
+    if (result.success) {
+      // Mark setup as complete in localStorage
+      localStorage.setItem('setupComplete', 'true');
+      localStorage.setItem('businessName', businessInfo.value.name);
+
+      // Navigate to login
+      alert('Setup complete! You can now login with your credentials.');
+      router.push('/');
+    } else {
+      alert('Setup failed: ' + (result.error || 'Unknown error'));
     }
-  });
-
-  // Mark setup as complete in localStorage
-  localStorage.setItem('setupComplete', 'true');
-  localStorage.setItem('businessName', businessInfo.value.name);
-
-  // Navigate to login
-  alert('Setup complete! Please login with your credentials.');
-  router.push('/');
+  } catch (error) {
+    console.error('Setup error:', error);
+    alert('An error occurred during setup. Please try again.');
+  }
 };
 </script>

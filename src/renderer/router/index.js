@@ -28,18 +28,33 @@ const router = createRouter({
 });
 
 // Check if setup is complete on navigation
-router.beforeEach((to, from, next) => {
-  const setupComplete = localStorage.getItem('setupComplete');
-  
-  // If setup not complete and not going to setup page, redirect to setup
-  if (!setupComplete && to.name !== 'Setup') {
-    next({ name: 'Setup' });
-  }
-  // If setup complete and trying to go to setup, redirect to login
-  else if (setupComplete && to.name === 'Setup') {
-    next({ name: 'Login' });
-  }
-  else {
+router.beforeEach(async (to, from, next) => {
+  try {
+    const { ipcRenderer } = window.require('electron');
+    
+    // Check database for setup completion
+    const isSetupComplete = await ipcRenderer.invoke('check-setup');
+    
+    // Sync with localStorage
+    if (isSetupComplete) {
+      localStorage.setItem('setupComplete', 'true');
+    } else {
+      localStorage.removeItem('setupComplete');
+    }
+    
+    // If setup not complete and not going to setup page, redirect to setup
+    if (!isSetupComplete && to.name !== 'Setup') {
+      next({ name: 'Setup' });
+    }
+    // If setup complete and trying to go to setup, redirect to login
+    else if (isSetupComplete && to.name === 'Setup') {
+      next({ name: 'Login' });
+    }
+    else {
+      next();
+    }
+  } catch (error) {
+    console.error('Navigation guard error:', error);
     next();
   }
 });
