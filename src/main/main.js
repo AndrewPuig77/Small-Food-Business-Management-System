@@ -15,12 +15,12 @@ function createWindow() {
     icon: path.join(__dirname, '../../assets/icon.png')
   });
 
-  // Load the index.html file
-  mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-
-  // Open DevTools in development
-  if (process.env.NODE_ENV === 'development') {
+  // Load from Vite dev server in development, or file in production
+  if (process.env.VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
   mainWindow.on('closed', () => {
