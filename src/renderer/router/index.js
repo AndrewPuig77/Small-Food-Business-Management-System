@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
 import SetupView from '../views/SetupView.vue';
+import DashboardView from '../views/DashboardView.vue';
 
 const routes = [
   {
@@ -13,8 +14,13 @@ const routes = [
     name: 'Login',
     component: LoginView
   },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: DashboardView,
+    meta: { requiresAuth: true }
+  },
   // Additional routes will be added here:
-  // { path: '/dashboard', name: 'Dashboard', component: DashboardView },
   // { path: '/inventory', name: 'Inventory', component: InventoryView },
   // { path: '/pos', name: 'POS', component: POSView },
   // { path: '/employees', name: 'Employees', component: EmployeeView },
@@ -27,7 +33,7 @@ const router = createRouter({
   routes
 });
 
-// Check if setup is complete on navigation
+// Navigation guards for setup and authentication
 router.beforeEach(async (to, from, next) => {
   try {
     const { ipcRenderer } = window.require('electron');
@@ -45,14 +51,37 @@ router.beforeEach(async (to, from, next) => {
     // If setup not complete and not going to setup page, redirect to setup
     if (!isSetupComplete && to.name !== 'Setup') {
       next({ name: 'Setup' });
+      return;
     }
+    
     // If setup complete and trying to go to setup, redirect to login
-    else if (isSetupComplete && to.name === 'Setup') {
+    if (isSetupComplete && to.name === 'Setup') {
       next({ name: 'Login' });
+      return;
     }
-    else {
-      next();
+    
+    // Check authentication for protected routes
+    if (to.meta.requiresAuth) {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // Not logged in, redirect to login
+        next({ name: 'Login' });
+        return;
+      }
+      
+      // Verify token is still valid
+      const result = await ipcRenderer.invoke('verify-token', token);
+      if (!result.valid) {
+        // Token invalid, clear and redirect to login
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        next({ name: 'Login' });
+        return;
+      }
     }
+    
+    next();
   } catch (error) {
     console.error('Navigation guard error:', error);
     next();

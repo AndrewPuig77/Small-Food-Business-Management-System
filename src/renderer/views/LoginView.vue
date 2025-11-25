@@ -57,7 +57,9 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const username = ref('');
 const password = ref('');
 const loading = ref(false);
@@ -82,8 +84,9 @@ const handleLogin = async () => {
       localStorage.setItem('currentUser', JSON.stringify(result.user));
       
       console.log('Login successful!', result.user);
-      // TODO: Navigate to dashboard
-      alert(`Welcome ${result.user.fullName}! Dashboard coming soon...`);
+      
+      // Navigate to dashboard
+      router.push('/dashboard');
     } else {
       errorMessage.value = result.error || 'Invalid username or password';
     }
