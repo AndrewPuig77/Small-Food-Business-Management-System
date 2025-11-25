@@ -1,0 +1,42 @@
+{
+  "name": "food-business-management-system",
+  "version": "0.1.0",
+  "description": "Desktop application for managing small food service establishments",
+  "main": "src/main/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "build": "electron-builder",
+    "lint": "eslint .",
+    "test": "jest"
+  },
+  "keywords": [
+    "electron",
+    "vue",
+    "pos",
+    "inventory",
+    "restaurant"
+  ],
+  "author": "Food Business Management Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {},
+  "build": {
+    "appId": "com.foodbusiness.app",
+    "productName": "Food Business Manager",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    }
+  }
+}
