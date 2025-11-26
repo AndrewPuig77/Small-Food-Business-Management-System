@@ -7,25 +7,29 @@ import { dirname, resolve } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const rootDir = resolve(__dirname, '..');
 
 export default defineConfig({
+  css: {
+    postcss: './config/postcss.config.js',
+  },
   plugins: [
     vue(),
     electron([
       {
-        entry: resolve(__dirname, 'src/main/main.js'),
+        entry: resolve(rootDir, 'src/main/main.js'),
       },
     ]),
     renderer(),
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src/renderer'),
+      '@': resolve(rootDir, 'src/frontend'),
     },
   },
-  root: resolve(__dirname, 'src/renderer'),
+  root: resolve(rootDir, 'src/frontend'),
   build: {
-    outDir: resolve(__dirname, 'dist-electron'),
+    outDir: resolve(rootDir, 'dist-electron'),
     emptyOutDir: true,
   },
 });

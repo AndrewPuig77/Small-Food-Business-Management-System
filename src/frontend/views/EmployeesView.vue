@@ -58,12 +58,20 @@
           <h1 class="page-title">Employee Management</h1>
           <p class="page-subtitle">Manage your team and track employee information</p>
         </div>
-        <button @click="openEmployeeModal()" class="btn-primary">
-          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Employee
-        </button>
+        <div class="header-actions">
+          <button @click="$router.push('/schedule')" class="btn-secondary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Manage Schedules
+          </button>
+          <button @click="openEmployeeModal()" class="btn-primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Employee
+          </button>
+        </div>
       </header>
 
       <!-- Search and Filter -->
@@ -149,6 +157,12 @@
               </td>
               <td>
                 <div class="action-buttons">
+                  <button @click="viewDetails(employee)" class="action-icon-btn" title="View Details">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
                   <button @click="editEmployee(employee)" class="action-icon-btn" title="Edit">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -332,17 +346,56 @@
         </form>
       </div>
     </div>
+
+    <!-- Schedule Manager Modal -->
+    <div v-if="showScheduleManager" class="modal-overlay" @click.self="showScheduleManager = false">
+      <div class="modal modal-wide">
+        <div class="modal-header">
+          <h2>Weekly Schedule Manager</h2>
+          <button @click="showScheduleManager = false" class="modal-close">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div class="modal-content">
+          <p class="section-description">Select an employee to manage their weekly schedule</p>
+          
+          <div class="employee-list">
+            <div 
+              v-for="emp in employees" 
+              :key="emp.id"
+              @click="openEmployeeSchedule(emp)"
+              class="employee-list-item"
+            >
+              <div class="employee-avatar-small">{{ getInitials(emp.first_name, emp.last_name) }}</div>
+              <div class="employee-list-info">
+                <div class="employee-list-name">{{ emp.first_name }} {{ emp.last_name }}</div>
+                <div class="employee-list-role">{{ emp.role }}</div>
+              </div>
+              <svg class="chevron-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const employees = ref([]);
 const loading = ref(true);
 const searchQuery = ref('');
 const selectedStatus = ref(null);
 const showEmployeeModal = ref(false);
+const showScheduleManager = ref(false);
 const editingEmployee = ref(null);
 
 const employeeForm = ref({
@@ -457,6 +510,11 @@ const editEmployee = (employee) => {
   openEmployeeModal(employee);
 };
 
+// View employee details
+const viewDetails = (employee) => {
+  router.push(`/employees/${employee.id}`);
+};
+
 // Save employee
 const saveEmployee = async () => {
   try {
@@ -515,6 +573,12 @@ const confirmDelete = async (employee) => {
       alert('Failed to delete employee. Please try again.');
     }
   }
+};
+
+// Open employee schedule
+const openEmployeeSchedule = (employee) => {
+  showScheduleManager.value = false;
+  router.push(`/employees/${employee.id}`);
 };
 
 onMounted(() => {
@@ -600,6 +664,11 @@ onMounted(() => {
   margin-bottom: 2rem;
 }
 
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
 .page-title {
   font-size: 2rem;
   font-weight: 700;
@@ -627,6 +696,26 @@ onMounted(() => {
 }
 
 .btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f3f4f6;
   transform: translateY(-2px);
 }
 
@@ -1057,5 +1146,79 @@ onMounted(() => {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-wide {
+  max-width: 700px;
+}
+
+.employee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.employee-list-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.employee-list-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #3b82f6;
+  transform: translateX(4px);
+}
+
+.employee-avatar-small {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.employee-list-info {
+  flex: 1;
+}
+
+.employee-list-name {
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 0.25rem;
+}
+
+.employee-list-role {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  text-transform: capitalize;
+}
+
+.chevron-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.section-description {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
 }
 </style>

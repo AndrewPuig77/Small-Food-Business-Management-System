@@ -4,6 +4,8 @@ import SetupView from '../views/SetupView.vue';
 import DashboardView from '../views/DashboardView.vue';
 import MenuView from '../views/MenuView.vue';
 import EmployeesView from '../views/EmployeesView.vue';
+import EmployeeDetailView from '../views/EmployeeDetailView.vue';
+import ScheduleView from '../views/ScheduleView.vue';
 
 const routes = [
   {
@@ -32,6 +34,18 @@ const routes = [
     path: '/employees',
     name: 'Employees',
     component: EmployeesView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/employees/:id',
+    name: 'EmployeeDetail',
+    component: EmployeeDetailView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/schedule',
+    name: 'Schedule',
+    component: ScheduleView,
     meta: { requiresAuth: true }
   },
   // Additional routes will be added here:

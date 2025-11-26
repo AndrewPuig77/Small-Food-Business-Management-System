@@ -4,9 +4,9 @@
   "description": "Desktop application for managing small food service establishments",
   "main": "src/main/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "vite --config config/vite.config.js",
+    "build": "vite build --config config/vite.config.js",
+    "preview": "vite preview --config config/vite.config.js",
     "lint": "eslint .",
     "test": "jest"
   },
@@ -21,6 +21,7 @@
   "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
+    "@tailwindcss/postcss": "^4.1.17",
     "@vitejs/plugin-vue": "^6.0.2",
     "autoprefixer": "^10.4.22",
     "electron": "^28.0.0",

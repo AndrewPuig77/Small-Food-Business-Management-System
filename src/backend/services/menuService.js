@@ -1,4 +1,4 @@
-const { getDb, saveDatabase } = require('../models/database');
+const { getDb, saveDatabase } = require('../database/database');
 
 class MenuService {
   // Get all menu items for a business

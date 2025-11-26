@@ -141,6 +141,95 @@ const createTables = () => {
     )
   `);
 
+  // Employee schedules table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS employee_schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      day_of_week INTEGER NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Employee notes table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS employee_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      created_by INTEGER NOT NULL,
+      note_type TEXT NOT NULL,
+      note_text TEXT NOT NULL,
+      rating INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+  `);
+
+  // Emergency contacts table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS emergency_contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      relationship TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Employee documents table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS employee_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      document_name TEXT NOT NULL,
+      document_type TEXT NOT NULL,
+      file_data TEXT NOT NULL,
+      uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Time logs table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS time_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      clock_in DATETIME NOT NULL,
+      clock_out DATETIME,
+      hours_worked DECIMAL(10,2),
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Shifts table for weekly schedule
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shifts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      employee_id INTEGER NOT NULL,
+      shift_date DATE NOT NULL,
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      role TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
   saveDatabase();
   console.log('Database tables created successfully');
 };
