@@ -4,6 +4,8 @@ const AuthService = require('./services/authService');
 const MenuService = require('./services/menuService');
 const EmployeeService = require('./services/employeeService');
 const ScheduleService = require('./services/scheduleService');
+const InventoryService = require('./services/inventoryService');
+const POSService = require('./services/posService');
 
 // Setup IPC handlers for communication between main and renderer processes
 const setupIPC = async () => {
@@ -178,6 +180,116 @@ const setupIPC = async () => {
 
   ipcMain.handle('schedule:delete-shift', async (event, { businessId, shiftId }) => {
     return ScheduleService.deleteShift(businessId, shiftId);
+  });
+
+  // Inventory Items
+  ipcMain.handle('inventory:get-all-items', async (event, businessId) => {
+    return InventoryService.getAllItems(businessId);
+  });
+
+  ipcMain.handle('inventory:get-item', async (event, { businessId, itemId }) => {
+    return InventoryService.getItemById(businessId, itemId);
+  });
+
+  ipcMain.handle('inventory:create-item', async (event, { businessId, itemData }) => {
+    return InventoryService.createItem(businessId, itemData);
+  });
+
+  ipcMain.handle('inventory:create-items-batch', async (event, { businessId, itemsArray }) => {
+    return InventoryService.createItemsBatch(businessId, itemsArray);
+  });
+
+  ipcMain.handle('inventory:update-item', async (event, { businessId, itemId, itemData }) => {
+    return InventoryService.updateItem(businessId, itemId, itemData);
+  });
+
+  ipcMain.handle('inventory:delete-item', async (event, { businessId, itemId }) => {
+    return InventoryService.deleteItem(businessId, itemId);
+  });
+
+  ipcMain.handle('inventory:adjust-stock', async (event, { businessId, itemId, adjustment, userId, notes }) => {
+    return InventoryService.adjustStock(businessId, itemId, adjustment, userId, notes);
+  });
+
+  ipcMain.handle('inventory:get-low-stock', async (event, businessId) => {
+    return InventoryService.getLowStockItems(businessId);
+  });
+
+  // Inventory Categories
+  ipcMain.handle('inventory:get-categories', async (event, businessId) => {
+    return InventoryService.getAllCategories(businessId);
+  });
+
+  ipcMain.handle('inventory:create-category', async (event, { businessId, categoryData }) => {
+    return InventoryService.createCategory(businessId, categoryData);
+  });
+
+  ipcMain.handle('inventory:update-category', async (event, { businessId, categoryId, categoryData }) => {
+    return InventoryService.updateCategory(businessId, categoryId, categoryData);
+  });
+
+  ipcMain.handle('inventory:delete-category', async (event, { businessId, categoryId }) => {
+    return InventoryService.deleteCategory(businessId, categoryId);
+  });
+
+  // Suppliers
+  ipcMain.handle('inventory:get-suppliers', async (event, businessId) => {
+    return InventoryService.getAllSuppliers(businessId);
+  });
+
+  ipcMain.handle('inventory:create-supplier', async (event, { businessId, supplierData }) => {
+    return InventoryService.createSupplier(businessId, supplierData);
+  });
+
+  ipcMain.handle('inventory:update-supplier', async (event, { businessId, supplierId, supplierData }) => {
+    return InventoryService.updateSupplier(businessId, supplierId, supplierData);
+  });
+
+  ipcMain.handle('inventory:delete-supplier', async (event, { businessId, supplierId }) => {
+    return InventoryService.deleteSupplier(businessId, supplierId);
+  });
+
+  // Inventory Transactions
+  ipcMain.handle('inventory:get-item-transactions', async (event, { businessId, itemId, limit }) => {
+    return InventoryService.getItemTransactions(businessId, itemId, limit);
+  });
+
+  ipcMain.handle('inventory:get-all-transactions', async (event, { businessId, limit }) => {
+    return InventoryService.getAllTransactions(businessId, limit);
+  });
+
+  // POS - Customers
+  ipcMain.handle('pos:search-customers', async (event, { businessId, searchTerm }) => {
+    return POSService.searchCustomers(businessId, searchTerm);
+  });
+
+  ipcMain.handle('pos:get-customer', async (event, { businessId, customerId }) => {
+    return POSService.getCustomerById(businessId, customerId);
+  });
+
+  ipcMain.handle('pos:create-customer', async (event, { businessId, customerData }) => {
+    return POSService.createCustomer(businessId, customerData);
+  });
+
+  // POS - Transactions
+  ipcMain.handle('pos:create-transaction', async (event, { businessId, transactionData }) => {
+    return POSService.createTransaction(businessId, transactionData);
+  });
+
+  ipcMain.handle('pos:get-transaction', async (event, { businessId, transactionId }) => {
+    return POSService.getTransactionById(businessId, transactionId);
+  });
+
+  ipcMain.handle('pos:get-recent-transactions', async (event, { businessId, limit }) => {
+    return POSService.getRecentTransactions(businessId, limit);
+  });
+
+  ipcMain.handle('pos:get-transactions-by-date', async (event, { businessId, startDate, endDate }) => {
+    return POSService.getTransactionsByDateRange(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('pos:get-daily-summary', async (event, { businessId, date }) => {
+    return POSService.getDailySalesSummary(businessId, date);
   });
 
   console.log('IPC handlers registered');
