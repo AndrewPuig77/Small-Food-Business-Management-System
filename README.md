@@ -7,12 +7,12 @@ A desktop application for managing small food service establishments (cafes, foo
 
 ##  Team Members
 
-- **Andrew Puig** - User Requirements & UI Design
-- **Treasure Brown** - Business Analysis
-- **Jorge Carmenate** - Project Objectives & Development
-- **Joseph Contreras** - Problem Statement & Architecture
-- **Steven Palacios** - System Requirements & Database
-- **Andreani Pineda** - Non-functional Requirements & Testing
+- **Andrew Puig**
+- **Treasure Brown**
+- **Jorge Carmenate**
+- **Joseph Contreras**
+- **Steven Palacios**
+- **Andreani Pineda**
 
 ##  What This System Does
 
