@@ -2,6 +2,7 @@ const { ipcMain } = require('electron');
 const { isSetupComplete, init } = require('./models/database');
 const AuthService = require('./services/authService');
 const MenuService = require('./services/menuService');
+const EmployeeService = require('./services/employeeService');
 
 // Setup IPC handlers for communication between main and renderer processes
 const setupIPC = async () => {
@@ -69,6 +70,31 @@ const setupIPC = async () => {
 
   ipcMain.handle('menu:delete-category', async (event, categoryId) => {
     return MenuService.deleteCategory(categoryId);
+  });
+
+  // Employees
+  ipcMain.handle('employee:get-all', async (event, businessId) => {
+    return EmployeeService.getAllEmployees(businessId);
+  });
+
+  ipcMain.handle('employee:get-by-id', async (event, { businessId, employeeId }) => {
+    return EmployeeService.getEmployeeById(businessId, employeeId);
+  });
+
+  ipcMain.handle('employee:create', async (event, { businessId, employeeData }) => {
+    return EmployeeService.createEmployee(businessId, employeeData);
+  });
+
+  ipcMain.handle('employee:update', async (event, { businessId, employeeId, employeeData }) => {
+    return EmployeeService.updateEmployee(businessId, employeeId, employeeData);
+  });
+
+  ipcMain.handle('employee:delete', async (event, { businessId, employeeId }) => {
+    return EmployeeService.deleteEmployee(businessId, employeeId);
+  });
+
+  ipcMain.handle('employee:update-status', async (event, { businessId, employeeId, status }) => {
+    return EmployeeService.updateEmployeeStatus(businessId, employeeId, status);
   });
 
   console.log('IPC handlers registered');

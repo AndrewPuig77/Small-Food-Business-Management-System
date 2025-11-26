@@ -3,6 +3,7 @@ import LoginView from '../views/LoginView.vue';
 import SetupView from '../views/SetupView.vue';
 import DashboardView from '../views/DashboardView.vue';
 import MenuView from '../views/MenuView.vue';
+import EmployeesView from '../views/EmployeesView.vue';
 
 const routes = [
   {
@@ -27,11 +28,15 @@ const routes = [
     component: MenuView,
     meta: { requiresAuth: true }
   },
+  {
+    path: '/employees',
+    name: 'Employees',
+    component: EmployeesView,
+    meta: { requiresAuth: true }
+  },
   // Additional routes will be added here:
   // { path: '/inventory', name: 'Inventory', component: InventoryView },
   // { path: '/pos', name: 'POS', component: POSView },
-  // { path: '/employees', name: 'Employees', component: EmployeeView },
-  // { path: '/menu', name: 'Menu', component: MenuView },
   // { path: '/reports', name: 'Reports', component: ReportsView },
 ];
 

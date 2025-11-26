@@ -120,6 +120,27 @@ const createTables = () => {
     )
   `);
 
+  // Employees table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      user_id INTEGER,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      email TEXT,
+      phone TEXT,
+      role TEXT NOT NULL DEFAULT 'staff',
+      hourly_rate DECIMAL(10,2),
+      hire_date DATE NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   saveDatabase();
   console.log('Database tables created successfully');
 };
