@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
 import SetupView from '../views/SetupView.vue';
 import DashboardView from '../views/DashboardView.vue';
+import MenuView from '../views/MenuView.vue';
 
 const routes = [
   {
@@ -18,6 +19,12 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: DashboardView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/menu',
+    name: 'Menu',
+    component: MenuView,
     meta: { requiresAuth: true }
   },
   // Additional routes will be added here:

@@ -89,6 +89,37 @@ const createTables = () => {
     )
   `);
 
+  // Menu categories table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS menu_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      display_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id)
+    )
+  `);
+
+  // Menu items table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS menu_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      category_id INTEGER,
+      name TEXT NOT NULL,
+      description TEXT,
+      price DECIMAL(10,2) NOT NULL,
+      cost DECIMAL(10,2),
+      image_url TEXT,
+      available INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id),
+      FOREIGN KEY (category_id) REFERENCES menu_categories(id)
+    )
+  `);
+
   saveDatabase();
   console.log('Database tables created successfully');
 };
