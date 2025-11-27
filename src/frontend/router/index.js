@@ -6,6 +6,11 @@ import MenuView from '../views/MenuView.vue';
 import EmployeesView from '../views/EmployeesView.vue';
 import EmployeeDetailView from '../views/EmployeeDetailView.vue';
 import ScheduleView from '../views/ScheduleView.vue';
+import InventoryView from '../views/InventoryView.vue';
+import POSView from '../views/POSView.vue';
+import CustomersView from '../views/CustomersView.vue';
+import ProfileView from '../views/ProfileView.vue';
+import ForgotPasswordView from '../views/ForgotPasswordView.vue';
 
 const routes = [
   {
@@ -17,6 +22,11 @@ const routes = [
     path: '/',
     name: 'Login',
     component: LoginView
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPasswordView
   },
   {
     path: '/dashboard',
@@ -48,9 +58,31 @@ const routes = [
     component: ScheduleView,
     meta: { requiresAuth: true }
   },
+  {
+    path: '/inventory',
+    name: 'Inventory',
+    component: InventoryView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/pos',
+    name: 'POS',
+    component: POSView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/customers',
+    name: 'Customers',
+    component: CustomersView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: ProfileView,
+    meta: { requiresAuth: true }
+  },
   // Additional routes will be added here:
-  // { path: '/inventory', name: 'Inventory', component: InventoryView },
-  // { path: '/pos', name: 'POS', component: POSView },
   // { path: '/reports', name: 'Reports', component: ReportsView },
 ];
 

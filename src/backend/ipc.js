@@ -292,6 +292,49 @@ const setupIPC = async () => {
     return POSService.getDailySalesSummary(businessId, date);
   });
 
+  ipcMain.handle('pos:void-transaction', async (event, { businessId, transactionId, voidReason, voidedBy }) => {
+    return POSService.voidTransaction(businessId, transactionId, voidReason, voidedBy);
+  });
+
+  ipcMain.handle('pos:validate-manager-pin', async (event, { businessId, userId, pin }) => {
+    return POSService.validateManagerPin(businessId, userId, pin);
+  });
+
+  // User - Change PIN
+  ipcMain.handle('user:change-pin', async (event, { businessId, userId, currentPin, newPin }) => {
+    return AuthService.changePin(businessId, userId, currentPin, newPin);
+  });
+
+  // User - Reset PIN
+  ipcMain.handle('user:reset-pin', async (event, { businessId, userId, password, newPin }) => {
+    return AuthService.resetPin(businessId, userId, password, newPin);
+  });
+
+  // Auth - Verify identity for password reset
+  ipcMain.handle('auth:verify-identity', async (event, { username, email }) => {
+    return AuthService.verifyIdentity(username, email);
+  });
+
+  // Auth - Reset password
+  ipcMain.handle('auth:reset-password', async (event, { userId, businessId, newPassword }) => {
+    return AuthService.resetPassword(userId, businessId, newPassword);
+  });
+
+  // POS - Update customer
+  ipcMain.handle('pos:update-customer', async (event, { businessId, customerId, customerData }) => {
+    return POSService.updateCustomer(businessId, customerId, customerData);
+  });
+
+  // POS - Update customer points
+  ipcMain.handle('pos:update-customer-points', async (event, { businessId, customerId, pointsChange, totalSpent }) => {
+    return POSService.updateCustomerPoints(businessId, customerId, pointsChange, totalSpent);
+  });
+
+  // POS - Delete customer
+  ipcMain.handle('pos:delete-customer', async (event, { businessId, customerId }) => {
+    return POSService.deleteCustomer(businessId, customerId);
+  });
+
   console.log('IPC handlers registered');
 };
 
