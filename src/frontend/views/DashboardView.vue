@@ -3,7 +3,7 @@
     <!-- Top Bar -->
     <div class="top-bar">
       <div class="business-info">
-        <h1 class="text-2xl font-bold text-white">{{ businessName }}</h1>
+        <h1 class="business-title">{{ businessName }}</h1>
         <span class="text-sm text-gray-300">Food Business Management</span>
       </div>
       <div class="user-menu">
@@ -20,46 +20,7 @@
     <!-- Main Content Area -->
     <div class="main-content">
       <!-- Sidebar Navigation -->
-      <aside class="sidebar">
-        <nav class="nav-menu">
-          <a href="#" class="nav-item active" @click.prevent="">
-            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span>Dashboard</span>
-          </a>
-          <router-link to="/employees" class="nav-item">
-            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span>Employees</span>
-          </router-link>
-          <a href="#" class="nav-item" @click.prevent="showComingSoon('Inventory')">
-            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            <span>Inventory</span>
-          </a>
-          <router-link to="/menu" class="nav-item">
-            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-            <span>Menu</span>
-          </router-link>
-          <a href="#" class="nav-item" @click.prevent="showComingSoon('POS')">
-            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span>POS</span>
-          </a>
-          <a href="#" class="nav-item" @click.prevent="showComingSoon('Reports')">
-            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <span>Reports</span>
-          </a>
-        </nav>
-      </aside>
+      <Sidebar />
 
       <!-- Content Area -->
       <main class="content">
@@ -168,6 +129,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import Sidebar from '../components/Sidebar.vue';
 
 const router = useRouter();
 const businessName = ref('');
@@ -246,6 +208,14 @@ const handleLogout = async () => {
   gap: 0.25rem;
 }
 
+.business-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .user-menu {
   display: flex;
   align-items: center;
@@ -277,46 +247,6 @@ const handleLogout = async () => {
 .main-content {
   display: flex;
   min-height: calc(100vh - 88px);
-}
-
-.sidebar {
-  width: 240px;
-  background: #0a0e14;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.5rem 0;
-}
-
-.nav-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1.5rem;
-  color: #d1d5db;
-  text-decoration: none;
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-}
-
-.nav-item.active {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
-  border-left-color: #3b82f6;
-}
-
-.nav-icon {
-  width: 20px;
-  height: 20px;
 }
 
 .content {

@@ -13,15 +13,20 @@
       </div>
 
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin">
+      <form @submit.prevent="handleLogin" autocomplete="on">
         <div class="mb-4">
           <label for="username" class="block text-gray-300 font-semibold mb-2">Username</label>
           <input
             id="username"
-            v-model="username"
+            v-model.trim="username"
             type="text"
             class="input-field"
             placeholder="Enter your username"
+            autocomplete="username"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            autofocus
             required
           />
         </div>
@@ -30,10 +35,11 @@
           <label for="password" class="block text-gray-300 font-semibold mb-2">Password</label>
           <input
             id="password"
-            v-model="password"
+            v-model.trim="password"
             type="password"
             class="input-field"
             placeholder="Enter your password"
+            autocomplete="current-password"
             required
           />
         </div>
@@ -43,7 +49,9 @@
             <input type="checkbox" class="mr-2 bg-gray-800 border-gray-700" />
             <span class="text-sm text-gray-400">Remember me</span>
           </label>
-          <a href="#" class="text-sm text-gray-400 hover:text-gray-300">Forgot password?</a>
+          <router-link to="/forgot-password" class="text-sm text-blue-400 hover:text-blue-300">
+            Forgot password?
+          </router-link>
         </div>
 
         <button type="submit" class="btn-primary w-full" :disabled="loading">
@@ -72,10 +80,20 @@ const handleLogin = async () => {
   try {
     const { ipcRenderer } = window.require('electron');
     
+    // Trim whitespace from inputs to prevent issues
+    const cleanUsername = username.value.trim();
+    const cleanPassword = password.value.trim();
+    
+    if (!cleanUsername || !cleanPassword) {
+      errorMessage.value = 'Please enter both username and password';
+      loading.value = false;
+      return;
+    }
+    
     // Authenticate via IPC
     const result = await ipcRenderer.invoke('login', {
-      username: username.value,
-      password: password.value
+      username: cleanUsername,
+      password: cleanPassword
     });
 
     if (result.success) {
