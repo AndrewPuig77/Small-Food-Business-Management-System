@@ -137,22 +137,28 @@
           </div>
 
           <div>
-            <label class="block text-gray-300 font-semibold mb-2">Email (Optional)</label>
+            <label class="block text-gray-300 font-semibold mb-2">Email *</label>
             <input
-              v-model="ownerInfo.email"
+              v-model.trim="ownerInfo.email"
               type="email"
               class="input-field"
               placeholder="owner@business.com"
+              autocomplete="email"
+              required
             />
           </div>
 
           <div>
             <label class="block text-gray-300 font-semibold mb-2">Username *</label>
             <input
-              v-model="ownerInfo.username"
+              v-model.trim="ownerInfo.username"
               type="text"
               class="input-field"
               placeholder="admin"
+              autocomplete="username"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
               required
             />
           </div>
@@ -160,10 +166,11 @@
           <div>
             <label class="block text-gray-300 font-semibold mb-2">Password *</label>
             <input
-              v-model="ownerInfo.password"
+              v-model.trim="ownerInfo.password"
               type="password"
               class="input-field"
               placeholder="Minimum 8 characters"
+              autocomplete="new-password"
               required
             />
           </div>
@@ -171,10 +178,27 @@
           <div>
             <label class="block text-gray-300 font-semibold mb-2">Confirm Password *</label>
             <input
-              v-model="ownerInfo.confirmPassword"
+              v-model.trim="ownerInfo.confirmPassword"
               type="password"
               class="input-field"
               placeholder="Re-enter password"
+              autocomplete="new-password"
+              required
+            />
+          </div>
+
+          <div class="mt-6 pt-6 border-t border-gray-800">
+            <label class="block text-gray-300 font-semibold mb-2">Manager PIN (4 digits) *</label>
+            <p class="text-gray-500 text-sm mb-2">Used to authorize sensitive operations like voids and large discounts</p>
+            <input
+              v-model.trim="ownerInfo.pin"
+              type="password"
+              maxlength="4"
+              class="input-field"
+              placeholder="1234"
+              pattern="[0-9]{4}"
+              inputmode="numeric"
+              autocomplete="off"
               required
             />
           </div>
@@ -205,7 +229,7 @@
             <h3 class="text-gray-300 font-semibold mb-3">Owner Account</h3>
             <div class="space-y-2 text-sm">
               <p><span class="text-gray-500">Name:</span> <span class="text-gray-200">{{ ownerInfo.fullName }}</span></p>
-              <p v-if="ownerInfo.email"><span class="text-gray-500">Email:</span> <span class="text-gray-200">{{ ownerInfo.email }}</span></p>
+              <p><span class="text-gray-500">Email:</span> <span class="text-gray-200">{{ ownerInfo.email }}</span></p>
               <p><span class="text-gray-500">Username:</span> <span class="text-gray-200">{{ ownerInfo.username }}</span></p>
             </div>
           </div>
@@ -263,7 +287,8 @@ const ownerInfo = ref({
   email: '',
   username: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  pin: ''
 });
 
 const canProceed = computed(() => {
@@ -275,9 +300,11 @@ const canProceed = computed(() => {
   
   if (currentStep.value === 2) {
     return ownerInfo.value.fullName && 
+           ownerInfo.value.email &&
            ownerInfo.value.username && 
            ownerInfo.value.password &&
-           ownerInfo.value.confirmPassword;
+           ownerInfo.value.confirmPassword &&
+           ownerInfo.value.pin;
   }
   
   return true;
@@ -294,6 +321,10 @@ const nextStep = () => {
     }
     if (ownerInfo.value.password !== ownerInfo.value.confirmPassword) {
       passwordError.value = 'Passwords do not match';
+      return;
+    }
+    if (!ownerInfo.value.pin || ownerInfo.value.pin.length !== 4 || !/^\d{4}$/.test(ownerInfo.value.pin)) {
+      passwordError.value = 'PIN must be exactly 4 digits';
       return;
     }
   }
@@ -330,7 +361,8 @@ const completeSetup = async () => {
         fullName: ownerInfo.value.fullName,
         username: ownerInfo.value.username,
         email: ownerInfo.value.email,
-        password: ownerInfo.value.password
+        password: ownerInfo.value.password,
+        pin: ownerInfo.value.pin
       }
     };
     

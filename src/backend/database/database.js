@@ -71,6 +71,7 @@ const createTables = () => {
       full_name TEXT NOT NULL,
       email TEXT,
       role TEXT NOT NULL DEFAULT 'staff',
+      pin TEXT,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id)
@@ -227,6 +228,147 @@ const createTables = () => {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Suppliers table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      contact_person TEXT,
+      email TEXT,
+      phone TEXT,
+      address TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Inventory categories table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inventory_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Inventory items table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inventory_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      category_id INTEGER,
+      supplier_id INTEGER,
+      name TEXT NOT NULL,
+      description TEXT,
+      sku TEXT,
+      unit TEXT NOT NULL DEFAULT 'unit',
+      quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
+      min_quantity DECIMAL(10,2) DEFAULT 0,
+      unit_cost DECIMAL(10,2),
+      total_value DECIMAL(10,2),
+      location TEXT,
+      expiry_date DATE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (category_id) REFERENCES inventory_categories(id) ON DELETE SET NULL,
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Inventory transactions table (for tracking stock in/out)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inventory_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      item_id INTEGER NOT NULL,
+      transaction_type TEXT NOT NULL,
+      quantity DECIMAL(10,2) NOT NULL,
+      unit_cost DECIMAL(10,2),
+      total_cost DECIMAL(10,2),
+      reference_number TEXT,
+      notes TEXT,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
+  // POS Tables
+  db.run(`
+    CREATE TABLE IF NOT EXISTS customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT,
+      phone TEXT,
+      loyalty_points INTEGER DEFAULT 0,
+      total_spent DECIMAL(10,2) DEFAULT 0,
+      visit_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      cashier_id INTEGER NOT NULL,
+      customer_id INTEGER,
+      subtotal DECIMAL(10,2) NOT NULL,
+      tax DECIMAL(10,2) NOT NULL DEFAULT 0,
+      discount DECIMAL(10,2) DEFAULT 0,
+      tip_amount DECIMAL(10,2) DEFAULT 0,
+      total DECIMAL(10,2) NOT NULL,
+      points_earned INTEGER DEFAULT 0,
+      points_redeemed INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'completed',
+      void_reason TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS transaction_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transaction_id INTEGER NOT NULL,
+      menu_item_id INTEGER NOT NULL,
+      quantity INTEGER NOT NULL,
+      unit_price DECIMAL(10,2) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      notes TEXT,
+      modifiers TEXT,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+      FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payment_methods (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transaction_id INTEGER NOT NULL,
+      method_type TEXT NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      reference_number TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
     )
   `);
 

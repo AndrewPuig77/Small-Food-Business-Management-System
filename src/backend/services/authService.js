@@ -28,13 +28,14 @@ class AuthService {
 
       // Insert owner user
       db.exec(`
-        INSERT INTO users (business_id, username, password_hash, full_name, email, role)
+        INSERT INTO users (business_id, username, password_hash, full_name, email, role, pin)
         VALUES (${businessId}, 
                 '${setupData.owner.username.replace(/'/g, "''")}', 
                 '${passwordHash}', 
                 '${setupData.owner.fullName.replace(/'/g, "''")}', 
-                ${setupData.owner.email ? `'${setupData.owner.email.replace(/'/g, "''")}'` : 'NULL'}, 
-                'owner')
+                '${setupData.owner.email.replace(/'/g, "''")}', 
+                'owner',
+                '${setupData.owner.pin.replace(/'/g, "''")}')
       `);
 
       const userResult = db.exec('SELECT last_insert_rowid() as id');
@@ -185,6 +186,165 @@ class AuthService {
       console.log('Cleaned up expired sessions');
     } catch (error) {
       console.error('Session cleanup error:', error);
+    }
+  }
+
+  // Change PIN (requires current PIN)
+  static changePin(businessId, userId, currentPin, newPin) {
+    try {
+      const db = getDb();
+      
+      // Verify current PIN
+      const result = db.exec(`
+        SELECT id FROM users 
+        WHERE id = ${userId} 
+          AND business_id = ${businessId} 
+          AND pin = '${currentPin.replace(/'/g, "''")}'
+      `);
+
+      if (!result.length || !result[0].values.length) {
+        return {
+          success: false,
+          error: 'Current PIN is incorrect'
+        };
+      }
+
+      // Update PIN
+      db.exec(`
+        UPDATE users 
+        SET pin = '${newPin.replace(/'/g, "''")}' 
+        WHERE id = ${userId} AND business_id = ${businessId}
+      `);
+      
+      saveDatabase();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Change PIN error:', error);
+      return {
+        success: false,
+        error: 'An error occurred while changing PIN'
+      };
+    }
+  }
+
+  // Reset PIN (requires password verification)
+  static resetPin(businessId, userId, password, newPin) {
+    try {
+      const db = getDb();
+      
+      // Get user and verify password
+      const result = db.exec(`
+        SELECT password_hash FROM users 
+        WHERE id = ${userId} AND business_id = ${businessId}
+      `);
+
+      if (!result.length || !result[0].values.length) {
+        return {
+          success: false,
+          error: 'User not found'
+        };
+      }
+
+      const passwordHash = result[0].values[0][0];
+      const isValidPassword = bcrypt.compareSync(password, passwordHash);
+
+      if (!isValidPassword) {
+        return {
+          success: false,
+          error: 'Password is incorrect'
+        };
+      }
+
+      // Update PIN
+      db.exec(`
+        UPDATE users 
+        SET pin = '${newPin.replace(/'/g, "''")}' 
+        WHERE id = ${userId} AND business_id = ${businessId}
+      `);
+      
+      saveDatabase();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Reset PIN error:', error);
+      return {
+        success: false,
+        error: 'An error occurred while resetting PIN'
+      };
+    }
+  }
+
+  // Verify identity for password reset (using username and email)
+  static verifyIdentity(username, email) {
+    try {
+      const db = getDb();
+      
+      // Find user by username and email
+      const escapedUsername = username.replace(/'/g, "''");
+      const escapedEmail = email.replace(/'/g, "''");
+      
+      const result = db.exec(`
+        SELECT id, business_id, full_name 
+        FROM users 
+        WHERE username = '${escapedUsername}' 
+          AND email = '${escapedEmail}'
+          AND active = 1
+      `);
+
+      if (!result.length || !result[0].values.length) {
+        return {
+          success: false,
+          error: 'Username and email do not match any account'
+        };
+      }
+
+      const userId = result[0].values[0][0];
+      const businessId = result[0].values[0][1];
+
+      return {
+        success: true,
+        userId,
+        businessId
+      };
+    } catch (error) {
+      console.error('Verify identity error:', error);
+      return {
+        success: false,
+        error: 'An error occurred during verification'
+      };
+    }
+  }
+
+  // Reset password (after identity verification)
+  static resetPassword(userId, businessId, newPassword) {
+    try {
+      const db = getDb();
+      
+      // Hash new password
+      const newPasswordHash = bcrypt.hashSync(newPassword, 10);
+      
+      // Update password
+      db.exec(`
+        UPDATE users 
+        SET password_hash = '${newPasswordHash}' 
+        WHERE id = ${userId} AND business_id = ${businessId}
+      `);
+      
+      // Invalidate all existing sessions for this user
+      db.exec(`
+        DELETE FROM sessions WHERE user_id = ${userId}
+      `);
+      
+      saveDatabase();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return {
+        success: false,
+        error: 'An error occurred while resetting password'
+      };
     }
   }
 }
