@@ -153,6 +153,50 @@ const deleteEmployee = (businessId, employeeId) => {
   return { success: true };
 };
 
+// Create a user account for an existing employee (if none linked)
+const createUserAccountForEmployee = async (businessId, employeeId, accountData) => {
+  const db = getDb();
+
+  // Ensure employee exists and has no linked user
+  const empRes = db.exec(`SELECT first_name, last_name, email, role, user_id FROM employees WHERE id = ${employeeId} AND business_id = ${businessId}`);
+  if (empRes.length === 0 || empRes[0].values.length === 0) {
+    return { success: false, error: 'Employee not found' };
+  }
+  const [firstName, lastName, email, role, userId] = empRes[0].values[0];
+  if (userId) {
+    return { success: false, error: 'Employee already has a user account' };
+  }
+
+  // Hash password
+  const passwordHash = await bcrypt.hash(accountData.password, 10);
+
+  // Insert user
+  const fullName = `${firstName} ${lastName}`;
+  const insertUserSql = `
+    INSERT INTO users (business_id, username, password_hash, full_name, email, role, active)
+    VALUES (
+      ${businessId},
+      ${escape(accountData.username)},
+      ${escape(passwordHash)},
+      ${escape(fullName)},
+      ${escape(email)},
+      ${escape(role)},
+      1
+    )
+  `;
+  db.run(insertUserSql);
+
+  // Get new user id
+  const userIdResult = db.exec('SELECT last_insert_rowid() as id');
+  const newUserId = userIdResult[0].values[0][0];
+
+  // Link employee
+  db.run(`UPDATE employees SET user_id = ${newUserId}, updated_at = CURRENT_TIMESTAMP WHERE id = ${employeeId} AND business_id = ${businessId}`);
+
+  saveDatabase();
+  return { success: true, userId: newUserId };
+};
+
 // Update employee status
 const updateEmployeeStatus = (businessId, employeeId, status) => {
   const db = getDb();
@@ -524,5 +568,6 @@ module.exports = {
   getTimeLogs,
   clockIn,
   clockOut,
-  calculatePayroll
+  calculatePayroll,
+  createUserAccountForEmployee
 };
