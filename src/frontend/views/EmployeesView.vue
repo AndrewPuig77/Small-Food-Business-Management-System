@@ -120,6 +120,17 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
+                  <button v-if="isOwner && !employee.user_id" @click="openCreateAccount(employee)" class="action-icon-btn" title="Create Account">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A7 7 0 0112 15a7 7 0 016.879 2.804M15 11a3 3 0 10-6 0 3 3 0 006 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 10v4m-2-2h4" />
+                    </svg>
+                  </button>
+                  <button v-if="isOwner" @click="openResetPassword(employee)" class="action-icon-btn" :title="employee.user_id ? 'Reset Password' : 'Create account to enable reset'">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.657 1.343-3 3-3s3 1.343 3 3v2h1a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4a2 2 0 012-2h1v-2a5 5 0 1110 0v2" />
+                    </svg>
+                  </button>
                   <button @click="confirmDelete(employee)" class="action-icon-btn delete" title="Delete">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -285,6 +296,85 @@
                   />
                 </div>
               </div>
+
+              <!-- Permissions Section -->
+              <div class="permissions-section">
+                <h4>System Permissions</h4>
+                <p class="field-hint">Select what this employee can access in the system</p>
+                
+                <div class="permissions-grid">
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canAccessPOS" />
+                    <div class="permission-info">
+                      <span class="permission-name">POS System</span>
+                      <span class="permission-desc">Process sales and transactions</span>
+                    </div>
+                  </label>
+
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canViewInventory" />
+                    <div class="permission-info">
+                      <span class="permission-name">View Inventory</span>
+                      <span class="permission-desc">Check stock levels</span>
+                    </div>
+                  </label>
+
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canEditInventory" />
+                    <div class="permission-info">
+                      <span class="permission-name">Edit Inventory</span>
+                      <span class="permission-desc">Update stock, add items</span>
+                    </div>
+                  </label>
+
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canViewReports" />
+                    <div class="permission-info">
+                      <span class="permission-name">View Reports</span>
+                      <span class="permission-desc">Access sales and business reports</span>
+                    </div>
+                  </label>
+
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canManageEmployees" />
+                    <div class="permission-info">
+                      <span class="permission-name">Manage Employees</span>
+                      <span class="permission-desc">Add/edit employee records</span>
+                    </div>
+                  </label>
+
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canManageSchedule" />
+                    <div class="permission-info">
+                      <span class="permission-name">Manage Schedule</span>
+                      <span class="permission-desc">Create and edit shifts</span>
+                    </div>
+                  </label>
+
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canApproveTimeOff" />
+                    <div class="permission-info">
+                      <span class="permission-name">Approve Time Off</span>
+                      <span class="permission-desc">Review time-off requests</span>
+                    </div>
+                  </label>
+
+                  <label class="permission-item">
+                    <input type="checkbox" v-model="employeeForm.permissions.canViewPayroll" />
+                    <div class="permission-info">
+                      <span class="permission-name">View Payroll</span>
+                      <span class="permission-desc">Access payroll information</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="quick-presets">
+                  <button type="button" @click="applyPreset('staff')" class="btn-preset">Staff Preset</button>
+                  <button type="button" @click="applyPreset('manager')" class="btn-preset">Manager Preset</button>
+                  <button type="button" @click="applyPreset('admin')" class="btn-preset">Admin Preset</button>
+                </div>
+              </div>
+
               <p class="field-hint">Employee will use these credentials to log into the system</p>
             </div>
           </div>
@@ -335,6 +425,68 @@
       </div>
     </div>
   </div>
+
+  <!-- Reset Password Modal -->
+  <div v-if="showResetModal" class="modal-overlay" @click.self="showResetModal = false">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Reset Password</h2>
+        <button @click="showResetModal = false" class="modal-close">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <p class="section-description">Set a new password for {{ resetTarget?.first_name }} {{ resetTarget?.last_name }}.</p>
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input type="password" class="form-input" v-model.trim="resetForm.newPassword" placeholder="Minimum 8 characters" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm New Password</label>
+          <input type="password" class="form-input" v-model.trim="resetForm.confirmPassword" placeholder="Re-enter password" />
+        </div>
+        <div v-if="resetError" class="p-3 bg-red-900/50 border border-red-700 text-red-300 rounded-lg text-sm">{{ resetError }}</div>
+        <div v-if="resetSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">{{ resetSuccess }}</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showResetModal = false">Cancel</button>
+          <button class="btn-primary" @click="performResetPassword">Reset Password</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Account Modal -->
+  <div v-if="showCreateAccountModal" class="modal-overlay" @click.self="showCreateAccountModal = false">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Create System Account</h2>
+        <button @click="showCreateAccountModal = false" class="modal-close">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <p class="section-description">Create a login for {{ createAccountTarget?.first_name }} {{ createAccountTarget?.last_name }}.</p>
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-input" v-model.trim="createAccountForm.username" placeholder="e.g. john.doe" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" v-model.trim="createAccountForm.password" placeholder="Minimum 8 characters" />
+        </div>
+        <div v-if="createAccountError" class="p-3 bg-red-900/50 border border-red-700 text-red-300 rounded-lg text-sm">{{ createAccountError }}</div>
+        <div v-if="createAccountSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">{{ createAccountSuccess }}</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showCreateAccountModal = false">Cancel</button>
+          <button class="btn-primary" @click="performCreateAccount">Create Account</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -350,6 +502,19 @@ const selectedStatus = ref(null);
 const showEmployeeModal = ref(false);
 const showScheduleManager = ref(false);
 const editingEmployee = ref(null);
+const currentUser = ref(null);
+const showResetModal = ref(false);
+const resetTarget = ref(null);
+const resetForm = ref({ newPassword: '', confirmPassword: '' });
+const resetError = ref('');
+const resetSuccess = ref('');
+
+// Create Account state
+const showCreateAccountModal = ref(false);
+const createAccountTarget = ref(null);
+const createAccountForm = ref({ username: '', password: '' });
+const createAccountError = ref('');
+const createAccountSuccess = ref('');
 
 const employeeForm = ref({
   firstName: '',
@@ -362,18 +527,29 @@ const employeeForm = ref({
   status: 'active',
   createAccount: false,
   username: '',
-  password: ''
+  password: '',
+  permissions: {
+    canAccessPOS: false,
+    canViewInventory: false,
+    canEditInventory: false,
+    canViewReports: false,
+    canManageEmployees: false,
+    canManageSchedule: false,
+    canApproveTimeOff: false,
+    canViewPayroll: false
+  }
 });
 
 // Load employees
 const loadEmployees = async () => {
   loading.value = true;
   try {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!currentUser) return;
+    const stored = JSON.parse(localStorage.getItem('currentUser'));
+    if (!stored) return;
+    currentUser.value = stored;
 
     const { ipcRenderer } = window.require('electron');
-    const result = await ipcRenderer.invoke('employee:get-all', currentUser.businessId);
+    const result = await ipcRenderer.invoke('employee:get-all', stored.businessId);
     employees.value = result;
   } catch (error) {
     console.error('Error loading employees:', error);
@@ -405,9 +581,50 @@ const filteredEmployees = computed(() => {
   return filtered;
 });
 
+// Role check (owner only controls)
+const isOwner = computed(() => currentUser.value?.role === 'owner');
+
 // Get initials for avatar
 const getInitials = (firstName, lastName) => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+};
+
+// Apply permission preset
+const applyPreset = (presetType) => {
+  const presets = {
+    staff: {
+      canAccessPOS: true,
+      canViewInventory: true,
+      canEditInventory: false,
+      canViewReports: false,
+      canManageEmployees: false,
+      canManageSchedule: false,
+      canApproveTimeOff: false,
+      canViewPayroll: false
+    },
+    manager: {
+      canAccessPOS: true,
+      canViewInventory: true,
+      canEditInventory: true,
+      canViewReports: true,
+      canManageEmployees: true,
+      canManageSchedule: true,
+      canApproveTimeOff: true,
+      canViewPayroll: true
+    },
+    admin: {
+      canAccessPOS: true,
+      canViewInventory: true,
+      canEditInventory: true,
+      canViewReports: true,
+      canManageEmployees: true,
+      canManageSchedule: true,
+      canApproveTimeOff: true,
+      canViewPayroll: true
+    }
+  };
+  
+  employeeForm.value.permissions = { ...presets[presetType] };
 };
 
 // Format date
@@ -431,7 +648,17 @@ const openEmployeeModal = (employee = null) => {
       status: employee.status,
       createAccount: false,
       username: '',
-      password: ''
+      password: '',
+      permissions: {
+        canAccessPOS: false,
+        canViewInventory: false,
+        canEditInventory: false,
+        canViewReports: false,
+        canManageEmployees: false,
+        canManageSchedule: false,
+        canApproveTimeOff: false,
+        canViewPayroll: false
+      }
     };
   } else {
     editingEmployee.value = null;
@@ -446,7 +673,17 @@ const openEmployeeModal = (employee = null) => {
       status: 'active',
       createAccount: false,
       username: '',
-      password: ''
+      password: '',
+      permissions: {
+        canAccessPOS: false,
+        canViewInventory: false,
+        canEditInventory: false,
+        canViewReports: false,
+        canManageEmployees: false,
+        canManageSchedule: false,
+        canApproveTimeOff: false,
+        canViewPayroll: false
+      }
     };
   }
   showEmployeeModal.value = true;
@@ -486,7 +723,8 @@ const saveEmployee = async () => {
       status: employeeForm.value.status,
       createAccount: employeeForm.value.createAccount,
       username: employeeForm.value.username || null,
-      password: employeeForm.value.password || null
+      password: employeeForm.value.password || null,
+      permissions: employeeForm.value.createAccount ? { ...employeeForm.value.permissions } : null
     };
 
     if (editingEmployee.value) {
@@ -506,7 +744,15 @@ const saveEmployee = async () => {
     loadEmployees();
   } catch (error) {
     console.error('Error saving employee:', error);
-    alert('Failed to save employee. Please try again.');
+    
+    // Handle specific errors
+    if (error.message.includes('UNIQUE constraint failed: users.username')) {
+      alert('This username is already taken. Please choose a different username.');
+    } else if (error.message.includes('UNIQUE constraint failed: users.email')) {
+      alert('This email is already registered. Please use a different email.');
+    } else {
+      alert('Failed to save employee. Please try again.');
+    }
   }
 };
 
@@ -537,6 +783,122 @@ const openEmployeeSchedule = (employee) => {
 onMounted(() => {
   loadEmployees();
 });
+
+const openResetPassword = (employee) => {
+  if (!employee.user_id) {
+    openCreateAccount(employee);
+    return;
+  }
+  resetTarget.value = employee;
+  resetForm.value = { newPassword: '', confirmPassword: '' };
+  resetError.value = '';
+  resetSuccess.value = '';
+  showResetModal.value = true;
+};
+
+const performResetPassword = async () => {
+  resetError.value = '';
+  resetSuccess.value = '';
+
+  if (!resetForm.value.newPassword || !resetForm.value.confirmPassword) {
+    resetError.value = 'Please fill in both fields';
+    return;
+  }
+  if (resetForm.value.newPassword.length < 8) {
+    resetError.value = 'Password must be at least 8 characters';
+    return;
+  }
+  if (resetForm.value.newPassword !== resetForm.value.confirmPassword) {
+    resetError.value = 'Passwords do not match';
+    return;
+  }
+
+  try {
+    const { ipcRenderer } = window.require('electron');
+    const res = await ipcRenderer.invoke('auth:reset-password', {
+      userId: resetTarget.value.user_id,
+      businessId: currentUser.value.businessId,
+      newPassword: resetForm.value.newPassword
+    });
+
+    if (res.success) {
+      resetSuccess.value = 'Password reset successfully';
+      setTimeout(() => {
+        showResetModal.value = false;
+      }, 800);
+    } else {
+      resetError.value = res.error || 'Failed to reset password';
+    }
+  } catch (e) {
+    console.error('Reset password error:', e);
+    resetError.value = 'An error occurred while resetting password';
+  }
+};
+
+const openCreateAccount = (employee) => {
+  createAccountTarget.value = employee;
+  // Suggest a username based on name if possible
+  const first = (employee.first_name || '').toLowerCase().replace(/\s+/g, '');
+  const last = (employee.last_name || '').toLowerCase().replace(/\s+/g, '');
+  const suggestion = [first, last].filter(Boolean).join('.') || '';
+  createAccountForm.value = { username: suggestion, password: '' };
+  createAccountError.value = '';
+  createAccountSuccess.value = '';
+  showCreateAccountModal.value = true;
+};
+
+const performCreateAccount = async () => {
+  createAccountError.value = '';
+  createAccountSuccess.value = '';
+
+  if (!createAccountForm.value.username) {
+    createAccountError.value = 'Username is required';
+    return;
+  }
+  if (!createAccountForm.value.password || createAccountForm.value.password.length < 8) {
+    createAccountError.value = 'Password must be at least 8 characters';
+    return;
+  }
+
+  try {
+    const { ipcRenderer } = window.require('electron');
+    const res = await ipcRenderer.invoke('employee:create-account', {
+      businessId: currentUser.value.businessId,
+      employeeId: createAccountTarget.value.id,
+      accountData: {
+        username: createAccountForm.value.username,
+        password: createAccountForm.value.password
+      }
+    });
+
+    if (res && res.success) {
+      createAccountSuccess.value = 'Account created and linked successfully';
+      await loadEmployees();
+      setTimeout(() => {
+        showCreateAccountModal.value = false;
+      }, 800);
+    } else {
+      const msg = res && res.error ? res.error : 'Failed to create account';
+      // Friendly messages for common uniqueness constraints
+      if (typeof msg === 'string' && msg.includes('UNIQUE') && msg.includes('users.username')) {
+        createAccountError.value = 'This username is already taken. Please choose another.';
+      } else if (typeof msg === 'string' && msg.includes('UNIQUE') && msg.includes('users.email')) {
+        createAccountError.value = 'This email is already linked to another account.';
+      } else {
+        createAccountError.value = msg;
+      }
+    }
+  } catch (e) {
+    const raw = e && e.message ? e.message : String(e);
+    if (raw.includes('UNIQUE constraint failed: users.username')) {
+      createAccountError.value = 'This username is already taken. Please choose another.';
+    } else if (raw.includes('UNIQUE constraint failed: users.email')) {
+      createAccountError.value = 'This email is already linked to another account.';
+    } else {
+      createAccountError.value = 'An error occurred while creating the account';
+    }
+  }
+};
 </script>
 
 <style scoped>
@@ -1046,6 +1408,92 @@ onMounted(() => {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.permissions-section {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 0.5rem;
+}
+
+.permissions-section h4 {
+  margin: 0 0 0.5rem 0;
+  color: #60a5fa;
+  font-size: 1rem;
+}
+
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.permission-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.permission-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.permission-item input[type="checkbox"] {
+  margin-top: 0.25rem;
+  cursor: pointer;
+}
+
+.permission-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.permission-name {
+  font-weight: 600;
+  color: #d1d5db;
+  font-size: 0.875rem;
+}
+
+.permission-desc {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.quick-presets {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-preset {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-preset:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
 }
 
 .modal-wide {
