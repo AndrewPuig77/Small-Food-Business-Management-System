@@ -66,6 +66,53 @@
         </div>
       </header>
 
+      <!-- Clock In/Out Section -->
+      <div class="clock-section">
+        <div class="clock-header">
+          <h3 class="clock-title">Time Clock</h3>
+          <button @click="refreshClockedIn" class="btn-icon-only">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Currently Clocked In Employees -->
+        <div v-if="clockedInEmployees.length > 0" class="clocked-in-list">
+          <div v-for="emp in clockedInEmployees" :key="emp.employee_id" class="clocked-in-item">
+            <div class="clocked-in-avatar">{{ getInitials(emp.full_name.split(' ')[0], emp.full_name.split(' ')[1] || '') }}</div>
+            <div class="clocked-in-info">
+              <div class="clocked-in-name">{{ emp.full_name }}</div>
+              <div class="clocked-in-position">{{ emp.position }}</div>
+              <div class="clocked-in-time">Clocked in: {{ formatTime(emp.clock_in) }}</div>
+              <div class="clocked-in-duration">{{ calculateElapsedTime(emp.clock_in) }}</div>
+            </div>
+            <button @click="handleClockOut(emp.employee_id)" class="btn-clock-out">
+              Clock Out
+            </button>
+          </div>
+        </div>
+        <div v-else class="empty-clock">
+          <p>No employees currently clocked in</p>
+        </div>
+
+        <!-- Clock In Form -->
+        <div class="clock-in-form">
+          <select v-model="selectedEmployeeId" class="form-input" style="flex: 1;">
+            <option value="">Select employee to clock in...</option>
+            <option v-for="emp in availableEmployees" :key="emp.id" :value="emp.id">
+              {{ emp.first_name }} {{ emp.last_name }} - {{ emp.role }}
+            </option>
+          </select>
+          <button @click="handleClockIn" :disabled="!selectedEmployeeId" class="btn-primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Clock In
+          </button>
+        </div>
+      </div>
+
       <!-- Schedule Grid -->
       <div class="schedule-container">
         <div class="schedule-grid">
@@ -167,15 +214,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 const { ipcRenderer } = window.require('electron');
 
 const employees = ref([]);
 const shifts = ref([]);
+const clockedInEmployees = ref([]);
+const selectedEmployeeId = ref('');
 const currentWeekStart = ref(new Date());
 const showAddShift = ref(false);
 const editingShift = ref(null);
+const currentTime = ref(new Date());
 
 const shiftForm = ref({
   employeeId: '',
@@ -212,6 +262,12 @@ const weekLabel = computed(() => {
   return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 });
 
+// Available employees (not currently clocked in)
+const availableEmployees = computed(() => {
+  const clockedInIds = clockedInEmployees.value.map(emp => emp.employee_id);
+  return employees.value.filter(emp => !clockedInIds.includes(emp.id));
+});
+
 const loadEmployees = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -237,6 +293,72 @@ const loadShifts = async () => {
     console.error('Error loading shifts:', error);
     shifts.value = [];
   }
+};
+
+const loadClockedInEmployees = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    clockedInEmployees.value = await ipcRenderer.invoke('timelog:get-clocked-in', currentUser.businessId);
+  } catch (error) {
+    console.error('Error loading clocked in employees:', error);
+    clockedInEmployees.value = [];
+  }
+};
+
+const refreshClockedIn = () => {
+  loadClockedInEmployees();
+};
+
+const handleClockIn = async () => {
+  if (!selectedEmployeeId.value) return;
+  
+  try {
+    await ipcRenderer.invoke('timelog:clock-in', {
+      employeeId: selectedEmployeeId.value,
+      notes: null
+    });
+    
+    selectedEmployeeId.value = '';
+    await loadClockedInEmployees();
+    alert('Clocked in successfully');
+  } catch (error) {
+    console.error('Error clocking in:', error);
+    alert(error.message || 'Failed to clock in');
+  }
+};
+
+const handleClockOut = async (employeeId) => {
+  try {
+    await ipcRenderer.invoke('timelog:clock-out', {
+      employeeId,
+      notes: null
+    });
+    
+    await loadClockedInEmployees();
+    alert('Clocked out successfully');
+  } catch (error) {
+    console.error('Error clocking out:', error);
+    alert(error.message || 'Failed to clock out');
+  }
+};
+
+const formatTime = (isoString) => {
+  const date = new Date(isoString);
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
+const calculateElapsedTime = (clockInTime) => {
+  const start = new Date(clockInTime);
+  const now = currentTime.value;
+  const diffMs = now - start;
+  
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
 };
 
 const getInitials = (firstName, lastName) => {
@@ -376,9 +498,24 @@ const goToToday = () => {
   loadShifts();
 };
 
+// Update current time every minute for elapsed time calculations
+let timeInterval;
+
 onMounted(() => {
   goToToday();
   loadEmployees();
+  loadClockedInEmployees();
+  
+  // Update time every minute
+  timeInterval = setInterval(() => {
+    currentTime.value = new Date();
+  }, 60000); // Update every minute
+});
+
+onUnmounted(() => {
+  if (timeInterval) {
+    clearInterval(timeInterval);
+  }
 });
 </script>
 
@@ -537,6 +674,138 @@ onMounted(() => {
 .btn-icon {
   width: 18px;
   height: 18px;
+}
+
+/* Clock Section */
+.clock-section {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.clock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.clock-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin: 0;
+}
+
+.btn-icon-only {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon-only:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(180deg);
+}
+
+.clocked-in-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.clocked-in-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.clocked-in-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+.clocked-in-info {
+  flex: 1;
+}
+
+.clocked-in-name {
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 0.125rem;
+}
+
+.clocked-in-position {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.clocked-in-time {
+  color: #60a5fa;
+  font-size: 0.75rem;
+}
+
+.clocked-in-duration {
+  color: #10b981;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.btn-clock-out {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-clock-out:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fecaca;
+}
+
+.empty-clock {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 1.5rem;
+}
+
+.clock-in-form {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
 }
 
 .schedule-container {
