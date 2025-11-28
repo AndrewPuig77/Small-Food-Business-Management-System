@@ -120,7 +120,7 @@
           <div v-else class="selected-customer">
             <div class="selected-customer-info">
               <div class="selected-customer-name">{{ selectedCustomer.name }}</div>
-              <div class="selected-customer-points">{{ selectedCustomer.loyalty_points }} loyalty points</div>
+              <div class="selected-customer-points">{{ selectedCustomer.loyalty_points }} points (${{ (selectedCustomer.loyalty_points / loyaltySettings.pointsPerDollarValue).toFixed(2) }} value)</div>
             </div>
             <button @click="clearCustomer" class="btn-clear-customer">×</button>
           </div>
@@ -304,6 +304,9 @@
                 <span>Remaining:</span>
                 <span>${{ remainingBalance.toFixed(2) }}</span>
               </div>
+              <div v-if="changeDue > 0" class="change-due">
+                Change Due: ${{ changeDue.toFixed(2) }}
+              </div>
             </div>
 
             <div class="payment-methods">
@@ -317,17 +320,27 @@
               </button>
             </div>
 
-            <div class="form-group">
+            <div v-if="selectedPaymentMethod === 'Cash'" class="cash-payment">
+              <div class="form-group">
+                <label>Cash Received</label>
+                <input v-model.number="cashReceived" type="number" step="0.01" class="form-input" 
+                       placeholder="Amount received" />
+              </div>
+              <div v-if="cashReceived > 0" class="change-due">
+                Change: ${{ Math.max(0, cashReceived - remainingBalance).toFixed(2) }}
+              </div>
+            </div>
+            <div v-else class="form-group">
               <label>Payment Amount</label>
               <input v-model.number="paymentAmount" type="number" step="0.01" class="form-input" 
                      :placeholder="remainingBalance.toFixed(2)" />
-              <button @click="addPayment" class="btn-add-payment">Add Payment</button>
             </div>
+            <button @click="addPayment" class="btn-add-payment">Add Payment</button>
 
-            <div v-if="selectedCustomer && selectedCustomer.loyalty_points > 0" class="loyalty-section">
+            <div v-if="selectedCustomer && selectedCustomer.loyalty_points >= loyaltySettings.minPointsToRedeem" class="loyalty-section">
               <label>
                 <input v-model="usePoints" type="checkbox" />
-                Use {{ Math.min(selectedCustomer.loyalty_points, Math.floor(total * 100)) }} points (${{ Math.min(selectedCustomer.loyalty_points / 100, total).toFixed(2) }} off)
+                Use {{ Math.min(selectedCustomer.loyalty_points, Math.floor((total * loyaltySettings.maxRedemptionPercent / 100) * loyaltySettings.pointsPerDollarValue)) }} points (${{ Math.min(selectedCustomer.loyalty_points / loyaltySettings.pointsPerDollarValue, total * loyaltySettings.maxRedemptionPercent / 100).toFixed(2) }} off)
               </label>
             </div>
           </div>
@@ -630,6 +643,14 @@ const lastTransaction = ref(null);
 const taxRate = ref(7.5);
 const businessName = ref('Food Business');
 
+const loyaltySettings = ref({
+  pointsPerDollar: 100,
+  pointsPerDollarValue: 100,
+  minPurchaseForPoints: 0,
+  minPointsToRedeem: 100,
+  maxRedemptionPercent: 100
+});
+
 // Computed
 const filteredMenuItems = computed(() => {
   let filtered = menuItems.value.filter(item => item.available);
@@ -684,6 +705,13 @@ const totalPaid = computed(() => {
 
 const remainingBalance = computed(() => {
   return Math.max(0, total.value - totalPaid.value);
+});
+
+const changeDue = computed(() => {
+  const totalCashReceived = payments.value
+    .filter(p => p.methodType === 'Cash')
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  return Math.max(0, totalCashReceived - total.value);
 });
 
 const canCompleteTransaction = computed(() => {
@@ -800,7 +828,7 @@ const createNewCustomer = async () => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     const customer = await ipcRenderer.invoke('pos:create-customer', {
       businessId: currentUser.businessId,
-      customerData: newCustomer.value
+      customerData: { ...newCustomer.value }
     });
     
     selectedCustomer.value = customer;
@@ -816,12 +844,17 @@ const completeTransaction = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     
+    // Calculate max redeemable based on settings
+    const maxRedeemableAmount = (total.value * loyaltySettings.value.maxRedemptionPercent) / 100;
+    const maxRedeemablePoints = Math.floor(maxRedeemableAmount * loyaltySettings.value.pointsPerDollarValue);
+    
     const pointsRedeemed = usePoints.value && selectedCustomer.value 
-      ? Math.min(selectedCustomer.value.loyalty_points, Math.floor(total.value * 100)) 
+      ? Math.min(selectedCustomer.value.loyalty_points, maxRedeemablePoints) 
       : 0;
     
-    const pointsEarned = selectedCustomer.value 
-      ? Math.floor(subtotal.value) 
+    // Calculate points earned based on settings
+    const pointsEarned = selectedCustomer.value && subtotal.value >= loyaltySettings.value.minPurchaseForPoints
+      ? Math.floor(subtotal.value * loyaltySettings.value.pointsPerDollar) 
       : 0;
     
     // Use split payments if available, otherwise single payment
@@ -903,13 +936,16 @@ const printReceipt = () => {
 
 // Split Payments
 const addPayment = () => {
-  if (paymentAmount.value > 0 && selectedPaymentMethod.value) {
+  const amount = selectedPaymentMethod.value === 'Cash' ? cashReceived.value : paymentAmount.value;
+  
+  if (amount > 0 && selectedPaymentMethod.value) {
     payments.value.push({
       methodType: selectedPaymentMethod.value,
-      amount: Math.min(paymentAmount.value, remainingBalance.value),
+      amount: selectedPaymentMethod.value === 'Cash' ? cashReceived.value : Math.min(paymentAmount.value, remainingBalance.value),
       referenceNumber: selectedPaymentMethod.value !== 'Cash' ? `REF-${Date.now()}` : null
     });
     paymentAmount.value = 0;
+    cashReceived.value = 0;
   }
 };
 
@@ -1117,6 +1153,13 @@ onMounted(() => {
   if (savedDarkMode === 'true') {
     darkMode.value = true;
     document.documentElement.classList.add('dark');
+  }
+  
+  // Load loyalty settings
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  const savedSettings = localStorage.getItem(`loyaltySettings_${currentUser.businessId}`);
+  if (savedSettings) {
+    loyaltySettings.value = JSON.parse(savedSettings);
   }
 });
 </script>
