@@ -6,6 +6,8 @@ const EmployeeService = require('./services/employeeService');
 const ScheduleService = require('./services/scheduleService');
 const InventoryService = require('./services/inventoryService');
 const POSService = require('./services/posService');
+const ExpenseService = require('./services/expenseService');
+const TimeLogService = require('./services/timeLogService');
 
 // Setup IPC handlers for communication between main and renderer processes
 const setupIPC = async () => {
@@ -148,6 +150,11 @@ const setupIPC = async () => {
     return EmployeeService.deleteEmployeeDocument(documentId);
   });
 
+  // Create user account for an existing employee
+  ipcMain.handle('employee:create-account', async (event, { businessId, employeeId, accountData }) => {
+    return EmployeeService.createUserAccountForEmployee(businessId, employeeId, accountData);
+  });
+
   // Time Logs
   ipcMain.handle('employee:get-time-logs', async (event, { employeeId, startDate, endDate }) => {
     return EmployeeService.getTimeLogs(employeeId, startDate, endDate);
@@ -207,8 +214,8 @@ const setupIPC = async () => {
     return InventoryService.deleteItem(businessId, itemId);
   });
 
-  ipcMain.handle('inventory:adjust-stock', async (event, { businessId, itemId, adjustment, userId, notes }) => {
-    return InventoryService.adjustStock(businessId, itemId, adjustment, userId, notes);
+  ipcMain.handle('inventory:adjust-stock', async (event, { businessId, itemId, adjustment, userId, notes, transactionType, vendor }) => {
+    return InventoryService.adjustStock(businessId, itemId, adjustment, userId, notes, transactionType, vendor);
   });
 
   ipcMain.handle('inventory:get-low-stock', async (event, businessId) => {
@@ -292,6 +299,10 @@ const setupIPC = async () => {
     return POSService.getDailySalesSummary(businessId, date);
   });
 
+  ipcMain.handle('pos:get-payment-methods', async (event, { businessId, startDate, endDate }) => {
+    return POSService.getPaymentMethodsByDateRange(businessId, startDate, endDate);
+  });
+
   ipcMain.handle('pos:void-transaction', async (event, { businessId, transactionId, voidReason, voidedBy }) => {
     return POSService.voidTransaction(businessId, transactionId, voidReason, voidedBy);
   });
@@ -335,6 +346,125 @@ const setupIPC = async () => {
     return POSService.deleteCustomer(businessId, customerId);
   });
 
+  // ==================== EXPENSES ====================
+  
+  // Get all expenses
+  ipcMain.handle('expense:get-all', async (event, businessId) => {
+    return ExpenseService.getAllExpenses(businessId);
+  });
+
+  // Get expenses by date range
+  ipcMain.handle('expense:get-by-date', async (event, { businessId, startDate, endDate }) => {
+    return ExpenseService.getExpensesByDateRange(businessId, startDate, endDate);
+  });
+
+  // Get expenses by category
+  ipcMain.handle('expense:get-by-category', async (event, { businessId, startDate, endDate }) => {
+    return ExpenseService.getExpensesByCategory(businessId, startDate, endDate);
+  });
+
+  // Create expense
+  ipcMain.handle('expense:create', async (event, { businessId, expenseData }) => {
+    return ExpenseService.createExpense(businessId, expenseData);
+  });
+
+  // Update expense
+  ipcMain.handle('expense:update', async (event, { expenseId, expenseData }) => {
+    return ExpenseService.updateExpense(expenseId, expenseData);
+  });
+
+  // Delete expense
+  ipcMain.handle('expense:delete', async (event, expenseId) => {
+    return ExpenseService.deleteExpense(expenseId);
+  });
+
+  // Get total expenses
+  ipcMain.handle('expense:get-total', async (event, { businessId, startDate, endDate }) => {
+    return ExpenseService.getTotalExpenses(businessId, startDate, endDate);
+  });
+
+  // Recurring expenses
+  ipcMain.handle('expense:create-recurring', async (event, { businessId, recurringData }) => {
+    return ExpenseService.createRecurringExpense(businessId, recurringData);
+  });
+
+  ipcMain.handle('expense:get-recurring', async (event, businessId) => {
+    return ExpenseService.getRecurringExpenses(businessId);
+  });
+
+  ipcMain.handle('expense:process-recurring', async (event, businessId) => {
+    return ExpenseService.processRecurringExpenses(businessId);
+  });
+
+  ipcMain.handle('expense:update-recurring', async (event, { recurringId, data }) => {
+    return ExpenseService.updateRecurringExpense(recurringId, data);
+  });
+
+  ipcMain.handle('expense:delete-recurring', async (event, recurringId) => {
+    return ExpenseService.deleteRecurringExpense(recurringId);
+  });
+
+  // ==================== TIME LOGS / CLOCK IN-OUT ====================
+  
+  // Clock in
+  ipcMain.handle('timelog:clock-in', async (event, { employeeId, notes }) => {
+    return TimeLogService.clockIn(employeeId, notes);
+  });
+
+  // Clock out
+  ipcMain.handle('timelog:clock-out', async (event, { employeeId, notes }) => {
+    return TimeLogService.clockOut(employeeId, notes);
+  });
+
+  // Get time logs
+  ipcMain.handle('timelog:get-all', async (event, { businessId, startDate, endDate }) => {
+    return TimeLogService.getTimeLogs(businessId, startDate, endDate);
+  });
+
+  // Get employee time logs
+  ipcMain.handle('timelog:get-employee', async (event, { employeeId, startDate, endDate }) => {
+    return TimeLogService.getEmployeeTimeLogs(employeeId, startDate, endDate);
+  });
+
+  // Check if employee is clocked in
+  ipcMain.handle('timelog:is-clocked-in', async (event, employeeId) => {
+    return TimeLogService.isEmployeeClockedIn(employeeId);
+  });
+
+  // Get currently clocked in employees
+  ipcMain.handle('timelog:get-clocked-in', async (event, businessId) => {
+    return TimeLogService.getClockedInEmployees(businessId);
+  });
+
+  // Update time log
+  ipcMain.handle('timelog:update', async (event, { logId, updates }) => {
+    return TimeLogService.updateTimeLog(logId, updates);
+  });
+
+  // Delete time log
+  ipcMain.handle('timelog:delete', async (event, logId) => {
+    return TimeLogService.deleteTimeLog(logId);
+  });
+
+  // Get payroll data
+  ipcMain.handle('timelog:get-payroll', async (event, { businessId, startDate, endDate }) => {
+    return TimeLogService.getPayrollData(businessId, startDate, endDate);
+  });
+
+  // Get payroll summary
+  ipcMain.handle('timelog:get-payroll-summary', async (event, { businessId, startDate, endDate }) => {
+    return TimeLogService.getPayrollSummary(businessId, startDate, endDate);
+  });
+
+  // Debug: Get all time logs (no filters)
+  ipcMain.handle('timelog:debug-all', async (event) => {
+    const { getDb } = require('./database/database');
+    const db = getDb();
+    const result = db.exec('SELECT * FROM time_logs');
+    console.log('DEBUG: All time logs:', result);
+    return result;
+  });
+
   console.log('IPC handlers registered');
 };
 
@@ -342,5 +472,12 @@ const setupIPC = async () => {
 setInterval(() => {
   AuthService.cleanupExpiredSessions();
 }, 60 * 60 * 1000);
+
+// Process recurring expenses daily at midnight
+setInterval(() => {
+  // This would need to iterate through all businesses in a real app
+  // For now, we'll trigger it manually or through a dashboard action
+  console.log('Daily recurring expense check scheduled');
+}, 24 * 60 * 60 * 1000);
 
 module.exports = { setupIPC };
