@@ -251,6 +251,17 @@
             <div class="form-group">
               <label class="form-label">Min Quantity (Reorder Level)</label>
               <input v-model.number="itemForm.minQuantity" type="number" step="0.01" class="form-input" />
+              <p class="field-hint">Alert threshold for low stock</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input v-model="itemForm.enableLowStockAlert" type="checkbox" />
+                <span>Enable Low Stock Alerts</span>
+              </label>
+              <p class="field-hint">Get notified when quantity falls below minimum</p>
             </div>
           </div>
 
@@ -316,8 +327,15 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">Vendor (for purchases)</label>
+            <input v-model="stockForm.vendor" type="text" class="form-input" placeholder="e.g., Sysco, US Foods" />
+            <p class="field-hint">Required for purchases to track expenses</p>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">Notes</label>
-            <textarea v-model="stockForm.notes" class="form-textarea" rows="3" placeholder="Reason for adjustment..."></textarea>
+            <textarea v-model="stockForm.notes" class="form-textarea" rows="3" placeholder="Reason for adjustment (e.g., 'Purchase order #1234', 'Waste - expired', 'Spoilage')..."></textarea>
+            <p class="field-hint">Include 'waste' or 'spoilage' in notes to track losses</p>
           </div>
 
           <div class="stock-preview">
@@ -593,12 +611,14 @@ const itemForm = ref({
   unit: 'unit',
   unitCost: null,
   location: '',
-  expiryDate: ''
+  expiryDate: '',
+  enableLowStockAlert: true
 });
 
 const stockForm = ref({
   adjustment: 0,
-  notes: ''
+  notes: '',
+  vendor: ''
 });
 
 const categoryForm = ref({
@@ -715,16 +735,32 @@ const saveItem = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 
+    // Clean the form data to ensure all values are serializable
+    const cleanedData = {
+      name: itemForm.value.name || '',
+      description: itemForm.value.description || '',
+      sku: itemForm.value.sku || '',
+      categoryId: itemForm.value.categoryId || null,
+      supplierId: itemForm.value.supplierId || null,
+      quantity: Number(itemForm.value.quantity) || 0,
+      minQuantity: Number(itemForm.value.minQuantity) || 0,
+      unit: itemForm.value.unit || 'unit',
+      unitCost: itemForm.value.unitCost ? Number(itemForm.value.unitCost) : 0,
+      location: itemForm.value.location || '',
+      expiryDate: itemForm.value.expiryDate || '',
+      enableLowStockAlert: itemForm.value.enableLowStockAlert !== false
+    };
+
     if (editingItem.value) {
       await ipcRenderer.invoke('inventory:update-item', {
         businessId: currentUser.businessId,
         itemId: editingItem.value.id,
-        itemData: itemForm.value
+        itemData: cleanedData
       });
     } else {
       await ipcRenderer.invoke('inventory:create-item', {
         businessId: currentUser.businessId,
-        itemData: itemForm.value
+        itemData: cleanedData
       });
     }
 
@@ -756,7 +792,8 @@ const openStockModal = (item) => {
   stockItem.value = item;
   stockForm.value = {
     adjustment: 0,
-    notes: ''
+    notes: '',
+    vendor: ''
   };
   showStockModal.value = true;
 };
@@ -764,12 +801,23 @@ const openStockModal = (item) => {
 const saveStockAdjustment = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    
+    // Determine transaction type based on adjustment
+    let transactionType = stockForm.value.adjustment > 0 ? 'purchase' : 'stock_out';
+    if (stockForm.value.notes && stockForm.value.notes.toLowerCase().includes('waste')) {
+      transactionType = 'waste';
+    } else if (stockForm.value.notes && stockForm.value.notes.toLowerCase().includes('spoil')) {
+      transactionType = 'spoilage';
+    }
+    
     await ipcRenderer.invoke('inventory:adjust-stock', {
       businessId: currentUser.businessId,
       itemId: stockItem.value.id,
       adjustment: stockForm.value.adjustment,
       userId: currentUser.userId,
-      notes: stockForm.value.notes
+      notes: stockForm.value.notes,
+      transactionType: transactionType,
+      vendor: stockForm.value.vendor || null
     });
 
     showStockModal.value = false;
@@ -1731,6 +1779,29 @@ onMounted(() => {
   margin: 0;
   max-height: 300px;
   overflow-y: auto;
+}
+
+/* Checkbox Group */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: #3b82f6;
 }
 
 .error-list li {
