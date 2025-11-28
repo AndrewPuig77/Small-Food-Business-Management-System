@@ -31,6 +31,8 @@
           </div>
         </div>
 
+        
+
         <!-- Change PIN Card -->
         <div class="card mb-6">
           <h2 class="text-xl font-semibold text-gray-100 mb-4">Manager PIN</h2>
@@ -152,6 +154,7 @@ const { ipcRenderer } = window.require('electron');
 
 const currentUser = ref(null);
 
+
 const pinForm = ref({
   currentPin: '',
   newPin: '',
@@ -175,6 +178,7 @@ onMounted(() => {
     currentUser.value = JSON.parse(user);
   }
 });
+
 
 const changePin = async () => {
   pinError.value = '';
