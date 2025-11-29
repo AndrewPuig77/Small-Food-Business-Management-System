@@ -42,7 +42,8 @@
             class="menu-item-card"
           >
             <div class="menu-item-image">
-              <svg v-if="!item.image" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="item-img" />
+              <svg v-else fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
@@ -140,8 +141,19 @@
               <div class="cart-item-info">
                 <div class="cart-item-name">{{ item.name }}</div>
                 <div class="cart-item-price">${{ parseFloat(item.price).toFixed(2) }} × {{ item.quantity }}</div>
+                <div v-if="item.notes" class="cart-item-notes">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="note-icon">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  {{ item.notes }}
+                </div>
               </div>
               <div class="cart-item-controls">
+                <button @click="openNotesModal(index)" class="btn-notes" title="Add Kitchen Notes">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
                 <button @click="updateQuantity(index, -1)" class="btn-qty">-</button>
                 <span class="cart-item-qty">{{ item.quantity }}</span>
                 <button @click="updateQuantity(index, 1)" class="btn-qty">+</button>
@@ -441,6 +453,29 @@
       </div>
     </div>
 
+    <!-- Kitchen Notes Modal -->
+    <div v-if="showNotesModal" class="modal-overlay" @click.self="closeNotesModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Kitchen Notes</h2>
+          <button @click="closeNotesModal" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">Add special instructions for the kitchen staff</p>
+          <textarea 
+            v-model="kitchenNotes" 
+            class="notes-textarea" 
+            placeholder="e.g., No onions, extra cheese, well done..."
+            rows="4"
+          ></textarea>
+        </div>
+        <div class="modal-actions">
+          <button @click="closeNotesModal" class="btn-secondary">Cancel</button>
+          <button @click="saveKitchenNotes" class="btn-primary">Save Notes</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Discount Modal -->
     <div v-if="showDiscountModal" class="modal-overlay" @click.self="showDiscountModal = false">
       <div class="modal">
@@ -560,7 +595,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 
 const { ipcRenderer } = window.require('electron');
@@ -588,6 +623,11 @@ const customerSearchResults = ref([]);
 const newCustomer = ref({ name: '', phone: '', email: '' });
 const showNewCustomerForm = ref(false);
 
+// Kitchen Notes
+const showNotesModal = ref(false);
+const kitchenNotes = ref('');
+const editingItemIndex = ref(null);
+
 const showCheckout = ref(false);
 const selectedPaymentMethod = ref('Cash');
 const paymentMethods = ['Cash', 'Card', 'Mobile Payment'];
@@ -597,6 +637,7 @@ const usePoints = ref(false);
 // Split payments
 const payments = ref([]);
 const paymentAmount = ref(0);
+
 
 // Tips
 const tipAmount = ref(0);
@@ -707,6 +748,32 @@ const remainingBalance = computed(() => {
   return Math.max(0, total.value - totalPaid.value);
 });
 
+// Auto-fill exact remaining amount for Card/Mobile payments
+watch(selectedPaymentMethod, (newMethod) => {
+  if (newMethod === 'Card' || newMethod === 'Mobile Payment') {
+    paymentAmount.value = parseFloat(remainingBalance.value.toFixed(2));
+    cashReceived.value = 0;
+  }
+});
+
+watch(showCheckout, (open) => {
+  if (open) {
+    if (selectedPaymentMethod.value === 'Card' || selectedPaymentMethod.value === 'Mobile Payment') {
+      paymentAmount.value = parseFloat(remainingBalance.value.toFixed(2));
+    }
+  } else {
+    // reset temp inputs when closing
+    paymentAmount.value = 0;
+    cashReceived.value = 0;
+  }
+});
+
+watch(remainingBalance, (val) => {
+  if ((selectedPaymentMethod.value === 'Card' || selectedPaymentMethod.value === 'Mobile Payment') && showCheckout.value) {
+    paymentAmount.value = parseFloat(val.toFixed(2));
+  }
+});
+
 const changeDue = computed(() => {
   const totalCashReceived = payments.value
     .filter(p => p.methodType === 'Cash')
@@ -782,6 +849,25 @@ const updateQuantity = (index, change) => {
 
 const removeFromCart = (index) => {
   cart.value.splice(index, 1);
+};
+
+const openNotesModal = (index) => {
+  editingItemIndex.value = index;
+  kitchenNotes.value = cart.value[index].notes || '';
+  showNotesModal.value = true;
+};
+
+const closeNotesModal = () => {
+  showNotesModal.value = false;
+  kitchenNotes.value = '';
+  editingItemIndex.value = null;
+};
+
+const saveKitchenNotes = () => {
+  if (editingItemIndex.value !== null) {
+    cart.value[editingItemIndex.value].notes = kitchenNotes.value;
+  }
+  closeNotesModal();
 };
 
 const clearCart = () => {
@@ -879,6 +965,7 @@ const completeTransaction = async () => {
       pointsEarned,
       pointsRedeemed,
       status: 'completed',
+      kitchenStatus: 'pending',
       items: cart.value.map(item => ({
         menuItemId: item.id,
         quantity: item.quantity,
@@ -891,7 +978,7 @@ const completeTransaction = async () => {
     };
     
     const transaction = await ipcRenderer.invoke('pos:create-transaction', {
-      businessId: currentUser.businessId,
+      businessId: currentUser.businessId || currentUser.business_id,
       transactionData
     });
     
@@ -1256,10 +1343,12 @@ onMounted(() => {
 .menu-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-auto-rows: min-content;
   gap: 1rem;
   padding: 1.5rem;
   overflow-y: auto;
+  align-content: start;
 }
 
 .menu-item-card {
@@ -1269,6 +1358,11 @@ onMounted(() => {
   padding: 1rem;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 1;
+  min-height: 180px;
+  max-height: 220px;
 }
 
 .menu-item-card:hover {
@@ -1279,30 +1373,47 @@ onMounted(() => {
 
 .menu-item-image {
   width: 100%;
-  height: 120px;
+  flex: 1;
+  min-height: 100px;
+  max-height: 130px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 0.375rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.menu-item-image .item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .menu-item-image svg {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   color: #6b7280;
 }
 
 .menu-item-info {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .menu-item-name {
   font-weight: 600;
   color: #f3f4f6;
-  margin-bottom: 0.25rem;
   font-size: 0.875rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .menu-item-price {
@@ -1479,10 +1590,54 @@ onMounted(() => {
   color: #9ca3af;
 }
 
+.cart-item-notes {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: #93c5fd;
+}
+
+.cart-item-notes .note-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .cart-item-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.btn-notes {
+  width: 28px;
+  height: 28px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 0.25rem;
+  color: #60a5fa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.btn-notes:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.btn-notes svg {
+  width: 16px;
+  height: 16px;
 }
 
 .btn-qty {
@@ -2202,6 +2357,24 @@ onMounted(() => {
 }
 
 .form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notes-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  border-radius: 0.375rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.notes-textarea:focus {
   outline: none;
   border-color: #3b82f6;
   background: rgba(255, 255, 255, 0.08);
