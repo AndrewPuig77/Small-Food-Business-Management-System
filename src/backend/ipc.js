@@ -8,6 +8,7 @@ const InventoryService = require('./services/inventoryService');
 const POSService = require('./services/posService');
 const ExpenseService = require('./services/expenseService');
 const TimeLogService = require('./services/timeLogService');
+const ReservationService = require('./services/reservationService');
 
 // Setup IPC handlers for communication between main and renderer processes
 const setupIPC = async () => {
@@ -25,8 +26,8 @@ const setupIPC = async () => {
   });
 
   // Login
-  ipcMain.handle('login', async (event, { username, password }) => {
-    return AuthService.login(username, password);
+  ipcMain.handle('login', async (event, payload) => {
+    return AuthService.login(payload.username, payload.password, payload.remember);
   });
 
   // Verify token
@@ -307,6 +308,27 @@ const setupIPC = async () => {
     return POSService.voidTransaction(businessId, transactionId, voidReason, voidedBy);
   });
 
+  // POS - Kitchen Display System
+  ipcMain.handle('pos:get-orders', async (event, { businessId }) => {
+    return POSService.getOrders(businessId);
+  });
+
+  ipcMain.handle('pos:update-order-kitchen-status', async (event, { businessId, orderId, kitchenStatus }) => {
+    return POSService.updateOrderKitchenStatus(businessId, orderId, kitchenStatus);
+  });
+
+  ipcMain.handle('pos:delete-transaction', async (event, { businessId, orderId }) => {
+    return POSService.deleteTransaction(businessId, orderId);
+  });
+
+  ipcMain.handle('pos:reset-order-sequence', async (event, { businessId }) => {
+    return POSService.resetOrderSequence(businessId);
+  });
+
+  ipcMain.handle('pos:purge-transactions', async (event, { businessId }) => {
+    return POSService.purgeTransactionsForBusiness(businessId);
+  });
+
   ipcMain.handle('pos:validate-manager-pin', async (event, { businessId, userId, pin }) => {
     return POSService.validateManagerPin(businessId, userId, pin);
   });
@@ -463,6 +485,60 @@ const setupIPC = async () => {
     const result = db.exec('SELECT * FROM time_logs');
     console.log('DEBUG: All time logs:', result);
     return result;
+  });
+
+  // Reservations - Settings
+  ipcMain.handle('reservation:get-settings', async (event, businessId) => {
+    const settings = ReservationService.getReservationSettings(businessId);
+    return { success: true, settings };
+  });
+
+  ipcMain.handle('reservation:update-settings', async (event, { businessId, settings }) => {
+    try {
+      console.log('IPC handler reservation:update-settings called with:', { businessId, settings });
+      const result = ReservationService.updateReservationSettings(businessId, settings);
+      console.log('IPC handler returning:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in reservation:update-settings handler:', error);
+      return { success: false, message: error.message || 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('reservation:set-enabled', async (event, { businessId, enabled }) => {
+    return ReservationService.setReservationEnabled(businessId, enabled);
+  });
+
+  // Reservations - CRUD
+  ipcMain.handle('reservation:get-all', async (event, { businessId, startDate, endDate }) => {
+    return ReservationService.getAllReservations(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('reservation:get-by-date', async (event, { businessId, date }) => {
+    console.log('IPC: reservation:get-by-date called with businessId:', businessId, 'date:', date);
+    const reservations = ReservationService.getReservationsByDate(businessId, date);
+    console.log('IPC: Returning reservations:', reservations);
+    return { success: true, reservations };
+  });
+
+  ipcMain.handle('reservation:create', async (event, { businessId, reservationData }) => {
+    return ReservationService.createReservation(businessId, reservationData);
+  });
+
+  ipcMain.handle('reservation:update', async (event, { businessId, reservationId, reservationData }) => {
+    return ReservationService.updateReservation(businessId, reservationId, reservationData);
+  });
+
+  ipcMain.handle('reservation:update-status', async (event, { businessId, reservationId, status }) => {
+    return ReservationService.updateReservationStatus(businessId, reservationId, status);
+  });
+
+  ipcMain.handle('reservation:delete', async (event, { businessId, reservationId }) => {
+    return ReservationService.deleteReservation(businessId, reservationId);
+  });
+
+  ipcMain.handle('reservation:get-available-slots', async (event, { businessId, date, partySize }) => {
+    return ReservationService.getAvailableTimeSlots(businessId, date, partySize);
   });
 
   console.log('IPC handlers registered');

@@ -7,12 +7,21 @@
     <div class="main-content">
       <div class="content-header">
         <h1>Customer Management</h1>
-        <button @click="showAddModal = true" class="btn-primary">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Customer
-        </button>
+        <div class="header-actions">
+          <button @click="showLoyaltySettings = true" class="btn-secondary">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Loyalty Settings
+          </button>
+          <button @click="showAddModal = true" class="btn-primary">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Customer
+          </button>
+        </div>
       </div>
 
       <!-- Search and Stats -->
@@ -64,14 +73,14 @@
               </td>
               <td>
                 <div class="customer-contact">
-                  <div v-if="customer.phone">📞 {{ customer.phone }}</div>
-                  <div v-if="customer.email">✉️ {{ customer.email }}</div>
+                  <div v-if="customer.phone">{{ customer.phone }}</div>
+                  <div v-if="customer.email">{{ customer.email }}</div>
                 </div>
               </td>
               <td>
                 <div class="loyalty-points">
                   <span class="points-badge">{{ customer.loyalty_points }} pts</span>
-                  <span class="points-value">${{ (customer.loyalty_points / 100).toFixed(2) }}</span>
+                  <span class="points-value">${{ (customer.loyalty_points / loyaltySettings.pointsPerDollarValue).toFixed(2) }}</span>
                 </div>
               </td>
               <td class="amount">${{ parseFloat(customer.total_spent || 0).toFixed(2) }}</td>
@@ -147,7 +156,7 @@
         <div class="modal-content">
           <div class="customer-info">
             <h3>{{ selectedCustomer?.name }}</h3>
-            <p>Current Points: <strong>{{ selectedCustomer?.loyalty_points }} pts</strong> (${{ (selectedCustomer?.loyalty_points / 100).toFixed(2) }})</p>
+            <p>Current Points: <strong>{{ selectedCustomer?.loyalty_points }} pts</strong> (${{ (selectedCustomer?.loyalty_points / loyaltySettings.pointsPerDollarValue).toFixed(2) }})</p>
           </div>
           <div class="form-group">
             <label>Adjustment Type</label>
@@ -171,12 +180,91 @@
             <textarea v-model="pointsAdjustment.reason" class="form-textarea" rows="3" placeholder="e.g., Promotion bonus, Correction, etc."></textarea>
           </div>
           <div class="points-preview">
-            New Balance: {{ calculateNewPoints() }} pts (${{ (calculateNewPoints() / 100).toFixed(2) }})
+            New Balance: {{ calculateNewPoints() }} pts (${{ (calculateNewPoints() / loyaltySettings.pointsPerDollarValue).toFixed(2) }})
           </div>
           <div class="modal-actions">
             <button @click="showPointsModal = false" class="btn-secondary">Cancel</button>
             <button @click="savePointsAdjustment" class="btn-primary" :disabled="!pointsAdjustment.amount">
               Apply Adjustment
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loyalty Settings Modal -->
+    <div v-if="showLoyaltySettings" class="modal-overlay" @click.self="showLoyaltySettings = false">
+      <div class="modal modal-large">
+        <div class="modal-header">
+          <h2>Loyalty Program Settings</h2>
+          <button @click="showLoyaltySettings = false" class="modal-close">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="loyalty-settings-section">
+            <h3>Points Earning</h3>
+            <div class="settings-grid">
+              <div class="form-group">
+                <label>Points per Dollar Spent</label>
+                <input v-model.number="loyaltySettings.pointsPerDollar" type="number" min="1" class="form-input" />
+                <small>Customers earn {{ loyaltySettings.pointsPerDollar }} point(s) for every $1.00 spent</small>
+              </div>
+              <div class="form-group">
+                <label>Minimum Purchase for Points</label>
+                <input v-model.number="loyaltySettings.minPurchaseForPoints" type="number" step="0.01" min="0" class="form-input" />
+                <small>Minimum purchase amount to earn points</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="loyalty-settings-section">
+            <h3>Points Redemption</h3>
+            <div class="settings-grid">
+              <div class="form-group">
+                <label>Points Value (Points = $1)</label>
+                <input v-model.number="loyaltySettings.pointsPerDollarValue" type="number" min="1" class="form-input" />
+                <small>{{ loyaltySettings.pointsPerDollarValue }} points = $1.00 discount</small>
+              </div>
+              <div class="form-group">
+                <label>Minimum Points to Redeem</label>
+                <input v-model.number="loyaltySettings.minPointsToRedeem" type="number" min="0" class="form-input" />
+                <small>Customers need at least this many points to redeem</small>
+              </div>
+              <div class="form-group">
+                <label>Max Redemption Per Transaction (%)</label>
+                <input v-model.number="loyaltySettings.maxRedemptionPercent" type="number" min="1" max="100" class="form-input" />
+                <small>Maximum {{ loyaltySettings.maxRedemptionPercent }}% of transaction can be paid with points</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="loyalty-settings-section">
+            <h3>Bonus Rewards</h3>
+            <div class="form-group">
+              <label>
+                <input v-model="loyaltySettings.signupBonus.enabled" type="checkbox" />
+                Sign-up Bonus
+              </label>
+              <div v-if="loyaltySettings.signupBonus.enabled" class="bonus-config">
+                <input v-model.number="loyaltySettings.signupBonus.points" type="number" min="0" class="form-input" placeholder="Points" />
+                <small>New customers receive {{ loyaltySettings.signupBonus.points }} points</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="loyalty-preview">
+            <h3>Example</h3>
+            <div class="preview-content">
+              <p><strong>Purchase: $50.00</strong></p>
+              <p>✓ Earns: {{ (50 * loyaltySettings.pointsPerDollar) }} points</p>
+              <p>✓ Points Value: ${{ ((50 * loyaltySettings.pointsPerDollar) / loyaltySettings.pointsPerDollarValue).toFixed(2) }}</p>
+              <p>✓ Max Redemption: ${{ (50 * loyaltySettings.maxRedemptionPercent / 100).toFixed(2) }} ({{ loyaltySettings.maxRedemptionPercent }}% of purchase)</p>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button @click="showLoyaltySettings = false" class="btn-secondary">Cancel</button>
+            <button @click="saveLoyaltySettings" class="btn-primary">
+              Save Settings
             </button>
           </div>
         </div>
@@ -197,6 +285,7 @@ const searchQuery = ref('');
 const showAddModal = ref(false);
 const showEditModal = ref(false);
 const showPointsModal = ref(false);
+const showLoyaltySettings = ref(false);
 const selectedCustomer = ref(null);
 
 const formData = ref({
@@ -210,6 +299,18 @@ const pointsAdjustment = ref({
   type: 'add',
   amount: 0,
   reason: ''
+});
+
+const loyaltySettings = ref({
+  pointsPerDollar: 100, // 100 points per $1 spent
+  pointsPerDollarValue: 100, // 100 points = $1 value
+  minPurchaseForPoints: 0,
+  minPointsToRedeem: 100,
+  maxRedemptionPercent: 100, // Can use points for up to 100% of purchase
+  signupBonus: {
+    enabled: false,
+    points: 500
+  }
 });
 
 // Computed
@@ -230,7 +331,7 @@ const activeCustomers = computed(() => {
 });
 
 const totalLoyaltyValue = computed(() => {
-  return customers.value.reduce((sum, c) => sum + (c.loyalty_points / 100), 0);
+  return customers.value.reduce((sum, c) => sum + (c.loyalty_points / loyaltySettings.value.pointsPerDollarValue), 0);
 });
 
 // Methods
@@ -244,6 +345,26 @@ const loadCustomers = async () => {
     customers.value = result || [];
   } catch (error) {
     console.error('Error loading customers:', error);
+  }
+};
+
+const loadLoyaltySettings = () => {
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  const savedSettings = localStorage.getItem(`loyaltySettings_${currentUser.businessId}`);
+  if (savedSettings) {
+    loyaltySettings.value = JSON.parse(savedSettings);
+  }
+};
+
+const saveLoyaltySettings = () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    localStorage.setItem(`loyaltySettings_${currentUser.businessId}`, JSON.stringify(loyaltySettings.value));
+    showLoyaltySettings.value = false;
+    alert('Loyalty settings saved successfully!');
+  } catch (error) {
+    console.error('Error saving loyalty settings:', error);
+    alert('Failed to save loyalty settings');
   }
 };
 
@@ -366,6 +487,7 @@ const formatDate = (dateString) => {
 
 onMounted(() => {
   loadCustomers();
+  loadLoyaltySettings();
 });
 </script>
 
@@ -381,6 +503,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
+  height: 100vh;
 }
 
 .content-header {
@@ -642,6 +765,10 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.modal-large {
+  max-width: 800px;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -790,5 +917,60 @@ onMounted(() => {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.loyalty-settings-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.loyalty-settings-section:last-of-type {
+  border-bottom: none;
+}
+
+.loyalty-settings-section h3 {
+  margin: 0 0 1rem 0;
+  color: #60a5fa;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.bonus-config {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0.5rem;
+}
+
+.loyalty-preview {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.loyalty-preview h3 {
+  margin: 0 0 1rem 0;
+  color: #a78bfa;
+  font-size: 1rem;
+}
+
+.preview-content p {
+  margin: 0.5rem 0;
+  color: #d1d5db;
+  font-size: 0.875rem;
 }
 </style>

@@ -57,7 +57,13 @@ const createTables = () => {
       type TEXT NOT NULL,
       address TEXT,
       phone TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      reservation_enabled INTEGER DEFAULT 0,
+      reservation_capacity INTEGER DEFAULT 10,
+      reservation_interval_minutes INTEGER DEFAULT 30,
+      reservation_opening_hour INTEGER DEFAULT 11,
+      reservation_closing_hour INTEGER DEFAULT 22,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -273,6 +279,7 @@ const createTables = () => {
       unit TEXT NOT NULL DEFAULT 'unit',
       quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
       min_quantity DECIMAL(10,2) DEFAULT 0,
+      enable_low_stock_alert BOOLEAN DEFAULT 1,
       unit_cost DECIMAL(10,2),
       total_value DECIMAL(10,2),
       location TEXT,
@@ -338,7 +345,11 @@ const createTables = () => {
       status TEXT DEFAULT 'completed',
       void_reason TEXT,
       notes TEXT,
+      order_type TEXT DEFAULT 'dine-in',
+      table_number TEXT,
+      kitchen_status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
@@ -372,8 +383,175 @@ const createTables = () => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      vendor TEXT,
+      amount DECIMAL(10,2) NOT NULL,
+      description TEXT,
+      expense_date DATE NOT NULL,
+      receipt_image TEXT,
+      created_by INTEGER,
+      is_automatic BOOLEAN DEFAULT 0,
+      linked_inventory_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (linked_inventory_id) REFERENCES inventory(id) ON DELETE SET NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS recurring_expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      vendor TEXT,
+      amount DECIMAL(10,2) NOT NULL,
+      description TEXT,
+      frequency TEXT NOT NULL,
+      day_of_month INTEGER,
+      day_of_week INTEGER,
+      is_active BOOLEAN DEFAULT 1,
+      last_generated DATE,
+      next_due_date DATE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS reservations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      customer_id INTEGER,
+      guest_name TEXT,
+      guest_phone TEXT,
+      guest_email TEXT,
+      reservation_date DATE NOT NULL,
+      reservation_time TIME NOT NULL,
+      party_size INTEGER NOT NULL,
+      table_number TEXT,
+      special_requests TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Run migrations for existing databases
+  runMigrations();
+  
   saveDatabase();
   console.log('Database tables created successfully');
+};
+
+// Run database migrations to add new columns to existing tables
+const runMigrations = () => {
+  console.log('Running database migrations...');
+  
+  // Check if enable_low_stock_alert column exists in inventory_items
+  try {
+    const tableInfo = db.exec("PRAGMA table_info(inventory_items)");
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(col => col[1]); // column name is at index 1
+      
+      if (!columns.includes('enable_low_stock_alert')) {
+        console.log('Adding enable_low_stock_alert column to inventory_items...');
+        db.run('ALTER TABLE inventory_items ADD COLUMN enable_low_stock_alert BOOLEAN DEFAULT 1');
+        saveDatabase();
+        console.log('Migration completed: enable_low_stock_alert column added');
+      }
+    }
+  } catch (error) {
+    console.error('Migration error:', error);
+  }
+
+  // Add reservation columns to businesses table
+  try {
+    const businessTableInfo = db.exec("PRAGMA table_info(businesses)");
+    console.log('Checking businesses table columns...', businessTableInfo);
+    
+    if (businessTableInfo.length > 0 && businessTableInfo[0].values) {
+      const columns = businessTableInfo[0].values.map(col => col[1]);
+      console.log('Existing columns:', columns);
+      
+      let needsSave = false;
+      if (!columns.includes('reservation_enabled')) {
+        console.log('Adding reservation columns to businesses table...');
+        db.run('ALTER TABLE businesses ADD COLUMN reservation_enabled INTEGER DEFAULT 0');
+        needsSave = true;
+      }
+      if (!columns.includes('reservation_capacity')) {
+        db.run('ALTER TABLE businesses ADD COLUMN reservation_capacity INTEGER DEFAULT 10');
+        needsSave = true;
+      }
+      if (!columns.includes('reservation_interval_minutes')) {
+        db.run('ALTER TABLE businesses ADD COLUMN reservation_interval_minutes INTEGER DEFAULT 30');
+        needsSave = true;
+      }
+      if (!columns.includes('reservation_opening_hour')) {
+        db.run('ALTER TABLE businesses ADD COLUMN reservation_opening_hour INTEGER DEFAULT 11');
+        needsSave = true;
+      }
+      if (!columns.includes('reservation_closing_hour')) {
+        db.run('ALTER TABLE businesses ADD COLUMN reservation_closing_hour INTEGER DEFAULT 22');
+        needsSave = true;
+      }
+      
+      if (needsSave) {
+        saveDatabase();
+        console.log('Migration completed: reservation columns added to businesses');
+      } else {
+        console.log('No migration needed - all columns exist');
+      }
+    }
+  } catch (error) {
+    console.error('Reservation migration error:', error);
+  }
+  
+  // Kitchen Display System Migration
+  try {
+    const tableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'");
+    if (tableCheck.length > 0) {
+      const columnsResult = db.exec("PRAGMA table_info(transactions)");
+      const columns = columnsResult[0].values.map(row => row[1]);
+      
+      let needsSave = false;
+      
+      if (!columns.includes('order_type')) {
+        db.run("ALTER TABLE transactions ADD COLUMN order_type TEXT DEFAULT 'dine-in'");
+        needsSave = true;
+      }
+      if (!columns.includes('table_number')) {
+        db.run('ALTER TABLE transactions ADD COLUMN table_number TEXT');
+        needsSave = true;
+      }
+      if (!columns.includes('kitchen_status')) {
+        db.run("ALTER TABLE transactions ADD COLUMN kitchen_status TEXT DEFAULT 'pending'");
+        needsSave = true;
+      }
+      if (!columns.includes('updated_at')) {
+        db.run('ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+        needsSave = true;
+      }
+      if (!columns.includes('daily_order_number')) {
+        db.run('ALTER TABLE transactions ADD COLUMN daily_order_number INTEGER');
+        needsSave = true;
+      }
+      
+      if (needsSave) {
+        saveDatabase();
+        console.log('Migration completed: kitchen display columns added to transactions');
+      }
+    }
+  } catch (error) {
+    console.error('Kitchen display migration error:', error);
+  }
 };
 
 // Export database instance and helper methods

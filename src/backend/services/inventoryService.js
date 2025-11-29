@@ -1,4 +1,5 @@
 const { getDb, saveDatabase } = require('../database/database');
+const ExpenseService = require('./expenseService');
 
 // Helper function to escape SQL strings
 const escape = (str) => {
@@ -17,7 +18,7 @@ const getAllItems = (businessId) => {
       c.name as category_name,
       s.name as supplier_name,
       CASE 
-        WHEN i.quantity <= i.min_quantity THEN 1 
+        WHEN i.enable_low_stock_alert = 1 AND i.quantity <= i.min_quantity THEN 1 
         ELSE 0 
       END as is_low_stock
     FROM inventory_items i
@@ -78,10 +79,17 @@ const createItem = (businessId, itemData) => {
     ? itemData.unitCost * itemData.quantity 
     : null;
   
+  console.log('Creating item with data:', {
+    quantity: itemData.quantity,
+    unitCost: itemData.unitCost,
+    totalValue: totalValue,
+    willCreateExpense: itemData.quantity > 0 && itemData.unitCost > 0 && totalValue > 0
+  });
+  
   const query = `
     INSERT INTO inventory_items (
       business_id, category_id, supplier_id, name, description, sku,
-      unit, quantity, min_quantity, unit_cost, total_value, location, expiry_date
+      unit, quantity, min_quantity, enable_low_stock_alert, unit_cost, total_value, location, expiry_date
     ) VALUES (
       ${businessId},
       ${itemData.categoryId || 'NULL'},
@@ -92,6 +100,7 @@ const createItem = (businessId, itemData) => {
       ${escape(itemData.unit)},
       ${itemData.quantity || 0},
       ${itemData.minQuantity || 0},
+      ${itemData.enableLowStockAlert !== undefined ? (itemData.enableLowStockAlert ? 1 : 0) : 1},
       ${itemData.unitCost || 'NULL'},
       ${totalValue || 'NULL'},
       ${escape(itemData.location)},
@@ -99,13 +108,56 @@ const createItem = (businessId, itemData) => {
     )
   `;
   
-  db.run(query);
-  saveDatabase();
+  console.log('Executing INSERT query:', query);
   
-  const lastIdResult = db.exec('SELECT last_insert_rowid() as id');
-  const itemId = lastIdResult[0].values[0][0];
-  
-  return getItemById(businessId, itemId);
+  try {
+    db.run(query);
+    console.log('INSERT successful');
+    saveDatabase();
+    
+    const lastIdResult = db.exec('SELECT last_insert_rowid() as id');
+    console.log('Last insert rowid result:', lastIdResult);
+    
+    if (!lastIdResult || lastIdResult.length === 0 || !lastIdResult[0].values || lastIdResult[0].values.length === 0) {
+      console.error('Failed to get last insert rowid');
+      throw new Error('Failed to create item - no ID returned');
+    }
+    
+    const itemId = lastIdResult[0].values[0][0];
+    console.log('Item ID:', itemId);
+    
+    if (!itemId || itemId === 0) {
+      console.error('Invalid item ID returned:', itemId);
+      throw new Error('Failed to create item - invalid ID');
+    }
+    
+    // Create automatic expense for initial inventory with cost
+    if (itemData.quantity > 0 && itemData.unitCost > 0 && totalValue > 0) {
+      try {
+        console.log('Creating automatic expense for item:', itemId);
+        const transactionData = {
+          item_id: itemId,
+          transaction_type: 'purchase',
+          quantity: itemData.quantity,
+          notes: itemData.unit || 'units',
+          total_cost: totalValue,
+          vendor: null // Will be null for initial inventory, can be enhanced later
+        };
+        
+        const expense = ExpenseService.createInventoryExpense(businessId, transactionData, null);
+        console.log('Expense created:', expense);
+      } catch (error) {
+        console.error('Failed to create automatic expense for new item:', error);
+      }
+    } else {
+      console.log('Skipping expense creation - conditions not met');
+    }
+    
+    return getItemById(businessId, itemId);
+  } catch (error) {
+    console.error('Error creating item:', error);
+    throw error;
+  }
 };
 
 // Create multiple inventory items in batch
@@ -182,6 +234,7 @@ const updateItem = (businessId, itemId, itemData) => {
       unit = ${escape(itemData.unit)},
       quantity = ${itemData.quantity || 0},
       min_quantity = ${itemData.minQuantity || 0},
+      enable_low_stock_alert = ${itemData.enableLowStockAlert !== undefined ? (itemData.enableLowStockAlert ? 1 : 0) : 1},
       unit_cost = ${itemData.unitCost || 'NULL'},
       total_value = ${totalValue || 'NULL'},
       location = ${escape(itemData.location)},
@@ -212,7 +265,7 @@ const deleteItem = (businessId, itemId) => {
 };
 
 // Adjust stock quantity
-const adjustStock = (businessId, itemId, adjustment, userId, notes) => {
+const adjustStock = (businessId, itemId, adjustment, userId, notes, transactionType = null, vendor = null) => {
   const db = getDb();
   
   // Get current item
@@ -233,12 +286,16 @@ const adjustStock = (businessId, itemId, adjustment, userId, notes) => {
     WHERE id = ${itemId} AND business_id = ${businessId}
   `);
   
-  // Record transaction
-  const transactionType = adjustment > 0 ? 'stock_in' : 'stock_out';
+  // Determine transaction type if not specified
+  if (!transactionType) {
+    transactionType = adjustment > 0 ? 'stock_in' : 'stock_out';
+  }
+  
   const quantity = Math.abs(adjustment);
   const unitCost = item.unit_cost || 0;
   const totalCost = quantity * unitCost;
   
+  // Record transaction
   db.run(`
     INSERT INTO inventory_transactions (
       business_id, item_id, transaction_type, quantity, 
@@ -250,6 +307,24 @@ const adjustStock = (businessId, itemId, adjustment, userId, notes) => {
   `);
   
   saveDatabase();
+  
+  // Create automatic expense for certain transaction types
+  if (['purchase', 'stock_in', 'waste', 'spoilage'].includes(transactionType) && totalCost > 0) {
+    try {
+      const transactionData = {
+        item_id: itemId,
+        transaction_type: transactionType,
+        quantity: quantity,
+        notes: notes || item.unit,
+        total_cost: totalCost,
+        vendor: vendor
+      };
+      
+      ExpenseService.createInventoryExpense(businessId, transactionData, userId);
+    } catch (error) {
+      console.error('Failed to create automatic expense:', error);
+    }
+  }
   
   return getItemById(businessId, itemId);
 };
@@ -265,7 +340,9 @@ const getLowStockItems = (businessId) => {
     FROM inventory_items i
     LEFT JOIN inventory_categories c ON i.category_id = c.id
     LEFT JOIN suppliers s ON i.supplier_id = s.id
-    WHERE i.business_id = ${businessId} AND i.quantity <= i.min_quantity
+    WHERE i.business_id = ${businessId} 
+      AND i.enable_low_stock_alert = 1
+      AND i.quantity <= i.min_quantity
     ORDER BY i.name
   `;
   

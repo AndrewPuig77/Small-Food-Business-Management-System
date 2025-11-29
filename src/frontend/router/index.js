@@ -11,6 +11,10 @@ import POSView from '../views/POSView.vue';
 import CustomersView from '../views/CustomersView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
+import ReportsView from '../views/ReportsView.vue';
+import ExpensesView from '../views/ExpensesView.vue';
+import ReservationsView from '../views/ReservationsView.vue';
+import KitchenView from '../views/KitchenView.vue';
 
 const routes = [
   {
@@ -71,6 +75,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/kitchen',
+    name: 'Kitchen',
+    component: KitchenView,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/customers',
     name: 'Customers',
     component: CustomersView,
@@ -82,8 +92,24 @@ const routes = [
     component: ProfileView,
     meta: { requiresAuth: true }
   },
-  // Additional routes will be added here:
-  // { path: '/reports', name: 'Reports', component: ReportsView },
+  {
+    path: '/reports',
+    name: 'Reports',
+    component: ReportsView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/expenses',
+    name: 'Expenses',
+    component: ExpensesView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/reservations',
+    name: 'Reservations',
+    component: ReservationsView,
+    meta: { requiresAuth: true }
+  }
 ];
 
 const router = createRouter({

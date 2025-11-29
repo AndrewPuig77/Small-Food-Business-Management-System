@@ -58,7 +58,7 @@ class AuthService {
   }
 
   // Login user
-  static login(username, password) {
+  static login(username, password, remember = false) {
     try {
       const db = getDb();
       
@@ -105,14 +105,14 @@ class AuthService {
           businessId: user.business_id
         },
         JWT_SECRET,
-        { expiresIn: '8h' }
+        { expiresIn: remember ? '30d' : '8h' }
       );
 
-      // Store session
-      const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours
+      // Store session - use SQLite datetime so comparisons with datetime('now') work reliably
+      const expiresClause = remember ? "datetime('now', '+30 days')" : "datetime('now', '+8 hours')";
       db.exec(`
         INSERT INTO sessions (user_id, token, expires_at)
-        VALUES (${user.id}, '${token}', '${expiresAt.toISOString()}')
+        VALUES (${user.id}, '${token}', ${expiresClause})
       `);
 
       saveDatabase();
