@@ -33,12 +33,22 @@
               <button @click="loadReports" class="btn-primary-sm">Apply</button>
             </div>
             
-            <button @click="exportReport" class="btn-export">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="export-icon">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export
-            </button>
+            <div class="export-dropdown">
+              <button @click="showExportMenu = !showExportMenu" class="btn-export">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="export-icon">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export
+              </button>
+              <div v-if="showExportMenu" class="export-menu">
+                <button @click="exportToPDF" class="export-option">
+                  <span>📄 Export as PDF</span>
+                </button>
+                <button @click="exportToExcel" class="export-option">
+                  <span>📊 Export as Excel</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -477,15 +487,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 import { Chart, registerables } from 'chart.js';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 Chart.register(...registerables);
 
 const { ipcRenderer } = window.require('electron');
 
 const selectedReportType = ref('sales');
+const showExportMenu = ref(false);
 const reportTabs = [
   { id: 'sales', label: 'Sales Report' },
   { id: 'inventory', label: 'Inventory Report' },
@@ -712,9 +726,15 @@ const loadInventoryReport = async (businessId) => {
     }
     
     if (inventoryFilters.value.stockStatus === 'low') {
-      filteredItems = filteredItems.filter(item => item.quantity <= item.minimum_quantity);
+      filteredItems = filteredItems.filter(item => {
+        const minQty = item.minimum_quantity || item.min_quantity || 0;
+        return item.quantity <= minQty;
+      });
     } else if (inventoryFilters.value.stockStatus === 'in-stock') {
-      filteredItems = filteredItems.filter(item => item.quantity > item.minimum_quantity);
+      filteredItems = filteredItems.filter(item => {
+        const minQty = item.minimum_quantity || item.min_quantity || 0;
+        return item.quantity > minQty;
+      });
     }
     
     inventoryData.value.items = filteredItems;
@@ -799,6 +819,235 @@ const debugTimeLogs = async () => {
 const exportReport = () => {
   // Export functionality - would generate PDF/Excel
   alert(`Export ${selectedReportType.value} report (PDF/Excel export to be implemented)`);
+};
+
+const exportToPDF = () => {
+  showExportMenu.value = false;
+  
+  const doc = new jsPDF();
+  const dateRange = getDateRange();
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  
+  // Add header
+  doc.setFontSize(18);
+  doc.text('FoodBiz Management System', 14, 22);
+  doc.setFontSize(14);
+  doc.text(`${reportTabs.find(t => t.id === selectedReportType.value).label}`, 14, 32);
+  doc.setFontSize(10);
+  doc.text(`Period: ${dateRange.start} to ${dateRange.end}`, 14, 40);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 46);
+  
+  let yPosition = 55;
+
+  if (selectedReportType.value === 'sales') {
+    // Sales metrics
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Metric', 'Value', 'Change']],
+      body: [
+        ['Total Revenue', `$${formatNumber(metrics.value.totalRevenue)}`, `${metrics.value.revenueChange > 0 ? '+' : ''}${formatNumber(metrics.value.revenueChange)}%`],
+        ['Total Transactions', metrics.value.totalTransactions, `${metrics.value.transactionChange > 0 ? '+' : ''}${formatNumber(metrics.value.transactionChange)}%`],
+        ['Average Order Value', `$${formatNumber(metrics.value.averageOrderValue)}`, `${metrics.value.aovChange > 0 ? '+' : ''}${formatNumber(metrics.value.aovChange)}%`],
+        ['Unique Customers', metrics.value.uniqueCustomers, `${metrics.value.customerChange > 0 ? '+' : ''}${formatNumber(metrics.value.customerChange)}%`]
+      ]
+    });
+
+    // Top items
+    if (topItems.value.length > 0) {
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Item Name', 'Quantity Sold', 'Revenue']],
+        body: topItems.value.map(item => [
+          item.item_name,
+          item.quantity_sold,
+          `$${formatNumber(item.revenue)}`
+        ])
+      });
+    }
+
+    // Recent transactions
+    if (recentTransactions.value.length > 0) {
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Date/Time', 'Transaction ID', 'Items', 'Total', 'Status']],
+        body: recentTransactions.value.map(t => [
+          formatDateTime(t.created_at),
+          `#${t.id}`,
+          t.itemCount,
+          `$${formatNumber(t.total)}`,
+          t.status
+        ])
+      });
+    }
+  } else if (selectedReportType.value === 'inventory') {
+    // Inventory summary
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Metric', 'Value']],
+      body: [
+        ['Total Items', inventoryData.value.totalItems],
+        ['Low Stock Items', inventoryData.value.lowStockCount],
+        ['Total Inventory Value', `$${formatNumber(inventoryData.value.totalValue)}`]
+      ]
+    });
+
+    // Inventory items
+    if (inventoryData.value.items.length > 0) {
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Item Name', 'Category', 'Quantity', 'Unit Cost', 'Total Value']],
+        body: inventoryData.value.items.map(item => [
+          item.name,
+          item.category,
+          item.quantity,
+          `$${formatNumber(item.unit_cost)}`,
+          `$${formatNumber(item.quantity * item.unit_cost)}`
+        ])
+      });
+    }
+  } else if (selectedReportType.value === 'payroll') {
+    // Payroll summary
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Metric', 'Value']],
+      body: [
+        ['Total Hours', formatNumber(payrollData.value.totalHours)],
+        ['Total Payroll', `$${formatNumber(payrollData.value.totalPayroll)}`]
+      ]
+    });
+
+    // Employee payroll
+    if (payrollData.value.employees.length > 0) {
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Employee', 'Hours', 'Hourly Rate', 'Gross Pay']],
+        body: payrollData.value.employees.map(emp => [
+          emp.name,
+          formatNumber(emp.hours),
+          `$${formatNumber(emp.hourly_rate)}`,
+          `$${formatNumber(emp.gross_pay)}`
+        ])
+      });
+    }
+  }
+
+  // Save the PDF
+  const fileName = `${selectedReportType.value}-report-${dateRange.start}-to-${dateRange.end}.pdf`;
+  doc.save(fileName);
+};
+
+const exportToExcel = () => {
+  showExportMenu.value = false;
+  
+  const dateRange = getDateRange();
+  const workbook = XLSX.utils.book_new();
+
+  if (selectedReportType.value === 'sales') {
+    // Metrics sheet
+    const metricsData = [
+      ['FoodBiz Sales Report'],
+      [`Period: ${dateRange.start} to ${dateRange.end}`],
+      [`Generated: ${new Date().toLocaleString()}`],
+      [],
+      ['Metric', 'Value', 'Change'],
+      ['Total Revenue', `$${formatNumber(metrics.value.totalRevenue)}`, `${metrics.value.revenueChange > 0 ? '+' : ''}${formatNumber(metrics.value.revenueChange)}%`],
+      ['Total Transactions', metrics.value.totalTransactions, `${metrics.value.transactionChange > 0 ? '+' : ''}${formatNumber(metrics.value.transactionChange)}%`],
+      ['Average Order Value', `$${formatNumber(metrics.value.averageOrderValue)}`, `${metrics.value.aovChange > 0 ? '+' : ''}${formatNumber(metrics.value.aovChange)}%`],
+      ['Unique Customers', metrics.value.uniqueCustomers, `${metrics.value.customerChange > 0 ? '+' : ''}${formatNumber(metrics.value.customerChange)}%`]
+    ];
+    const metricsSheet = XLSX.utils.aoa_to_sheet(metricsData);
+    XLSX.utils.book_append_sheet(workbook, metricsSheet, 'Metrics');
+
+    // Top items sheet
+    if (topItems.value.length > 0) {
+      const topItemsData = [
+        ['Item Name', 'Quantity Sold', 'Revenue'],
+        ...topItems.value.map(item => [item.item_name, item.quantity_sold, parseFloat(item.revenue)])
+      ];
+      const topItemsSheet = XLSX.utils.aoa_to_sheet(topItemsData);
+      XLSX.utils.book_append_sheet(workbook, topItemsSheet, 'Top Items');
+    }
+
+    // Transactions sheet
+    if (recentTransactions.value.length > 0) {
+      const transactionsData = [
+        ['Date/Time', 'Transaction ID', 'Items', 'Total', 'Status'],
+        ...recentTransactions.value.map(t => [
+          formatDateTime(t.created_at),
+          `#${t.id}`,
+          t.itemCount,
+          parseFloat(t.total),
+          t.status
+        ])
+      ];
+      const transactionsSheet = XLSX.utils.aoa_to_sheet(transactionsData);
+      XLSX.utils.book_append_sheet(workbook, transactionsSheet, 'Transactions');
+    }
+  } else if (selectedReportType.value === 'inventory') {
+    // Summary sheet
+    const summaryData = [
+      ['FoodBiz Inventory Report'],
+      [`Generated: ${new Date().toLocaleString()}`],
+      [],
+      ['Metric', 'Value'],
+      ['Total Items', inventoryData.value.totalItems],
+      ['Low Stock Items', inventoryData.value.lowStockCount],
+      ['Total Inventory Value', `$${formatNumber(inventoryData.value.totalValue)}`]
+    ];
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+    // Items sheet
+    if (inventoryData.value.items.length > 0) {
+      const itemsData = [
+        ['Item Name', 'Category', 'Quantity', 'Unit Cost', 'Total Value', 'Min Quantity', 'Supplier'],
+        ...inventoryData.value.items.map(item => [
+          item.name,
+          item.category,
+          item.quantity,
+          parseFloat(item.unit_cost),
+          item.quantity * parseFloat(item.unit_cost),
+          item.minimum_quantity || item.min_quantity || 0,
+          item.supplier || ''
+        ])
+      ];
+      const itemsSheet = XLSX.utils.aoa_to_sheet(itemsData);
+      XLSX.utils.book_append_sheet(workbook, itemsSheet, 'Items');
+    }
+  } else if (selectedReportType.value === 'payroll') {
+    // Summary sheet
+    const summaryData = [
+      ['FoodBiz Payroll Report'],
+      [`Period: ${dateRange.start} to ${dateRange.end}`],
+      [`Generated: ${new Date().toLocaleString()}`],
+      [],
+      ['Metric', 'Value'],
+      ['Total Hours', formatNumber(payrollData.value.totalHours)],
+      ['Total Payroll', `$${formatNumber(payrollData.value.totalPayroll)}`]
+    ];
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+    // Employees sheet
+    if (payrollData.value.employees.length > 0) {
+      const employeesData = [
+        ['Employee ID', 'Employee Name', 'Hours', 'Hourly Rate', 'Gross Pay'],
+        ...payrollData.value.employees.map(emp => [
+          emp.id,
+          emp.name,
+          parseFloat(emp.hours),
+          parseFloat(emp.hourly_rate),
+          parseFloat(emp.gross_pay)
+        ])
+      ];
+      const employeesSheet = XLSX.utils.aoa_to_sheet(employeesData);
+      XLSX.utils.book_append_sheet(workbook, employeesSheet, 'Employees');
+    }
+  }
+
+  // Save the Excel file
+  const fileName = `${selectedReportType.value}-report-${dateRange.start}-to-${dateRange.end}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
 };
 
 const printReport = () => {
@@ -1193,6 +1442,25 @@ onMounted(() => {
   loadReports();
 });
 
+// Watch inventory filters and auto-reload when changed
+watch(() => inventoryFilters.value.category, () => {
+  if (activeReport.value === 'inventory' && businessId.value) {
+    loadInventoryReport(businessId.value);
+  }
+});
+
+watch(() => inventoryFilters.value.supplier, () => {
+  if (activeReport.value === 'inventory' && businessId.value) {
+    loadInventoryReport(businessId.value);
+  }
+});
+
+watch(() => inventoryFilters.value.stockStatus, () => {
+  if (activeReport.value === 'inventory' && businessId.value) {
+    loadInventoryReport(businessId.value);
+  }
+});
+
 </script>
 
 <style scoped>
@@ -1282,6 +1550,44 @@ onMounted(() => {
 .btn-export:hover {
   background: rgba(16, 185, 129, 0.3);
   transform: translateY(-1px);
+}
+
+.export-dropdown {
+  position: relative;
+}
+
+.export-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: rgba(31, 41, 55, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  z-index: 100;
+  min-width: 200px;
+}
+
+.export-option {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: #f3f4f6;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-option:hover {
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .export-icon {
