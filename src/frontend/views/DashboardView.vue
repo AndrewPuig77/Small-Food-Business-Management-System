@@ -39,7 +39,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">Today's Sales</p>
-              <p class="stat-value">$0.00</p>
+              <p class="stat-value">${{ todaysSales.toFixed(2) }}</p>
             </div>
           </div>
 
@@ -50,8 +50,8 @@
               </svg>
             </div>
             <div class="stat-content">
-              <p class="stat-label">Orders</p>
-              <p class="stat-value">0</p>
+              <p class="stat-label">Orders Today</p>
+              <p class="stat-value">{{ ordersToday }}</p>
             </div>
           </div>
 
@@ -75,7 +75,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">Low Stock Items</p>
-              <p class="stat-value">0</p>
+              <p class="stat-value">{{ lowStockCount }}</p>
             </div>
           </div>
         </div>
@@ -132,18 +132,66 @@ import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
 
 const router = useRouter();
+const { ipcRenderer } = window.require('electron');
 const businessName = ref('');
 const currentUser = ref(null);
-const employeeCount = ref(1);
+const employeeCount = ref(0);
+const todaysSales = ref(0);
+const ordersToday = ref(0);
+const lowStockCount = ref(0);
 
-onMounted(() => {
+onMounted(async () => {
   // Load user data from localStorage
   const userDataStr = localStorage.getItem('currentUser');
   if (userDataStr) {
     currentUser.value = JSON.parse(userDataStr);
     businessName.value = currentUser.value.businessName || 'My Business';
+    
+    // Load dashboard stats
+    await loadDashboardStats();
   }
 });
+
+const loadDashboardStats = async () => {
+  try {
+    const businessId = currentUser.value.businessId;
+    
+    // Get today's date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const startDate = today.toISOString().split('T')[0];
+    const endDate = endOfDay.toISOString().split('T')[0];
+    
+    // Load today's sales
+    const transactions = await ipcRenderer.invoke('pos:get-transactions-by-date', {
+      businessId,
+      startDate,
+      endDate
+    });
+    
+    const completedTransactions = transactions.filter(t => t.status === 'completed');
+    todaysSales.value = completedTransactions.reduce((sum, t) => sum + parseFloat(t.total || 0), 0);
+    ordersToday.value = completedTransactions.length;
+    
+    // Load employee count
+    const employees = await ipcRenderer.invoke('employee:get-all', businessId);
+    const activeEmployees = employees.filter(e => e.status === 'active');
+    employeeCount.value = activeEmployees.length;
+    
+    // Load low stock count
+    const inventory = await ipcRenderer.invoke('inventory:get-all-items', businessId);
+    lowStockCount.value = inventory.filter(item => {
+      const minQty = item.minimum_quantity || item.min_quantity || 0;
+      return item.quantity <= minQty;
+    }).length;
+    
+  } catch (error) {
+    console.error('Error loading dashboard stats:', error);
+  }
+};
 
 const showComingSoon = (feature) => {
   alert(`${feature} feature coming soon!`);
@@ -253,6 +301,7 @@ const handleLogout = async () => {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+  height: 100vh;
 }
 
 .content-header {

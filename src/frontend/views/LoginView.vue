@@ -46,7 +46,7 @@
 
         <div class="flex items-center justify-between mb-6">
           <label class="flex items-center">
-            <input type="checkbox" class="mr-2 bg-gray-800 border-gray-700" />
+            <input type="checkbox" v-model="remember" class="mr-2 bg-gray-800 border-gray-700" />
             <span class="text-sm text-gray-400">Remember me</span>
           </label>
           <router-link to="/forgot-password" class="text-sm text-blue-400 hover:text-blue-300">
@@ -64,14 +64,39 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const username = ref('');
 const password = ref('');
+const remember = ref(false);
 const loading = ref(false);
 const errorMessage = ref('');
+
+onMounted(async () => {
+  try {
+    const { ipcRenderer } = window.require('electron');
+    const savedRemember = localStorage.getItem('rememberMe');
+    remember.value = savedRemember === 'true';
+
+    // If a token exists and is valid, go straight to dashboard
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      const result = await ipcRenderer.invoke('verify-token', token);
+      if (result && result.valid) {
+        router.push('/dashboard');
+      } else {
+        // Clear invalid token
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+});
+
 
 const handleLogin = async () => {
   loading.value = true;
@@ -93,16 +118,18 @@ const handleLogin = async () => {
     // Authenticate via IPC
     const result = await ipcRenderer.invoke('login', {
       username: cleanUsername,
-      password: cleanPassword
+      password: cleanPassword,
+      remember: remember.value
     });
 
     if (result.success) {
       // Store token and user info
       localStorage.setItem('authToken', result.token);
       localStorage.setItem('currentUser', JSON.stringify(result.user));
-      
+      localStorage.setItem('rememberMe', remember.value ? 'true' : 'false');
+
       console.log('Login successful!', result.user);
-      
+
       // Navigate to dashboard
       router.push('/dashboard');
     } else {

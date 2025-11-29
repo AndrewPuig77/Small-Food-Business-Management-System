@@ -586,6 +586,7 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
+  height: 100vh;
 }
 
 .page-header {

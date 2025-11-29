@@ -57,6 +57,16 @@
                 <span v-if="employee.phone">{{ employee.phone }}</span>
               </div>
             </div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:0.5rem;">
+              <button
+                v-if="isOwner && employee.user_id"
+                class="btn-secondary"
+                @click="openResetPassword()"
+                title="Reset Password"
+              >
+                Reset Password
+              </button>
+            </div>
           </div>
         </header>
 
@@ -141,8 +151,8 @@
                     </button>
                   </div>
                   <p class="contact-relationship">{{ contact.relationship }}</p>
-                  <p class="contact-info">📞 {{ contact.phone }}</p>
-                  <p v-if="contact.email" class="contact-info">✉️ {{ contact.email }}</p>
+                  <p class="contact-info">{{ contact.phone }}</p>
+                  <p v-if="contact.email" class="contact-info">{{ contact.email }}</p>
                 </div>
               </div>
             </div>
@@ -368,6 +378,34 @@
         </form>
       </div>
     </div>
+
+    <!-- Reset Password Modal -->
+    <div v-if="showResetModal" class="modal-overlay" @click.self="showResetModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Reset Password</h2>
+          <button @click="showResetModal = false" class="modal-close">×</button>
+        </div>
+        <div class="modal-content">
+          <p class="section-description">Set a new password for {{ employee.first_name }} {{ employee.last_name }}.</p>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input type="password" class="form-input" v-model.trim="resetForm.newPassword" placeholder="Minimum 8 characters" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm New Password</label>
+            <input type="password" class="form-input" v-model.trim="resetForm.confirmPassword" placeholder="Re-enter password" />
+          </div>
+          <div v-if="resetError" class="p-3 bg-red-900/50 border border-red-700 text-red-300 rounded-lg text-sm">{{ resetError }}</div>
+          <div v-if="resetSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">{{ resetSuccess }}</div>
+          <div class="modal-actions">
+            <button class="btn-secondary" @click="showResetModal = false">Cancel</button>
+            <button class="btn-primary" @click="performResetPassword">Reset Password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -382,6 +420,11 @@ const { ipcRenderer } = window.require('electron');
 const employee = ref(null);
 const loading = ref(true);
 const activeTab = ref('schedules');
+const currentUser = ref(null);
+const showResetModal = ref(false);
+const resetForm = ref({ newPassword: '', confirmPassword: '' });
+const resetError = ref('');
+const resetSuccess = ref('');
 
 const schedules = ref([]);
 const notes = ref([]);
@@ -438,13 +481,16 @@ const isClockedIn = computed(() => {
   return timeLogs.value.some(log => !log.clock_out);
 });
 
+const isOwner = computed(() => currentUser.value?.role === 'owner');
+
 const loadEmployee = async () => {
   try {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+    currentUser.value = storedUser;
     const employeeId = route.params.id;
     
     employee.value = await ipcRenderer.invoke('employee:get-by-id', {
-      businessId: currentUser.businessId,
+      businessId: storedUser.businessId,
       employeeId: parseInt(employeeId)
     });
     
@@ -676,6 +722,48 @@ onMounted(() => {
   payrollStartDate.value = firstDay;
   payrollEndDate.value = today;
 });
+
+const openResetPassword = () => {
+  resetForm.value = { newPassword: '', confirmPassword: '' };
+  resetError.value = '';
+  resetSuccess.value = '';
+  showResetModal.value = true;
+};
+
+const performResetPassword = async () => {
+  resetError.value = '';
+  resetSuccess.value = '';
+
+  if (!resetForm.value.newPassword || !resetForm.value.confirmPassword) {
+    resetError.value = 'Please fill in both fields';
+    return;
+  }
+  if (resetForm.value.newPassword.length < 8) {
+    resetError.value = 'Password must be at least 8 characters';
+    return;
+  }
+  if (resetForm.value.newPassword !== resetForm.value.confirmPassword) {
+    resetError.value = 'Passwords do not match';
+    return;
+  }
+
+  try {
+    const res = await ipcRenderer.invoke('auth:reset-password', {
+      userId: employee.value.user_id,
+      businessId: currentUser.value.businessId,
+      newPassword: resetForm.value.newPassword
+    });
+    if (res.success) {
+      resetSuccess.value = 'Password reset successfully';
+      setTimeout(() => { showResetModal.value = false; }, 800);
+    } else {
+      resetError.value = res.error || 'Failed to reset password';
+    }
+  } catch (e) {
+    console.error('Reset password error:', e);
+    resetError.value = 'An error occurred while resetting password';
+  }
+};
 </script>
 
 <style scoped>
@@ -745,6 +833,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
+  height: 100vh;
 }
 
 .loading, .error {

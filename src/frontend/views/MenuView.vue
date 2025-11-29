@@ -389,6 +389,7 @@ const removeImage = () => {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+  height: 100vh;
 }
 
 .page-header {
