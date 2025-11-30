@@ -39,7 +39,7 @@ const getExpensesByDateRange = (businessId, startDate, endDate) => {
     FROM expenses e
     LEFT JOIN users u ON e.created_by = u.id
     WHERE e.business_id = ?
-      AND DATE(e.expense_date) BETWEEN DATE(?) AND DATE(?)
+      AND DATE(e.expense_date, 'localtime') BETWEEN DATE(?) AND DATE(?)
     ORDER BY e.expense_date DESC, e.created_at DESC
   `;
   
@@ -71,7 +71,7 @@ const getExpensesByCategory = (businessId, startDate, endDate) => {
       COUNT(*) as count
     FROM expenses
     WHERE business_id = ${businessId}
-      AND DATE(expense_date) BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})
+      AND DATE(expense_date, 'localtime') BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})
     GROUP BY category
     ORDER BY total_amount DESC
   `;
@@ -186,7 +186,7 @@ const getTotalExpenses = (businessId, startDate, endDate) => {
     SELECT COALESCE(SUM(amount), 0) as total
     FROM expenses
     WHERE business_id = ?
-      AND DATE(expense_date) BETWEEN DATE(?) AND DATE(?)
+      AND DATE(expense_date, 'localtime') BETWEEN DATE(?) AND DATE(?)
   `;
   
   try {

@@ -582,6 +582,88 @@ const formatDateTime = (dateStr) => {
   });
 };
 
+// Parse SQLite-style timestamp (YYYY-MM-DD HH:MM:SS) as local Date by constructing components
+const parseSQLiteLocalDate = (ts) => {
+  if (!ts) return null;
+  const s = String(ts).trim();
+  // Match 'YYYY-MM-DD HH:MM:SS' or 'YYYY-MM-DDTHH:MM:SS'
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+  if (m) {
+    const year = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10) - 1;
+    const day = parseInt(m[3], 10);
+    const hour = parseInt(m[4], 10);
+    const minute = parseInt(m[5], 10);
+    const second = parseInt(m[6], 10);
+    // Database CURRENT_TIMESTAMP is UTC; construct a UTC date then convert to local Date
+    const utcMs = Date.UTC(year, month, day, hour, minute, second);
+    return new Date(utcMs);
+  }
+  return null;
+};
+
+// Normalize various timestamp formats into an ISO date string 'YYYY-MM-DD'
+const normalizeToISODate = (ts) => {
+  if (!ts) return null;
+  try {
+    // Epoch
+    if (/^\d+$/.test(String(ts))) {
+      const d = new Date(parseInt(ts, 10));
+      return d.toISOString().split('T')[0];
+    }
+
+    // Try SQLite local parse first
+    const localD = parseSQLiteLocalDate(ts);
+    if (localD) return localD.toISOString().split('T')[0];
+
+    // Try direct parse
+    let d = new Date(ts);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+
+    // As a last resort, try appending Z (UTC)
+    const s = String(ts);
+    const dUTC = new Date(s.includes('Z') ? s : (s + 'Z'));
+    if (!isNaN(dUTC.getTime())) return dUTC.toISOString().split('T')[0];
+
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
+// Normalize timestamp and return a Date object (tries several formats): prefer local SQLite parsing
+const normalizeToDate = (ts) => {
+  if (!ts) return null;
+  try {
+    // Epoch
+    if (/^\d+$/.test(String(ts))) return new Date(parseInt(ts, 10));
+
+    // Prefer SQLite local parse
+    const local = parseSQLiteLocalDate(ts);
+    if (local) return local;
+
+    // Direct parse
+    let d = new Date(ts);
+    if (!isNaN(d.getTime())) return d;
+
+    // Try replacing space with T
+    const s = String(ts);
+    if (s.includes(' ') && !s.includes('T')) {
+      const sLocal = s.replace(' ', 'T');
+      d = new Date(sLocal);
+      if (!isNaN(d.getTime())) return d;
+    }
+
+    // Fallback UTC
+    const dUTC = new Date(s.includes('Z') ? s : (s + 'Z'));
+    if (!isNaN(dUTC.getTime())) return dUTC;
+
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
 const getDateRange = () => {
   const today = new Date();
   let startDate, endDate;
@@ -686,22 +768,26 @@ const loadSalesReport = async (currentUser, dateRange) => {
   // Get payment methods breakdown from payment_methods table
   await loadPaymentMethods(currentUser.businessId, dateRange);
 
-  // Set recent transactions with real item counts
-  recentTransactions.value = filteredTransactions.slice(0, 10).map(t => {
-    let itemCount = 0;
-    try {
-      if (t.transaction_items) {
-        const items = JSON.parse(t.transaction_items);
-        itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  // Set recent transactions with real item counts by fetching full transaction details
+  try {
+    const recent = filteredTransactions.slice(0, 10);
+    const detailPromises = recent.map(tx => ipcRenderer.invoke('pos:get-transaction', { businessId: currentUser.businessId, transactionId: tx.id }).catch(err => null));
+    const detailed = await Promise.all(detailPromises);
+    recentTransactions.value = recent.map((t, i) => {
+      const full = detailed[i];
+      let itemCount = 0;
+      if (full && Array.isArray(full.items)) {
+        itemCount = full.items.reduce((sum, it) => sum + (parseFloat(it.quantity) || 0), 0);
       }
-    } catch (e) {
-      itemCount = 0;
-    }
-    return {
-      ...t,
-      itemCount
-    };
-  });
+      return {
+        ...t,
+        itemCount
+      };
+    });
+  } catch (err) {
+    console.error('Failed to load detailed transactions for recent list:', err);
+    recentTransactions.value = filteredTransactions.slice(0, 10).map(t => ({ ...t, itemCount: 0 }));
+  }
 
   // Render charts after data is loaded
   await nextTick();
@@ -1060,7 +1146,7 @@ const renderCharts = async (transactions, businessId, dateRange) => {
     if (chart) chart.destroy();
   });
 
-  if (!salesTrendChart.value || transactions.length === 0) return;
+  if (!salesTrendChart.value) return;
 
   const totalRevenue = metrics.value.totalRevenue;
 
@@ -1076,9 +1162,9 @@ const renderCharts = async (transactions, businessId, dateRange) => {
   }
 
   transactions.forEach(t => {
-    const dateStr = t.created_at.split('T')[0];
-    if (salesByDay.hasOwnProperty(dateStr)) {
-      salesByDay[dateStr] += parseFloat(t.total || 0);
+    const dateKey = normalizeToISODate(t.created_at) || normalizeToISODate(t.created_at?.created_at) || null;
+    if (dateKey && salesByDay.hasOwnProperty(dateKey)) {
+      salesByDay[dateKey] += parseFloat(t.total || 0) || 0;
     }
   });
 
@@ -1125,6 +1211,7 @@ const renderCharts = async (transactions, businessId, dateRange) => {
 
   // 2. Peak Hours Chart
   const hourCounts = Array(24).fill(0);
+  const hourTxCounts = Array(24).fill(0);
   
   // Debug: Log first transaction to check timezone
   if (transactions.length > 0) {
@@ -1137,20 +1224,24 @@ const renderCharts = async (transactions, businessId, dateRange) => {
   }
   
   transactions.forEach(t => {
-    // SQLite stores CURRENT_TIMESTAMP as UTC but without timezone indicator
-    // JavaScript parses it as local time, so we need to adjust
-    // Parse timestamp and add 'Z' to force UTC interpretation, then convert to local
-    let timestamp = t.created_at;
-    if (!timestamp.includes('Z') && !timestamp.includes('+') && !timestamp.includes('-', 10)) {
-      // If no timezone info, treat as UTC and convert to local
-      timestamp = timestamp.replace(' ', 'T') + 'Z';
+    try {
+      const orig = t.created_at || t.timestamp || t.createdAt || null;
+      const transactionDate = normalizeToDate(orig) || null;
+      const parsedStr = transactionDate ? transactionDate.toISOString() : null;
+      const hour = transactionDate ? transactionDate.getHours() : null;
+      const amount = parseFloat(t.total || t.amount || 0) || 0;
+      console.log('[Reports] tx id=', t.id, 'orig=', orig, 'parsed=', parsedStr, 'hour=', hour, 'amount=', amount);
+      if (hour !== null && hour >= 0 && hour < 24) {
+        hourCounts[hour] += amount;
+        hourTxCounts[hour] += 1;
+      }
+    } catch (err) {
+      console.error('Error processing transaction for peak hours', t && t.id, err);
     }
-    const transactionDate = new Date(timestamp);
-    const hour = transactionDate.getHours(); // This now gets correct local hour
-    hourCounts[hour] += parseFloat(t.total || 0);
   });
 
   const operatingHours = hourCounts.slice(6, 23); // 6 AM to 10 PM
+  const operatingTxCounts = hourTxCounts.slice(6, 23);
   const hourLabels = [];
   for (let i = 6; i < 23; i++) {
     const period = i < 12 ? 'AM' : 'PM';
@@ -1161,50 +1252,79 @@ const renderCharts = async (transactions, businessId, dateRange) => {
   // Get current hour for display (optional: highlight current hour)
   const currentHour = new Date().getHours();
   const currentHourIndex = currentHour - 6; // Adjust for 6 AM start
+  // Defensive rendering: ensure canvas exists and data are valid
+  try {
+    if (!peakHoursChart.value) throw new Error('peakHours canvas not mounted');
 
-  chartInstances.peakHours = new Chart(peakHoursChart.value, {
-    type: 'bar',
-    data: {
-      labels: hourLabels,
-      datasets: [{
-        label: 'Sales by Hour',
-        data: operatingHours,
-        backgroundColor: operatingHours.map((_, index) => 
-          index === currentHourIndex ? 'rgba(16, 185, 129, 0.6)' : 'rgba(139, 92, 246, 0.6)'
-        ),
-        borderColor: operatingHours.map((_, index) => 
-          index === currentHourIndex ? '#10b981' : '#8b5cf6'
-        ),
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (context) => `$${context.parsed.y.toFixed(2)}`
+    const peakData = operatingHours.map(v => Number(v) || 0);
+    const peakTxData = operatingTxCounts.map(v => Number(v) || 0);
+    console.log('Peak hours labels:', hourLabels);
+    console.log('Peak hours data:', peakData, 'txCounts:', peakTxData);
+
+    chartInstances.peakHours = new Chart(peakHoursChart.value, {
+      type: 'bar',
+      data: {
+        labels: hourLabels,
+        datasets: [{
+          label: 'Sales by Hour',
+          data: peakData,
+          backgroundColor: peakData.map((_, index) => 
+            index === currentHourIndex ? 'rgba(16, 185, 129, 0.6)' : 'rgba(139, 92, 246, 0.6)'
+          ),
+          borderColor: peakData.map((_, index) => 
+            index === currentHourIndex ? '#10b981' : '#8b5cf6'
+          ),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const value = (context.parsed.y || 0).toFixed(2);
+                const idx = context.dataIndex || 0;
+                const txCount = peakTxData && peakTxData[idx] ? peakTxData[idx] : 0;
+                return [`$${value}`, `${txCount} transaction${txCount !== 1 ? 's' : ''}`];
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: (value) => `$${value}`,
+              color: '#9ca3af'
+            },
+            grid: { color: 'rgba(75, 85, 99, 0.2)' }
+          },
+          x: {
+            ticks: { color: '#9ca3af' },
+            grid: { display: false }
           }
         }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: (value) => `$${value}`,
-            color: '#9ca3af'
-          },
-          grid: { color: 'rgba(75, 85, 99, 0.2)' }
-        },
-        x: {
-          ticks: { color: '#9ca3af' },
-          grid: { display: false }
-        }
       }
+    });
+  } catch (err) {
+    console.error('Error rendering Peak Hours chart:', err);
+    // Create a minimal fallback chart so UI isn't blank
+    try {
+      const fallbackData = Array(hourLabels.length).fill(0);
+      if (peakHoursChart.value) {
+        chartInstances.peakHours = new Chart(peakHoursChart.value, {
+          type: 'bar',
+          data: { labels: hourLabels, datasets: [{ label: 'Sales by Hour', data: fallbackData, backgroundColor: 'rgba(107,114,128,0.2)', borderWidth: 0 }] },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
+    } catch (err2) {
+      console.error('Failed to render fallback Peak Hours chart:', err2);
     }
-  });
+  }
 
   // 3. Cost Breakdown Chart (Real expense data)
   let foodCost = 0;
@@ -1220,13 +1340,33 @@ const renderCharts = async (transactions, businessId, dateRange) => {
     console.log('Expenses by category:', expensesByCategory);
     
     // Separate food costs from other overhead
-    expensesByCategory.forEach(cat => {
-      if (cat.category === 'Food/Ingredients') {
-        foodCost += cat.total_amount || 0;
-      } else {
-        overheadCost += cat.total_amount || 0;
+    if (Array.isArray(expensesByCategory) && expensesByCategory.length > 0) {
+      expensesByCategory.forEach(cat => {
+        if (cat.category && cat.category.toLowerCase().includes('food')) {
+          foodCost += parseFloat(cat.total_amount || 0);
+        } else {
+          overheadCost += parseFloat(cat.total_amount || 0);
+        }
+      });
+    } else {
+      // Fallback: fetch raw expenses and compute totals by category client-side
+      try {
+        const rawExpenses = await ipcRenderer.invoke('expense:get-by-date', {
+          businessId,
+          startDate: dateRange.startDate || dateRange.start,
+          endDate: dateRange.endDate || dateRange.end
+        });
+        if (Array.isArray(rawExpenses) && rawExpenses.length > 0) {
+          rawExpenses.forEach(e => {
+            const amt = parseFloat(e.amount || e.total_amount || 0) || 0;
+            const cat = (e.category || '').toLowerCase();
+            if (cat.includes('food')) foodCost += amt; else overheadCost += amt;
+          });
+        }
+      } catch (err) {
+        console.error('Fallback expense fetch failed:', err);
       }
-    });
+    }
     
     console.log('Food cost:', foodCost, 'Overhead cost:', overheadCost);
   } catch (error) {
@@ -1444,20 +1584,29 @@ onMounted(() => {
 
 // Watch inventory filters and auto-reload when changed
 watch(() => inventoryFilters.value.category, () => {
-  if (activeReport.value === 'inventory' && businessId.value) {
-    loadInventoryReport(businessId.value);
+  if (selectedReportType.value === 'inventory') {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (currentUser && currentUser.businessId) {
+      loadInventoryReport(currentUser.businessId);
+    }
   }
 });
 
 watch(() => inventoryFilters.value.supplier, () => {
-  if (activeReport.value === 'inventory' && businessId.value) {
-    loadInventoryReport(businessId.value);
+  if (selectedReportType.value === 'inventory') {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (currentUser && currentUser.businessId) {
+      loadInventoryReport(currentUser.businessId);
+    }
   }
 });
 
 watch(() => inventoryFilters.value.stockStatus, () => {
-  if (activeReport.value === 'inventory' && businessId.value) {
-    loadInventoryReport(businessId.value);
+  if (selectedReportType.value === 'inventory') {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (currentUser && currentUser.businessId) {
+      loadInventoryReport(currentUser.businessId);
+    }
   }
 });
 
