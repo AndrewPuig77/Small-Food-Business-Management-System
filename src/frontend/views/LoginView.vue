@@ -80,12 +80,20 @@ onMounted(async () => {
     const savedRemember = localStorage.getItem('rememberMe');
     remember.value = savedRemember === 'true';
 
-    // If a token exists and is valid, go straight to dashboard
+    // If a token exists and is valid, go straight to dashboard or employee account
     const token = localStorage.getItem('authToken');
     if (token) {
       const result = await ipcRenderer.invoke('verify-token', token);
       if (result && result.valid) {
-        router.push('/dashboard');
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const userRole = currentUser.role?.toLowerCase();
+        // Only owner, manager, and admin go to main dashboard
+        if (userRole === 'owner' || userRole === 'manager' || userRole === 'admin') {
+          router.push('/dashboard');
+        } else {
+          // All other roles (staff, chef, server, cashier, driver, etc.) go to employee account
+          router.push('/employee-account');
+        }
       } else {
         // Clear invalid token
         localStorage.removeItem('authToken');
@@ -130,8 +138,15 @@ const handleLogin = async () => {
 
       console.log('Login successful!', result.user);
 
-      // Navigate to dashboard
-      router.push('/dashboard');
+      // Navigate to dashboard or employee account based on role
+      const userRole = result.user.role?.toLowerCase();
+      // Only owner, manager, and admin go to main dashboard
+      if (userRole === 'owner' || userRole === 'manager' || userRole === 'admin') {
+        router.push('/dashboard');
+      } else {
+        // All other roles (staff, chef, server, cashier, driver, etc.) go to employee account
+        router.push('/employee-account');
+      }
     } else {
       errorMessage.value = result.error || 'Invalid username or password';
     }
