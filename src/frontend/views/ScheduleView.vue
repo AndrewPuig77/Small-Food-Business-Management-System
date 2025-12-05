@@ -1,44 +1,8 @@
 <template>
-  <div class="schedule-page">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-      <div class="logo-section">
-        <h2 class="logo">FoodBiz</h2>
-      </div>
-      
-      <nav class="nav-menu">
-        <router-link to="/dashboard" class="nav-item">
-          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <span>Dashboard</span>
-        </router-link>
-
-        <router-link to="/employees" class="nav-item">
-          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <span>Employees</span>
-        </router-link>
-
-        <router-link to="/schedule" class="nav-item active">
-          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span>Schedule</span>
-        </router-link>
-
-        <router-link to="/menu" class="nav-item">
-          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <span>Menu</span>
-        </router-link>
-      </nav>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content">
+  <div class="app-container">
+    <Sidebar />
+    
+    <div class="main-content">
       <header class="page-header">
         <div>
           <h1 class="page-title">Weekly Schedule</h1>
@@ -75,6 +39,42 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
+        </div>
+        <!-- History Container -->
+        <div class="card mb-6 history-container">
+          <div class="card-header">
+            <h3 class="card-title">History</h3>
+            <div class="date-range-selector">
+              <input type="date" v-model="historyStartDate" class="date-input" />
+              <input type="date" v-model="historyEndDate" class="date-input" />
+              <button @click="loadHistory" class="btn-primary-sm">Refresh</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Clock In</th>
+                  <th>Clock Out</th>
+                  <th>Hours</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="log in historyLogs" :key="log.id">
+                  <td>{{ log.employee_name || log.full_name || 'Employee ' + log.employee_id }}</td>
+                  <td>{{ formatTime(log.clock_in) }}</td>
+                  <td>{{ log.clock_out ? formatTime(log.clock_out) : 'Active' }}</td>
+                  <td>{{ formatHours(log.hours_worked) }}</td>
+                  <td>{{ log.notes || '' }}</td>
+                </tr>
+                <tr v-if="historyLogs.length === 0">
+                  <td colspan="5" class="text-center text-gray-500">No history found for selected dates.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Currently Clocked In Employees -->
@@ -115,6 +115,19 @@
 
       <!-- Schedule Grid -->
       <div class="schedule-container">
+        <!-- Labor Cost Summary -->
+        <div class="labor-cost-summary">
+          <div class="cost-card">
+            <div class="cost-label">Weekly Labor Cost</div>
+            <div class="cost-value">${{ weeklyLaborCost.toFixed(2) }}</div>
+          </div>
+          <div class="cost-card" v-for="day in weekDays" :key="`cost-${day.date}`">
+            <div class="cost-label-sm">{{ day.name }}</div>
+            <div class="cost-value-sm">${{ getDailyLaborCost(day.date).toFixed(2) }}</div>
+            <div class="cost-hours">{{ getDailyLaborHours(day.date).toFixed(1) }}h</div>
+          </div>
+        </div>
+
         <div class="schedule-grid">
           <!-- Header Row -->
           <div class="schedule-header">
@@ -156,7 +169,7 @@
           </div>
         </div>
       </div>
-    </main>
+    </div>
 
     <!-- Add/Edit Shift Modal -->
     <div v-if="showAddShift" class="modal-overlay" @click.self="showAddShift = false">
@@ -210,11 +223,45 @@
         </form>
       </div>
     </div>
+    
+    <!-- Time Logs Modal -->
+    <div v-if="showTimeLogs" class="modal-overlay" @click.self="closeTimeLogsModal()">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Time Logs for {{ modalDate }}</h2>
+          <button @click="closeTimeLogsModal" class="modal-close">×</button>
+        </div>
+        <div class="modal-content">
+          <div v-if="timeLogsForModal.length === 0" class="empty-state">
+            <p>No time logs found for this date.</p>
+          </div>
+          <table v-else class="time-table">
+            <thead>
+              <tr>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>Hours</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in timeLogsForModal" :key="log.id">
+                <td>{{ formatTime(log.clock_in) }}</td>
+                <td>{{ log.clock_out ? formatTime(log.clock_out) : 'Active' }}</td>
+                <td>{{ formatHours(log.hours_worked) }}</td>
+                <td>{{ log.notes || '' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import Sidebar from '../components/Sidebar.vue';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -268,6 +315,48 @@ const availableEmployees = computed(() => {
   return employees.value.filter(emp => !clockedInIds.includes(emp.id));
 });
 
+// History state
+const historyStartDate = ref('');
+const historyEndDate = ref('');
+const historyLogs = ref([]);
+const weeklyTimeLogs = ref([]);
+
+const loadWeeklyTimeLogs = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser || !currentUser.businessId) return;
+    
+    const startDate = weekDays.value[0]?.date;
+    const endDate = weekDays.value[6]?.date;
+    
+    if (!startDate || !endDate) return;
+    
+    const logs = await ipcRenderer.invoke('timelog:get-all', { 
+      businessId: currentUser.businessId, 
+      startDate, 
+      endDate 
+    });
+    weeklyTimeLogs.value = Array.isArray(logs) ? logs : [];
+  } catch (e) {
+    console.error('Failed to load weekly time logs', e);
+    weeklyTimeLogs.value = [];
+  }
+};
+
+const loadHistory = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser || !currentUser.businessId) return;
+    const start = historyStartDate.value || null;
+    const end = historyEndDate.value || null;
+    const logs = await ipcRenderer.invoke('timelog:get-all', { businessId: currentUser.businessId, startDate: start, endDate: end });
+    historyLogs.value = Array.isArray(logs) ? logs : [];
+  } catch (e) {
+    console.error('Failed to load history logs', e);
+    historyLogs.value = [];
+  }
+};
+
 const loadEmployees = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -281,6 +370,10 @@ const loadEmployees = async () => {
 const loadShifts = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!weekDays.value || weekDays.value.length === 0) {
+      console.warn('Week days not ready yet');
+      return;
+    }
     const startDate = weekDays.value[0].date;
     const endDate = weekDays.value[6].date;
     
@@ -342,19 +435,39 @@ const handleClockOut = async (employeeId) => {
   }
 };
 
-const formatTime = (isoString) => {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+// Parse a local datetime string in format 'YYYY-MM-DD HH:MM:SS' into a local Date
+const parseLocalDateTime = (s) => {
+  if (!s) return null;
+  const str = String(s).trim();
+  // match YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SS
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10) - 1;
+  const day = parseInt(m[3], 10);
+  const hour = parseInt(m[4], 10);
+  const minute = parseInt(m[5], 10);
+  const second = parseInt(m[6], 10);
+  return new Date(year, month, day, hour, minute, second);
+};
+
+const formatTime = (timeString) => {
+  const d = parseLocalDateTime(timeString) || new Date(timeString);
+  if (!d || isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
 const calculateElapsedTime = (clockInTime) => {
-  const start = new Date(clockInTime);
-  const now = currentTime.value;
-  const diffMs = now - start;
-  
+  const start = parseLocalDateTime(clockInTime) || new Date(clockInTime);
+  const now = currentTime.value || new Date();
+  if (!start || isNaN(start.getTime())) return '';
+
+  let diffMs = now.getTime() - start.getTime();
+  if (isNaN(diffMs) || diffMs <= 0) return '0m';
+
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m`;
   }
@@ -395,6 +508,78 @@ const calculateDuration = (start, end) => {
   return (eh * 60 + em - (sh * 60 + sm)) / 60;
 };
 
+// Labor cost calculations
+const getDailyLaborHours = (date) => {
+  // Calculate from actual time logs, not scheduled shifts
+  const dayLogs = weeklyTimeLogs.value.filter(log => {
+    if (!log.clock_in) return false;
+    const logDate = log.clock_in.split(' ')[0];
+    return logDate === date && log.clock_out; // Only count completed logs
+  });
+  
+  return dayLogs.reduce((total, log) => {
+    try {
+      // Parse datetime strings properly
+      const clockInStr = log.clock_in.replace(' ', 'T');
+      const clockOutStr = log.clock_out.replace(' ', 'T');
+      const clockIn = new Date(clockInStr);
+      const clockOut = new Date(clockOutStr);
+      
+      // Validate dates
+      if (isNaN(clockIn.getTime()) || isNaN(clockOut.getTime())) {
+        console.error('Invalid date in time log:', log);
+        return total;
+      }
+      
+      const hours = Math.abs((clockOut - clockIn) / (1000 * 60 * 60));
+      return total + hours;
+    } catch (error) {
+      console.error('Error calculating hours:', error, log);
+      return total;
+    }
+  }, 0);
+};
+
+const getDailyLaborCost = (date) => {
+  // Calculate from actual time logs, not scheduled shifts
+  const dayLogs = weeklyTimeLogs.value.filter(log => {
+    if (!log.clock_in) return false;
+    const logDate = log.clock_in.split(' ')[0];
+    return logDate === date && log.clock_out; // Only count completed logs
+  });
+  
+  return dayLogs.reduce((total, log) => {
+    try {
+      const employee = employees.value.find(emp => emp.id === log.employee_id);
+      const hourlyRate = employee?.hourly_rate || 0;
+      
+      // Parse datetime strings properly
+      const clockInStr = log.clock_in.replace(' ', 'T');
+      const clockOutStr = log.clock_out.replace(' ', 'T');
+      const clockIn = new Date(clockInStr);
+      const clockOut = new Date(clockOutStr);
+      
+      // Validate dates
+      if (isNaN(clockIn.getTime()) || isNaN(clockOut.getTime())) {
+        console.error('Invalid date in time log:', log);
+        return total;
+      }
+      
+      const hours = Math.abs((clockOut - clockIn) / (1000 * 60 * 60));
+      return total + (hourlyRate * hours);
+    } catch (error) {
+      console.error('Error calculating cost:', error, log);
+      return total;
+    }
+  }, 0);
+};
+
+const weeklyLaborCost = computed(() => {
+  return weekDays.value.reduce((total, day) => {
+    return total + getDailyLaborCost(day.date);
+  }, 0);
+});
+
 const openShiftModal = (day, hour, employeeId = null) => {
   shiftForm.value = {
     employeeId: employeeId || '',
@@ -426,6 +611,44 @@ const closeShiftModal = () => {
   editingShift.value = null;
 };
 
+// Time logs modal for day/employee
+const showTimeLogs = ref(false);
+const timeLogsForModal = ref([]);
+const modalEmployee = ref(null);
+const modalDate = ref(null);
+
+const formatHours = (h) => {
+  if (h === null || h === undefined) return '—';
+  const n = Number(h) || 0;
+  return (n < 0 ? 0 : n).toFixed(2);
+};
+
+const openTimeLogsModal = async (date, employeeId) => {
+  try {
+    modalEmployee.value = employeeId;
+    modalDate.value = date;
+    // fetch logs for that exact date
+    const logs = await ipcRenderer.invoke('timelog:get-employee', {
+      employeeId,
+      startDate: date,
+      endDate: date
+    });
+    timeLogsForModal.value = Array.isArray(logs) ? logs : [];
+    showTimeLogs.value = true;
+  } catch (e) {
+    console.error('Failed to load time logs for modal', e);
+    timeLogsForModal.value = [];
+    showTimeLogs.value = true;
+  }
+};
+
+const closeTimeLogsModal = () => {
+  showTimeLogs.value = false;
+  timeLogsForModal.value = [];
+  modalEmployee.value = null;
+  modalDate.value = null;
+};
+
 const saveShift = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -452,7 +675,8 @@ const saveShift = async () => {
     }
 
     closeShiftModal();
-    await loadShifts();
+    // Load shifts without blocking - let it happen in background
+    loadShifts().catch(err => console.error('Error reloading shifts:', err));
   } catch (error) {
     console.error('Error saving shift:', error);
     alert('Failed to save shift');
@@ -480,6 +704,7 @@ const previousWeek = () => {
   newDate.setDate(newDate.getDate() - 7);
   currentWeekStart.value = newDate;
   loadShifts();
+  loadWeeklyTimeLogs();
 };
 
 const nextWeek = () => {
@@ -487,6 +712,7 @@ const nextWeek = () => {
   newDate.setDate(newDate.getDate() + 7);
   currentWeekStart.value = newDate;
   loadShifts();
+  loadWeeklyTimeLogs();
 };
 
 const goToToday = () => {
@@ -496,6 +722,7 @@ const goToToday = () => {
   weekStart.setDate(today.getDate() - dayOfWeek);
   currentWeekStart.value = weekStart;
   loadShifts();
+  loadWeeklyTimeLogs();
 };
 
 // Update current time every minute for elapsed time calculations
@@ -505,6 +732,12 @@ onMounted(() => {
   goToToday();
   loadEmployees();
   loadClockedInEmployees();
+  loadWeeklyTimeLogs();
+  // Initialize history date range to today and load
+  const today = new Date().toISOString().split('T')[0];
+  historyStartDate.value = today;
+  historyEndDate.value = today;
+  loadHistory();
   
   // Update time every minute
   timeInterval = setInterval(() => {
@@ -520,66 +753,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.schedule-page {
+.app-container {
   display: flex;
   height: 100vh;
   background: #0f1419;
   color: #d1d5db;
 }
 
-.sidebar {
-  width: 250px;
-  background: linear-gradient(180deg, #1a1f2e 0%, #0f1419 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem 0;
-}
-
-.logo-section {
-  padding: 0 1.5rem 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.logo {
-  font-size: 1.75rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.nav-menu {
+.main-content {
   flex: 1;
-  padding: 1.5rem 0;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1.5rem;
-  color: #9ca3af;
-  text-decoration: none;
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #f3f4f6;
-}
-
-.nav-item.active {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
-  border-left-color: #3b82f6;
-}
-
-.nav-icon {
-  width: 20px;
-  height: 20px;
+  overflow-y: auto;
+  padding: 2rem;
 }
 
 .main-content {
@@ -811,6 +995,69 @@ onUnmounted(() => {
 
 .schedule-container {
   overflow-x: auto;
+}
+
+.labor-cost-summary {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+
+.cost-card {
+  flex: 0 0 auto;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 0.5rem;
+  min-width: 150px;
+}
+
+.cost-card:first-child {
+  min-width: 200px;
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.cost-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.cost-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.cost-card:first-child .cost-value {
+  color: #60a5fa;
+}
+
+.cost-label-sm {
+  font-size: 0.625rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.cost-value-sm {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #10b981;
+  margin-bottom: 0.25rem;
+}
+
+.cost-hours {
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
 .schedule-grid {
