@@ -9,6 +9,12 @@ const POSService = require('./services/posService');
 const ExpenseService = require('./services/expenseService');
 const TimeLogService = require('./services/timeLogService');
 const ReservationService = require('./services/reservationService');
+const TimeOffService = require('./services/timeOffService');
+const TaskService = require('./services/taskService');
+const AnnouncementService = require('./services/announcementService');
+const ShiftSwapService = require('./services/shiftSwapService');
+const AnalyticsService = require('./services/analyticsService');
+const DashboardService = require('./services/dashboardService');
 
 // Setup IPC handlers for communication between main and renderer processes
 const setupIPC = async () => {
@@ -38,6 +44,100 @@ const setupIPC = async () => {
   // Logout
   ipcMain.handle('logout', async (event, token) => {
     return AuthService.logout(token);
+  });
+
+  // Verify owner code
+  ipcMain.handle('auth:verify-owner-code', async (event, { businessId, code }) => {
+    try {
+      const { getDb } = require('./database/database');
+      const db = getDb();
+      console.log('[IPC] Verifying owner code for business:', businessId, 'with code:', code);
+      
+      const result = db.exec(`
+        SELECT owner_code FROM businesses WHERE id = ${businessId}
+      `);
+      
+      console.log('[IPC] Query result:', result);
+      
+      if (result.length > 0 && result[0].values.length > 0) {
+        const ownerCode = result[0].values[0][0];
+        console.log('[IPC] Stored owner code:', ownerCode, 'Provided code:', code);
+        console.log('[IPC] Match:', ownerCode === code);
+        
+        if (ownerCode === code) {
+          return { success: true };
+        }
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Error verifying owner code:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Get business settings
+  ipcMain.handle('get-business', async (event, businessId) => {
+    try {
+      const { getDb } = require('./database/database');
+      const db = getDb();
+      const result = db.exec(`SELECT * FROM businesses WHERE id = ${businessId}`);
+      if (result.length > 0 && result[0].values.length > 0) {
+        const columns = result[0].columns;
+        const values = result[0].values[0];
+        const business = {};
+        columns.forEach((col, index) => {
+          business[col] = values[index];
+        });
+        return business;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting business:', error);
+      return null;
+    }
+  });
+
+  // Update owner code
+  ipcMain.handle('business:update-owner-code', async (event, { businessId, ownerCode }) => {
+    try {
+      const { getDb, saveDatabase } = require('./database/database');
+      const db = getDb();
+      const escapedCode = ownerCode.replace(/'/g, "''");
+      db.run(`UPDATE businesses SET owner_code = '${escapedCode}' WHERE id = ${businessId}`);
+      saveDatabase();
+      console.log(`[IPC] Owner code updated to: ${ownerCode} for business ${businessId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating owner code:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Get user by ID
+  ipcMain.handle('user:get-by-id', async (event, { businessId, userId }) => {
+    try {
+      const { getDb } = require('./database/database');
+      const db = getDb();
+      const result = db.exec(`
+        SELECT id, username, full_name, email, role, active
+        FROM users
+        WHERE id = ${userId} AND business_id = ${businessId}
+      `);
+      
+      if (result.length > 0 && result[0].values.length > 0) {
+        const columns = result[0].columns;
+        const values = result[0].values[0];
+        const user = {};
+        columns.forEach((col, idx) => {
+          user[col] = values[idx];
+        });
+        return user;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting user by ID:', error);
+      return null;
+    }
   });
 
   // Menu Items
@@ -175,11 +275,17 @@ const setupIPC = async () => {
 
   // Schedule/Shifts
   ipcMain.handle('schedule:get-shifts', async (event, { businessId, startDate, endDate }) => {
-    return ScheduleService.getShifts(businessId, startDate, endDate);
+    console.log('[IPC] schedule:get-shifts called with:', { businessId, startDate, endDate });
+    const result = ScheduleService.getShifts(businessId, startDate, endDate);
+    console.log('[IPC] schedule:get-shifts returning', result.length, 'shifts');
+    return result;
   });
 
   ipcMain.handle('schedule:create-shift', async (event, { businessId, shiftData }) => {
-    return ScheduleService.createShift(businessId, shiftData);
+    console.log('[IPC] schedule:create-shift called with:', { businessId, shiftData });
+    const result = ScheduleService.createShift(businessId, shiftData);
+    console.log('[IPC] schedule:create-shift created shift:', result);
+    return result;
   });
 
   ipcMain.handle('schedule:update-shift', async (event, { businessId, shiftId, shiftData }) => {
@@ -302,6 +408,52 @@ const setupIPC = async () => {
 
   ipcMain.handle('pos:get-payment-methods', async (event, { businessId, startDate, endDate }) => {
     return POSService.getPaymentMethodsByDateRange(businessId, startDate, endDate);
+  });
+
+  // Debug: return raw transaction rows from DB for an expanded UTC window
+  ipcMain.handle('debug:get-raw-transactions', async (event, { businessId, startDate, endDate }) => {
+    try {
+      const dbModule = require('./database/database');
+      const db = dbModule.getDb();
+      // Interpret startDate/endDate as local dates, but query an expanded UTC window for visibility
+      const startLocal = new Date(startDate + 'T00:00:00');
+      const endLocal = new Date(endDate + 'T23:59:59');
+      const minUtc = new Date(startLocal.getTime() - (24 * 60 * 60 * 1000));
+      const maxUtc = new Date(endLocal.getTime() + (24 * 60 * 60 * 1000));
+
+      const fmt = (d) => {
+        const y = d.getUTCFullYear();
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const hh = String(d.getUTCHours()).padStart(2, '0');
+        const mm = String(d.getUTCMinutes()).padStart(2, '0');
+        const ss = String(d.getUTCSeconds()).padStart(2, '0');
+        return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+      };
+
+      const q = `
+        SELECT t.*, u.full_name as cashier_name, c.name as customer_name
+        FROM transactions t
+        LEFT JOIN users u ON t.cashier_id = u.id
+        LEFT JOIN customers c ON t.customer_id = c.id
+        WHERE t.business_id = ${businessId}
+          AND t.created_at BETWEEN ${JSON.stringify(fmt(minUtc))} AND ${JSON.stringify(fmt(maxUtc))}
+        ORDER BY t.created_at DESC
+      `;
+
+      const res = db.exec(q);
+      if (!res || res.length === 0) return [];
+      const cols = res[0].columns;
+      const vals = res[0].values;
+      return vals.map(row => {
+        const obj = {};
+        cols.forEach((c, i) => { obj[c] = row[i]; });
+        return obj;
+      });
+    } catch (e) {
+      console.error('[IPC] debug:get-raw-transactions failed', e);
+      return { error: String(e && e.message ? e.message : e) };
+    }
   });
 
   ipcMain.handle('pos:void-transaction', async (event, { businessId, transactionId, voidReason, voidedBy }) => {
@@ -450,7 +602,10 @@ const setupIPC = async () => {
 
   // Check if employee is clocked in
   ipcMain.handle('timelog:is-clocked-in', async (event, employeeId) => {
-    return TimeLogService.isEmployeeClockedIn(employeeId);
+    console.log('[IPC] timelog:is-clocked-in called for employee:', employeeId);
+    const result = TimeLogService.isEmployeeClockedIn(employeeId);
+    console.log('[IPC] timelog:is-clocked-in result:', result);
+    return result;
   });
 
   // Get currently clocked in employees
@@ -472,6 +627,16 @@ const setupIPC = async () => {
   ipcMain.handle('timelog:get-payroll', async (event, { businessId, startDate, endDate }) => {
     return TimeLogService.getPayrollData(businessId, startDate, endDate);
   });
+  
+    // Admin: Cleanup negative hours and optionally set hourly rates for employees
+    ipcMain.handle('admin:fix-payroll-employees', async (event, { businessId, employees }) => {
+      try {
+        return TimeLogService.cleanupAndFixEmployees(businessId, employees || []);
+      } catch (e) {
+        console.error('[IPC] admin:fix-payroll-employees failed', e);
+        return { error: String(e && e.message ? e.message : e) };
+      }
+    });
 
   // Get payroll summary
   ipcMain.handle('timelog:get-payroll-summary', async (event, { businessId, startDate, endDate }) => {
@@ -539,6 +704,213 @@ const setupIPC = async () => {
 
   ipcMain.handle('reservation:get-available-slots', async (event, { businessId, date, partySize }) => {
     return ReservationService.getAvailableTimeSlots(businessId, date, partySize);
+  });
+
+  // Time Off Requests
+  ipcMain.handle('timeoff:get-all', async (event, { businessId, filters }) => {
+    return TimeOffService.getAllTimeOffRequests(businessId, filters);
+  });
+
+  ipcMain.handle('timeoff:get-employee', async (event, employeeId) => {
+    return TimeOffService.getEmployeeTimeOffRequests(employeeId);
+  });
+
+  ipcMain.handle('timeoff:create', async (event, requestData) => {
+    return TimeOffService.createTimeOffRequest(requestData);
+  });
+
+  ipcMain.handle('timeoff:review', async (event, { requestId, reviewData }) => {
+    return TimeOffService.reviewTimeOffRequest(requestId, reviewData);
+  });
+
+  ipcMain.handle('timeoff:delete', async (event, requestId) => {
+    return TimeOffService.deleteTimeOffRequest(requestId);
+  });
+
+  // Employee Availability
+  ipcMain.handle('availability:get', async (event, employeeId) => {
+    return TimeOffService.getEmployeeAvailability(employeeId);
+  });
+
+  ipcMain.handle('availability:update', async (event, { employeeId, availabilityData }) => {
+    return TimeOffService.updateEmployeeAvailability(employeeId, availabilityData);
+  });
+
+  // Tasks
+  ipcMain.handle('tasks:get-all', async (event, { businessId, filters }) => {
+    return TaskService.getAllTasks(businessId, filters);
+  });
+
+  ipcMain.handle('tasks:get-employee', async (event, { employeeId, status }) => {
+    return TaskService.getEmployeeTasks(employeeId, status);
+  });
+
+  ipcMain.handle('tasks:create', async (event, taskData) => {
+    return TaskService.createTask(taskData);
+  });
+
+  ipcMain.handle('tasks:update', async (event, { taskId, taskData }) => {
+    return TaskService.updateTask(taskId, taskData);
+  });
+
+  ipcMain.handle('tasks:complete', async (event, { taskId, completedBy }) => {
+    return TaskService.completeTask(taskId, completedBy);
+  });
+
+  ipcMain.handle('tasks:delete', async (event, taskId) => {
+    return TaskService.deleteTask(taskId);
+  });
+
+  // Announcements
+  ipcMain.handle('announcements:get-all', async (event, { businessId, filters }) => {
+    return AnnouncementService.getAllAnnouncements(businessId, filters);
+  });
+
+  ipcMain.handle('announcements:get-for-role', async (event, { businessId, role }) => {
+    console.log('[IPC] announcements:get-for-role called with:', { businessId, role });
+    const result = AnnouncementService.getAnnouncementsForRole(businessId, role);
+    console.log('[IPC] announcements:get-for-role returning', result.length, 'announcements');
+    return result;
+  });
+
+  ipcMain.handle('announcements:create', async (event, announcementData) => {
+    console.log('[IPC] announcements:create called with:', announcementData);
+    const result = AnnouncementService.createAnnouncement(announcementData);
+    console.log('[IPC] announcements:create created:', result);
+    return result;
+  });
+
+  ipcMain.handle('announcements:update', async (event, { announcementId, announcementData }) => {
+    return AnnouncementService.updateAnnouncement(announcementId, announcementData);
+  });
+
+  ipcMain.handle('announcements:delete', async (event, announcementId) => {
+    return AnnouncementService.deleteAnnouncement(announcementId);
+  });
+
+  // Shift Swap Requests
+  ipcMain.handle('shiftswap:get-all', async (event, { businessId, filters }) => {
+    return ShiftSwapService.getAllShiftSwapRequests(businessId, filters);
+  });
+
+  ipcMain.handle('shiftswap:get-employee', async (event, employeeId) => {
+    return ShiftSwapService.getEmployeeShiftSwapRequests(employeeId);
+  });
+
+  ipcMain.handle('shiftswap:create', async (event, requestData) => {
+    return ShiftSwapService.createShiftSwapRequest(requestData);
+  });
+
+  ipcMain.handle('shiftswap:review', async (event, { requestId, reviewData }) => {
+    return ShiftSwapService.reviewShiftSwapRequest(requestId, reviewData);
+  });
+
+  ipcMain.handle('shiftswap:cancel', async (event, { requestId, employeeId }) => {
+    return ShiftSwapService.cancelShiftSwapRequest(requestId, employeeId);
+  });
+
+  ipcMain.handle('shiftswap:delete', async (event, requestId) => {
+    return ShiftSwapService.deleteShiftSwapRequest(requestId);
+  });
+
+  // ==================== ANALYTICS HANDLERS ====================
+  
+  ipcMain.handle('analytics:sales', async (event, { businessId, startDate, endDate, groupBy }) => {
+    return AnalyticsService.getSalesAnalytics(businessId, startDate, endDate, groupBy);
+  });
+
+  ipcMain.handle('analytics:sales-trends', async (event, { businessId, currentStart, currentEnd, previousStart, previousEnd }) => {
+    return AnalyticsService.getSalesTrends(businessId, currentStart, currentEnd, previousStart, previousEnd);
+  });
+
+  ipcMain.handle('analytics:top-bottom-performers', async (event, { businessId, startDate, endDate, limit }) => {
+    return AnalyticsService.getTopBottomPerformers(businessId, startDate, endDate, limit);
+  });
+
+  ipcMain.handle('analytics:inventory', async (event, businessId) => {
+    return AnalyticsService.getInventoryAnalytics(businessId);
+  });
+
+  ipcMain.handle('analytics:waste', async (event, { businessId, startDate, endDate }) => {
+    return AnalyticsService.getWasteAnalytics(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('analytics:cost-analysis', async (event, { businessId, startDate, endDate }) => {
+    return AnalyticsService.getCostAnalysis(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('analytics:employee-performance', async (event, { businessId, startDate, endDate }) => {
+    return AnalyticsService.getEmployeePerformance(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('analytics:peak-hours', async (event, { businessId, startDate, endDate }) => {
+    return AnalyticsService.getPeakHoursAnalysis(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('analytics:customer-insights', async (event, { businessId, startDate, endDate }) => {
+    return AnalyticsService.getCustomerInsights(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('analytics:financial-summary', async (event, { businessId, startDate, endDate }) => {
+    return AnalyticsService.getFinancialSummary(businessId, startDate, endDate);
+  });
+
+  ipcMain.handle('analytics:forecast', async (event, businessId) => {
+    const data = AnalyticsService.getForecastData(businessId);
+    const forecast = AnalyticsService.calculateForecast(data);
+    return { historical: data, forecast };
+  });
+
+  // ============================================
+  // DASHBOARD IPC HANDLERS
+  // ============================================
+
+  ipcMain.handle('dashboard:get-overview', async (event, businessId) => {
+    return DashboardService.getDashboardOverview(businessId);
+  });
+
+  ipcMain.handle('dashboard:get-sales-trend', async (event, { businessId, period }) => {
+    return DashboardService.getSalesTrend(businessId, period);
+  });
+
+  ipcMain.handle('dashboard:get-top-performers', async (event, { businessId, period }) => {
+    return DashboardService.getTopPerformers(businessId, period);
+  });
+
+  ipcMain.handle('dashboard:get-inventory-status', async (event, businessId) => {
+    return DashboardService.getInventoryStatus(businessId);
+  });
+
+  ipcMain.handle('dashboard:get-financial-summary', async (event, { businessId, period }) => {
+    return DashboardService.getFinancialSummary(businessId, period);
+  });
+
+  ipcMain.handle('dashboard:get-upcoming-items', async (event, businessId) => {
+    return DashboardService.getUpcomingItems(businessId);
+  });
+
+  ipcMain.handle('dashboard:get-activity-feed', async (event, { businessId, limit }) => {
+    return DashboardService.getActivityFeed(businessId, limit);
+  });
+
+  ipcMain.handle('dashboard:get-alerts', async (event, businessId) => {
+    return DashboardService.getAlerts(businessId);
+  });
+
+  ipcMain.handle('dashboard:get-live-orders', async (event, businessId) => {
+    return DashboardService.getLiveOrders(businessId);
+  });
+
+  ipcMain.handle('dashboard:get-profit-pulse', async (event, businessId) => {
+    return DashboardService.getProfitPulse(businessId);
+  });
+
+  ipcMain.handle('dashboard:get-goal-tracking', async (event, businessId) => {
+    return DashboardService.getGoalTracking(businessId);
+  });
+
+  ipcMain.handle('dashboard:get-complete', async (event, { businessId, userRole }) => {
+    return DashboardService.getCompleteDashboard(businessId, userRole);
   });
 
   console.log('IPC handlers registered');
