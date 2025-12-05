@@ -116,6 +116,21 @@
               placeholder="(555) 123-4567"
             />
           </div>
+
+          <div>
+            <label class="block text-gray-300 font-semibold mb-2">Sales Tax Rate (%) *</label>
+            <input
+              v-model.number="businessInfo.taxRate"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              class="input-field"
+              placeholder="7.5"
+              required
+            />
+            <p class="text-gray-500 text-sm mt-1">Enter the sales tax percentage for your location</p>
+          </div>
         </div>
       </div>
 
@@ -279,7 +294,8 @@ const businessInfo = ref({
   name: '',
   type: '',
   address: '',
-  phone: ''
+  phone: '',
+  taxRate: 7.5
 });
 
 const ownerInfo = ref({
@@ -355,7 +371,8 @@ const completeSetup = async () => {
         name: businessInfo.value.name,
         type: businessInfo.value.type,
         address: businessInfo.value.address,
-        phone: businessInfo.value.phone
+        phone: businessInfo.value.phone,
+        taxRate: businessInfo.value.taxRate || 7.5
       },
       owner: {
         fullName: ownerInfo.value.fullName,

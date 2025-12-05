@@ -121,11 +121,11 @@
         <div class="modal-content">
           <div class="form-group">
             <label>Name *</label>
-            <input v-model="formData.name" type="text" class="form-input" placeholder="Customer name" />
+            <input v-model="formData.name" type="text" class="form-input" placeholder="Customer name" required />
           </div>
           <div class="form-group">
-            <label>Phone</label>
-            <input v-model="formData.phone" type="tel" class="form-input" placeholder="(555) 123-4567" />
+            <label>Phone *</label>
+            <input v-model="formData.phone" type="tel" class="form-input" placeholder="(555) 123-4567" required />
           </div>
           <div class="form-group">
             <label>Email</label>
@@ -138,7 +138,7 @@
           </div>
           <div class="modal-actions">
             <button @click="closeModal" class="btn-secondary">Cancel</button>
-            <button @click="saveCustomer" class="btn-primary" :disabled="!formData.name">
+            <button @click="saveCustomer" class="btn-primary" :disabled="!formData.name || !formData.phone">
               {{ showEditModal ? 'Update' : 'Add' }} Customer
             </button>
           </div>
@@ -270,11 +270,40 @@
         </div>
       </div>
     </div>
+
+    <!-- Owner Code Verification Modal -->
+    <div v-if="showOwnerCodeModal" class="modal-overlay" @mousedown.prevent @click.self="showOwnerCodeModal = false">
+      <div class="modal modal-small" @click.stop>
+        <div class="modal-header">
+          <h2 class="text-xl font-bold">Owner Verification Required</h2>
+          <button @click="cancelOwnerVerification" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-4">{{ ownerCodeMessage }}</p>
+          <div class="form-group">
+            <label>Owner Code *</label>
+            <input 
+              ref="ownerCodeInput"
+              v-model="ownerCode" 
+              type="password" 
+              class="input-field" 
+              placeholder="Enter 4-digit owner code"
+              @keyup.enter="submitOwnerCode"
+            />
+          </div>
+          <div v-if="ownerCodeError" class="error-message">{{ ownerCodeError }}</div>
+          <div class="modal-actions">
+            <button type="button" @click="cancelOwnerVerification" class="btn-secondary">Cancel</button>
+            <button type="button" @click="submitOwnerCode" class="btn-primary">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 
 const { ipcRenderer } = window.require('electron');
@@ -287,6 +316,23 @@ const showEditModal = ref(false);
 const showPointsModal = ref(false);
 const showLoyaltySettings = ref(false);
 const selectedCustomer = ref(null);
+
+// Owner verification
+const showOwnerCodeModal = ref(false);
+const ownerCode = ref('');
+const ownerCodeError = ref('');
+const ownerCodeMessage = ref('');
+const pendingDeleteCustomer = ref(null);
+const ownerCodeInput = ref(null);
+
+// Watch for modal open and focus input
+watch(showOwnerCodeModal, (newVal) => {
+  if (newVal) {
+    setTimeout(() => {
+      ownerCodeInput.value?.focus();
+    }, 100);
+  }
+});
 
 const formData = ref({
   name: '',
@@ -455,6 +501,20 @@ const savePointsAdjustment = async () => {
 const deleteCustomer = async (customer) => {
   if (!confirm(`Delete customer "${customer.name}"? This cannot be undone.`)) return;
   
+  // Verify owner code if not owner/manager
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (currentUser.role !== 'owner' && currentUser.role !== 'manager') {
+    ownerCodeMessage.value = `Enter owner code to delete "${customer.name}":`;
+    pendingDeleteCustomer.value = customer;
+    showOwnerCodeModal.value = true;
+    return;
+  }
+  
+  // If owner/manager, proceed directly
+  await performDeleteCustomer(customer);
+};
+
+const performDeleteCustomer = async (customer) => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     await ipcRenderer.invoke('pos:delete-customer', {
@@ -483,6 +543,48 @@ const closeModal = () => {
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString();
+};
+
+// Owner verification functions
+const submitOwnerCode = async () => {
+  if (!ownerCode.value) {
+    ownerCodeError.value = 'Please enter owner code';
+    return;
+  }
+  
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    
+    const verifyResult = await ipcRenderer.invoke('auth:verify-owner-code', {
+      businessId: currentUser.businessId,
+      code: ownerCode.value
+    });
+    
+    if (!verifyResult.success) {
+      ownerCodeError.value = 'Invalid owner code';
+      return;
+    }
+    
+    // Code verified, proceed with delete
+    showOwnerCodeModal.value = false;
+    ownerCode.value = '';
+    ownerCodeError.value = '';
+    
+    if (pendingDeleteCustomer.value) {
+      await performDeleteCustomer(pendingDeleteCustomer.value);
+      pendingDeleteCustomer.value = null;
+    }
+  } catch (error) {
+    console.error('Error verifying owner code:', error);
+    ownerCodeError.value = 'Error verifying code';
+  }
+};
+
+const cancelOwnerVerification = () => {
+  showOwnerCodeModal.value = false;
+  ownerCode.value = '';
+  ownerCodeError.value = '';
+  pendingDeleteCustomer.value = null;
 };
 
 onMounted(() => {

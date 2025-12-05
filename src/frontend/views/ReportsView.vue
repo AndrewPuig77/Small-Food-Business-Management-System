@@ -49,6 +49,7 @@
                 </button>
               </div>
             </div>
+            <button @click="debugFetchRaw" class="btn-debug" title="Debug: print raw DB rows for current date range">Debug DB Rows</button>
           </div>
         </div>
       </div>
@@ -123,7 +124,7 @@
             </div>
             <div class="metric-content">
               <p class="metric-label">Transactions</p>
-              <p class="metric-value">{{ formatNumber(metrics.totalTransactions) }}</p>
+              <p class="metric-value">{{ formatInteger(metrics.totalTransactions) }}</p>
               <p class="metric-change" :class="{ positive: metrics.transactionChange >= 0, negative: metrics.transactionChange < 0 }">
                 {{ metrics.transactionChange >= 0 ? '+' : '' }}{{ metrics.transactionChange }}% vs previous period
               </p>
@@ -153,7 +154,7 @@
             </div>
             <div class="metric-content">
               <p class="metric-label">Unique Customers</p>
-              <p class="metric-value">{{ formatNumber(metrics.uniqueCustomers) }}</p>
+              <p class="metric-value">{{ formatInteger(metrics.uniqueCustomers) }}</p>
               <p class="metric-change" :class="{ positive: metrics.customerChange >= 0, negative: metrics.customerChange < 0 }">
                 {{ metrics.customerChange >= 0 ? '+' : '' }}{{ metrics.customerChange }}% vs previous period
               </p>
@@ -171,13 +172,7 @@
             </div>
           </div>
 
-          <!-- Peak Hours Chart -->
-          <div class="card chart-card">
-            <h3 class="chart-title">Peak Sales Hours</h3>
-            <div class="chart-container">
-              <canvas ref="peakHoursChart"></canvas>
-            </div>
-          </div>
+          <!-- Peak Hours Chart removed per request -->
 
           <!-- Food Cost Percentage -->
           <div class="card chart-card">
@@ -247,12 +242,13 @@
         <!-- Recent Transactions -->
         <div class="card">
           <h2 class="card-title">Recent Transactions</h2>
-          <div class="table-container">
+          <div class="table-container transactions-scroll">
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Date & Time</th>
                   <th>Transaction ID</th>
+                  <th>Employee</th>
                   <th>Customer</th>
                   <th>Items</th>
                   <th>Total</th>
@@ -263,6 +259,7 @@
                 <tr v-for="transaction in recentTransactions" :key="transaction.id">
                   <td>{{ formatDateTime(transaction.created_at) }}</td>
                   <td class="font-mono text-sm">#{{ transaction.id }}</td>
+                  <td>{{ transaction.cashier_name || 'Unknown' }}</td>
                   <td>{{ transaction.customer_name || 'Guest' }}</td>
                   <td>{{ transaction.itemCount }} items</td>
                   <td class="font-semibold">${{ formatNumber(transaction.total) }}</td>
@@ -273,7 +270,38 @@
                   </td>
                 </tr>
                 <tr v-if="recentTransactions.length === 0">
-                  <td colspan="6" class="text-center text-gray-500">No transactions yet</td>
+                  <td colspan="7" class="text-center text-gray-500">No transactions yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Peak Hours Heatmap (now part of Sales Analytics) -->
+        <div class="card mb-6">
+          <h2 class="card-title">Peak Hours Analysis</h2>
+          <div class="heatmap-container">
+            <table class="heatmap-table">
+              <thead>
+                <tr>
+                  <th>Hour</th>
+                  <th>Mon</th>
+                  <th>Tue</th>
+                  <th>Wed</th>
+                  <th>Thu</th>
+                  <th>Fri</th>
+                  <th>Sat</th>
+                  <th>Sun</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="hour in 24" :key="hour">
+                  <td class="hour-label">{{ formatHour(hour - 1) }}</td>
+                  <td v-for="day in 7" :key="day" 
+                      :class="['heatmap-cell', getHeatmapClass(hour - 1, day - 1)]"
+                      :title="`${formatHour(hour - 1)} on ${getDayName(day - 1)}: ${getHeatmapValue(hour - 1, day - 1)} transactions`">
+                    {{ getHeatmapValue(hour - 1, day - 1) }}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -380,7 +408,277 @@
           </div>
         </div>
 
-        <!-- Payroll Report Tab -->
+        <!-- Top/Bottom Performers Report Tab -->
+        <div v-if="selectedReportType === 'performers'" class="performers-report">
+          <div class="card mb-6">
+            <h2 class="card-title">Top Performing Items</h2>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Item Name</th>
+                    <th>Qty Sold</th>
+                    <th>Revenue</th>
+                    <th>Est. Profit</th>
+                    <th>Profit Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, index) in performersData.topPerformers" :key="index">
+                    <td class="font-semibold">{{ index + 1 }}</td>
+                    <td>{{ item.item_name }}</td>
+                    <td>{{ item.quantity_sold }}</td>
+                    <td class="text-success">${{ formatNumber(item.revenue) }}</td>
+                    <td>${{ formatNumber(item.estimated_profit) }}</td>
+                    <td>
+                      <span class="profit-badge" :class="item.profit_margin >= 40 ? 'high' : item.profit_margin >= 25 ? 'medium' : 'low'">
+                        {{ formatNumber(item.profit_margin) }}%
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="performersData.topPerformers.length === 0">
+                    <td colspan="6" class="text-center text-gray-500">No data available for this period</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card mb-6">
+            <h2 class="card-title">Bottom Performing Items</h2>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Item Name</th>
+                    <th>Qty Sold</th>
+                    <th>Revenue</th>
+                    <th>Est. Profit</th>
+                    <th>Profit Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, index) in performersData.bottomPerformers" :key="index">
+                    <td class="font-semibold">{{ performersData.bottomPerformers.length - index }}</td>
+                    <td>{{ item.item_name }}</td>
+                    <td>{{ item.quantity_sold }}</td>
+                    <td class="text-warning">${{ formatNumber(item.revenue) }}</td>
+                    <td>${{ formatNumber(item.estimated_profit) }}</td>
+                    <td>
+                      <span class="profit-badge" :class="item.profit_margin >= 40 ? 'high' : item.profit_margin >= 25 ? 'medium' : 'low'">
+                        {{ formatNumber(item.profit_margin) }}%
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="performersData.bottomPerformers.length === 0">
+                    <td colspan="6" class="text-center text-gray-500">No data available for this period</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Analysis Report Tab -->
+        <div v-if="selectedReportType === 'costs'" class="costs-report">
+          <div class="metrics-grid mb-6">
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Food Cost %</p>
+                <p class="metric-value" :class="costsData.foodCostPercentage > 35 ? 'text-danger' : costsData.foodCostPercentage > 28 ? 'text-warning' : 'text-success'">
+                  {{ formatNumber(costsData.foodCostPercentage) }}%
+                </p>
+                <p class="metric-subtext">Target: 28-35%</p>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Labor Cost %</p>
+                <p class="metric-value" :class="costsData.laborCostPercentage > 35 ? 'text-danger' : costsData.laborCostPercentage > 25 ? 'text-warning' : 'text-success'">
+                  {{ formatNumber(costsData.laborCostPercentage) }}%
+                </p>
+                <p class="metric-subtext">Target: 25-35%</p>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Prime Cost</p>
+                <p class="metric-value" :class="costsData.primeCost > 65 ? 'text-danger' : costsData.primeCost > 60 ? 'text-warning' : 'text-success'">
+                  {{ formatNumber(costsData.primeCost) }}%
+                </p>
+                <p class="metric-subtext">Target: &lt;65%</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="costsData.primeCost > 65" class="alert alert-danger mb-6">
+            <strong>Alert:</strong> Prime cost exceeds 65%. Consider reviewing menu prices, portion sizes, or labor scheduling.
+          </div>
+        </div>
+
+        <!-- Employee Performance Report Tab -->
+        <div v-if="selectedReportType === 'employees'" class="employees-report">
+          <div class="card mb-6">
+            <h2 class="card-title">Employee Performance Metrics</h2>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Employee Name</th>
+                    <th>Total Hours</th>
+                    <th>Overtime Hours</th>
+                    <th>Labor Cost</th>
+                    <th>Sales Per Hour</th>
+                    <th>Efficiency</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="emp in employeePerformance.employees" :key="emp.employee_name">
+                    <td class="font-semibold">{{ emp.employee_name }}</td>
+                    <td>{{ formatNumber(emp.total_hours) }}</td>
+                    <td>{{ formatNumber(emp.overtime_hours) }}</td>
+                    <td>${{ formatNumber(emp.total_labor_cost) }}</td>
+                    <td class="text-success">${{ formatNumber(emp.sales_per_labor_hour) }}</td>
+                    <td>
+                      <span class="efficiency-badge" :class="emp.sales_per_labor_hour >= 100 ? 'high' : emp.sales_per_labor_hour >= 50 ? 'medium' : 'low'">
+                        {{ emp.sales_per_labor_hour >= 100 ? 'Excellent' : emp.sales_per_labor_hour >= 50 ? 'Good' : 'Needs Improvement' }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="employeePerformance.employees.length === 0">
+                    <td colspan="6" class="text-center text-gray-500">No employee data available for this period</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Peak Hours Report Tab -->
+        <!-- REMOVED - Now integrated into Sales Analytics tab -->
+
+        <!-- Customer Insights Report Tab -->
+        <div v-if="selectedReportType === 'customers'" class="customers-report">
+          <div class="metrics-grid mb-6">
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Average Transaction</p>
+                <p class="metric-value">${{ formatNumber(customerInsights.avgTransaction) }}</p>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Minimum Transaction</p>
+                <p class="metric-value">${{ formatNumber(customerInsights.minTransaction) }}</p>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Maximum Transaction</p>
+                <p class="metric-value">${{ formatNumber(customerInsights.maxTransaction) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-6">
+            <h2 class="card-title">Popular Item Combinations</h2>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Item Combination</th>
+                    <th>Times Ordered Together</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="combo in customerInsights.popularCombos" :key="combo.item_combo">
+                    <td class="font-semibold">{{ combo.item_combo }}</td>
+                    <td>{{ combo.combo_count }}</td>
+                  </tr>
+                  <tr v-if="customerInsights.popularCombos.length === 0">
+                    <td colspan="2" class="text-center text-gray-500">No combo data available for this period</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financial Summary Report Tab -->
+        <div v-if="selectedReportType === 'financial'" class="financial-report">
+          <div class="card mb-6">
+            <h2 class="card-title">Profit & Loss Summary</h2>
+            <div class="financial-summary">
+              <div class="financial-row">
+                <span class="financial-label">Total Revenue</span>
+                <span class="financial-value text-success">${{ formatNumber(financialSummary.revenue) }}</span>
+              </div>
+              <div class="financial-row">
+                <span class="financial-label">Total Expenses</span>
+                <span class="financial-value text-danger">${{ formatNumber(financialSummary.expenses) }}</span>
+              </div>
+              <div class="financial-row separator">
+                <span class="financial-label font-bold">Net Profit</span>
+                <span class="financial-value font-bold" :class="financialSummary.profit >= 0 ? 'text-success' : 'text-danger'">
+                  ${{ formatNumber(financialSummary.profit) }}
+                </span>
+              </div>
+              <div class="financial-row">
+                <span class="financial-label">Profit Margin</span>
+                <span class="financial-value">{{ formatNumber(financialSummary.profitMargin) }}%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cost Analysis (now part of Financial Summary) -->
+          <div class="metrics-grid mb-6">
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Food Cost %</p>
+                <p class="metric-value" :class="costsData.foodCostPercentage > 35 ? 'text-danger' : costsData.foodCostPercentage > 28 ? 'text-warning' : 'text-success'">
+                  {{ formatNumber(costsData.foodCostPercentage) }}%
+                </p>
+                <p class="metric-subtext">Target: 28-35%</p>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Labor Cost %</p>
+                <p class="metric-value" :class="costsData.laborCostPercentage > 35 ? 'text-danger' : costsData.laborCostPercentage > 25 ? 'text-warning' : 'text-success'">
+                  {{ formatNumber(costsData.laborCostPercentage) }}%
+                </p>
+                <p class="metric-subtext">Target: 25-35%</p>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <p class="metric-label">Prime Cost %</p>
+                <p class="metric-value" :class="costsData.primeCostPercentage > 65 ? 'text-danger' : costsData.primeCostPercentage > 60 ? 'text-warning' : 'text-success'">
+                  {{ formatNumber(costsData.primeCostPercentage) }}%
+                </p>
+                <p class="metric-subtext">Target: &lt; 60%</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="costsData.primeCostPercentage > 65" class="alert alert-danger mb-6">
+            ⚠️ Warning: Prime Cost is above 65%. Consider reviewing menu pricing, portion sizes, or labor scheduling.
+          </div>
+          <div v-else-if="costsData.primeCostPercentage > 60" class="alert alert-warning mb-6">
+            ⚠️ Caution: Prime Cost is approaching the upper threshold. Monitor costs closely.
+          </div>
+        </div>
+
+        <!-- Payroll Report Tab (existing) -->
+
         <div v-if="selectedReportType === 'payroll'" class="payroll-report">
           <!-- Report Filters -->
           <div class="card mb-6">
@@ -390,7 +688,7 @@
                 <label class="filter-label">Employee</label>
                 <select v-model="payrollFilters.employeeId" class="filter-select">
                   <option value="all">All Employees</option>
-                  <option v-for="emp in payrollData.employees" :key="emp.id" :value="emp.id">
+                  <option v-for="emp in payrollEmployees" :key="emp.id" :value="emp.id">
                     {{ emp.name }}
                   </option>
                 </select>
@@ -412,6 +710,12 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                     Generate Report
+                  </button>
+                  <button @click="exportPayrollToExcel" class="btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="btn-icon">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export to Excel
                   </button>
                   <button @click="printReport" class="btn-print">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="btn-icon">
@@ -501,9 +805,10 @@ const { ipcRenderer } = window.require('electron');
 const selectedReportType = ref('sales');
 const showExportMenu = ref(false);
 const reportTabs = [
-  { id: 'sales', label: 'Sales Report' },
-  { id: 'inventory', label: 'Inventory Report' },
-  { id: 'payroll', label: 'Payroll Report' }
+  { id: 'sales', label: 'Sales Analytics' },
+  { id: 'financial', label: 'Financial Summary' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'payroll', label: 'Payroll' }
 ];
 
 const selectedPeriod = ref('today');
@@ -526,6 +831,9 @@ const payrollFilters = ref({
   employeeId: 'all',
   department: 'all'
 });
+
+// List of employees to populate payroll employee filter
+const payrollEmployees = ref([]);
 
 const metrics = ref({
   totalRevenue: 0,
@@ -555,20 +863,70 @@ const payrollData = ref({
   employees: []
 });
 
+// Analytics data refs
+const performersData = ref({
+  topPerformers: [],
+  bottomPerformers: []
+});
+
+const inventoryAnalytics = ref({
+  totalValue: 0,
+  averageTurnover: 0,
+  lowStockItems: [],
+  wasteData: []
+});
+
+const costsData = ref({
+  foodCostPercentage: 0,
+  laborCostPercentage: 0,
+  primeCost: 0,
+  foodCostTrend: [],
+  laborCostTrend: []
+});
+
+const employeePerformance = ref({
+  employees: []
+});
+
+const peakHoursData = ref({
+  heatmapData: [],
+  hourLabels: [],
+  dayLabels: []
+});
+
+const customerInsights = ref({
+  avgTransaction: 0,
+  minTransaction: 0,
+  maxTransaction: 0,
+  popularCombos: []
+});
+
+const financialSummary = ref({
+  revenue: 0,
+  expenses: 0,
+  profit: 0,
+  profitMargin: 0,
+  revenueBreakdown: [],
+  expenseBreakdown: []
+});
+
 const salesTrendChart = ref(null);
-const peakHoursChart = ref(null);
+// peakHoursChart removed
 const costBreakdownChart = ref(null);
 const laborCostChart = ref(null);
 
 let chartInstances = {
   salesTrend: null,
-  peakHours: null,
   costBreakdown: null,
   laborCost: null
 };
 
 const formatNumber = (num) => {
   return Number(num || 0).toFixed(2);
+};
+
+const formatInteger = (num) => {
+  return Math.round(Number(num || 0));
 };
 
 const formatDateTime = (dateStr) => {
@@ -580,6 +938,45 @@ const formatDateTime = (dateStr) => {
     minute: '2-digit',
     hour12: true
   });
+};
+
+// Heatmap helper functions
+const getHeatmapValue = (hourIndex, dayIndex) => {
+  const data = peakHoursData.value.heatmapData.find(
+    item => item.day_of_week === dayIndex && item.hour_of_day === hourIndex
+  );
+  return data ? data.transaction_count : 0;
+};
+
+const getHeatmapClass = (hourIndex, dayIndex) => {
+  const value = getHeatmapValue(hourIndex, dayIndex);
+  if (value === 0) return 'empty';
+  if (value >= 50) return 'very-busy';
+  if (value >= 30) return 'busy';
+  if (value >= 15) return 'moderate';
+  return 'light';
+};
+
+const formatHour = (hour) => {
+  if (hour === 0) return '12 AM';
+  if (hour < 12) return `${hour} AM`;
+  if (hour === 12) return '12 PM';
+  return `${hour - 12} PM`;
+};
+
+const getDayName = (dayIndex) => {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  return days[dayIndex] || '';
+};
+
+const getHeatmapTooltip = (dayIndex, hourIndex) => {
+  const data = peakHoursData.value.heatmapData.find(
+    item => item.day_of_week === dayIndex && item.hour_of_day === hourIndex
+  );
+  if (!data || data.transaction_count === 0) return 'No transactions';
+  
+  const avgValue = data.avg_transaction_value ? `Avg: $${formatNumber(data.avg_transaction_value)}` : '';
+  return `${data.transaction_count} transactions\nRevenue: $${formatNumber(data.total_revenue)}\n${avgValue}`;
 };
 
 // Parse SQLite-style timestamp (YYYY-MM-DD HH:MM:SS) as local Date by constructing components
@@ -665,26 +1062,26 @@ const normalizeToDate = (ts) => {
 };
 
 const getDateRange = () => {
-  const today = new Date();
   let startDate, endDate;
+  const currentDate = new Date();
 
   switch (selectedPeriod.value) {
     case 'today':
-      startDate = new Date(today.setHours(0, 0, 0, 0));
-      endDate = new Date(today.setHours(23, 59, 59, 999));
+      startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 0, 0, 0, 0);
+      endDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 23, 59, 59, 999);
       break;
     case 'week':
-      startDate = new Date(today);
-      startDate.setDate(today.getDate() - today.getDay());
+      startDate = new Date(currentDate);
+      startDate.setDate(currentDate.getDate() - currentDate.getDay());
       startDate.setHours(0, 0, 0, 0);
       endDate = new Date();
       break;
     case 'month':
-      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       endDate = new Date();
       break;
     case 'year':
-      startDate = new Date(today.getFullYear(), 0, 1);
+      startDate = new Date(currentDate.getFullYear(), 0, 1);
       endDate = new Date();
       break;
     case 'custom':
@@ -695,20 +1092,48 @@ const getDateRange = () => {
   }
 
   return {
-    start: startDate.toISOString().split('T')[0],
-    end: endDate.toISOString().split('T')[0],
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0]
+    start: getLocalDateString(startDate),
+    end: getLocalDateString(endDate),
+    startDate: getLocalDateString(startDate),
+    endDate: getLocalDateString(endDate)
   };
+};
+
+const getLocalDateString = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 const loadReports = async () => {
   try {
+    // Destroy all chart instances before loading new data
+    Object.keys(chartInstances).forEach(key => {
+      if (chartInstances[key]) {
+        try {
+          chartInstances[key].destroy();
+        } catch (e) {
+          console.warn(`Failed to destroy chart ${key}:`, e);
+        }
+        chartInstances[key] = null;
+      }
+    });
+    
+    // Wait for charts to fully destroy and DOM to update
+    await new Promise(resolve => setTimeout(resolve, 250));
+    await nextTick();
+    
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     const dateRange = getDateRange();
 
     if (selectedReportType.value === 'sales') {
       await loadSalesReport(currentUser, dateRange);
+      await loadPerformersReport(currentUser.businessId, dateRange);
+      await loadPeakHoursReport(currentUser.businessId, dateRange);
+    } else if (selectedReportType.value === 'financial') {
+      await loadFinancialSummaryReport(currentUser.businessId, dateRange);
+      await loadCostsReport(currentUser.businessId, dateRange);
     } else if (selectedReportType.value === 'inventory') {
       await loadInventoryReport(currentUser.businessId);
     } else if (selectedReportType.value === 'payroll') {
@@ -719,6 +1144,33 @@ const loadReports = async () => {
   }
 };
 
+// Debug helper: fetch raw DB rows for current UI date range and log them
+const debugFetchRaw = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser || !currentUser.businessId) {
+      console.warn('Debug fetch: currentUser not found in localStorage');
+      return;
+    }
+    const dateRange = getDateRange();
+    const rows = await ipcRenderer.invoke('debug:get-raw-transactions', {
+      businessId: currentUser.businessId,
+      startDate: dateRange.start,
+      endDate: dateRange.end
+    });
+    console.log('DEBUG raw transactions rows:', rows);
+    if (Array.isArray(rows)) {
+      rows.slice(0, 50).forEach(r => {
+        console.log(`DEBUG ROW id=${r.id} created_at=${r.created_at} total=${r.total} cashier=${r.cashier_name}`);
+      });
+    } else {
+      console.log('DEBUG result:', rows);
+    }
+  } catch (e) {
+    console.error('debugFetchRaw failed', e);
+  }
+};
+
 const loadSalesReport = async (currentUser, dateRange) => {
   // Load transactions for the period
   const transactions = await ipcRenderer.invoke('pos:get-transactions-by-date', {
@@ -726,6 +1178,8 @@ const loadSalesReport = async (currentUser, dateRange) => {
     startDate: dateRange.start,
     endDate: dateRange.end
   });
+
+  console.log('[Reports] Transactions returned:', transactions?.length, transactions?.slice?.(0, 3));
 
   // Apply filters
   let filteredTransactions = transactions;
@@ -745,15 +1199,15 @@ const loadSalesReport = async (currentUser, dateRange) => {
 
   // Calculate metrics
   const completedTransactions = filteredTransactions.filter(t => t.status === 'completed');
+  console.log('[Reports] Completed transactions count:', completedTransactions.length, completedTransactions.slice(0, 3));
   metrics.value.totalRevenue = completedTransactions.reduce((sum, t) => sum + parseFloat(t.total || 0), 0);
   metrics.value.totalTransactions = completedTransactions.length;
   metrics.value.averageOrderValue = completedTransactions.length > 0 
     ? metrics.value.totalRevenue / completedTransactions.length 
     : 0;
   
-  // Count unique customers
-  const uniqueCustomerIds = new Set(completedTransactions.filter(t => t.customer_id).map(t => t.customer_id));
-  metrics.value.uniqueCustomers = uniqueCustomerIds.size;
+  // Count all transactions as unique customers (each transaction = 1 customer)
+  metrics.value.uniqueCustomers = completedTransactions.length;
 
   // Calculate changes vs previous period
   const previousPeriodData = await getPreviousPeriodData(currentUser.businessId, dateRange);
@@ -762,8 +1216,7 @@ const loadSalesReport = async (currentUser, dateRange) => {
   metrics.value.aovChange = calculatePercentageChange(metrics.value.averageOrderValue, previousPeriodData.avgOrderValue);
   metrics.value.customerChange = calculatePercentageChange(metrics.value.uniqueCustomers, previousPeriodData.customers);
 
-  // Get top selling items
-  await loadTopItems(currentUser.businessId, dateRange, completedTransactions);
+  await loadTopSellingItems(currentUser.businessId);
 
   // Get payment methods breakdown from payment_methods table
   await loadPaymentMethods(currentUser.businessId, dateRange);
@@ -791,50 +1244,34 @@ const loadSalesReport = async (currentUser, dateRange) => {
 
   // Render charts after data is loaded
   await nextTick();
-  await renderCharts(completedTransactions, currentUser.businessId, { startDate: dateRange.start, endDate: dateRange.end });
-};
-
-const loadInventoryReport = async (businessId) => {
+  // If backend returned no completed transactions for the selected period,
+  // try the debug IPC to fetch raw DB rows (expanded UTC window) and use those for charting.
+  let transactionsForCharts = completedTransactions;
   try {
-    const items = await ipcRenderer.invoke('inventory:get-all-items', businessId);
-    
-    // Apply filters
-    let filteredItems = items;
-    
-    if (inventoryFilters.value.category !== 'all') {
-      filteredItems = filteredItems.filter(item => item.category === inventoryFilters.value.category);
-    }
-    
-    if (inventoryFilters.value.supplier) {
-      filteredItems = filteredItems.filter(item => 
-        item.supplier && item.supplier.toLowerCase().includes(inventoryFilters.value.supplier.toLowerCase())
-      );
-    }
-    
-    if (inventoryFilters.value.stockStatus === 'low') {
-      filteredItems = filteredItems.filter(item => {
-        const minQty = item.minimum_quantity || item.min_quantity || 0;
-        return item.quantity <= minQty;
+    if ((!transactionsForCharts || transactionsForCharts.length === 0) && window && window.ipcRenderer) {
+      console.warn('[Reports] No completed transactions returned — attempting debug:get-raw-transactions fallback');
+      const raw = await ipcRenderer.invoke('debug:get-raw-transactions', {
+        businessId: currentUser.businessId,
+        startDate: dateRange.start,
+        endDate: dateRange.end
       });
-    } else if (inventoryFilters.value.stockStatus === 'in-stock') {
-      filteredItems = filteredItems.filter(item => {
-        const minQty = item.minimum_quantity || item.min_quantity || 0;
-        return item.quantity > minQty;
-      });
+      if (Array.isArray(raw) && raw.length > 0) {
+        // Map raw rows to the transaction shape expected by renderCharts
+        transactionsForCharts = raw.map(r => ({
+          id: r.id,
+          created_at: r.created_at,
+          total: r.total,
+          status: r.status || 'completed',
+          cashier_id: r.cashier_id || r.cashierId || null
+        }));
+        console.log('[Reports] Using debug fallback rows for charts, count=', transactionsForCharts.length);
+      }
     }
-    
-    inventoryData.value.items = filteredItems;
-    inventoryData.value.totalItems = filteredItems.length;
-    inventoryData.value.lowStockCount = filteredItems.filter(item => item.quantity <= (item.minimum_quantity || item.min_quantity || 0)).length;
-    inventoryData.value.totalValue = filteredItems.reduce((sum, item) => {
-      const qty = parseFloat(item.quantity || 0);
-      const cost = parseFloat(item.unit_cost || 0);
-      return sum + (qty * cost);
-    }, 0);
-  } catch (error) {
-    console.error('Error loading inventory report:', error);
-    inventoryData.value = { totalItems: 0, lowStockCount: 0, totalValue: 0, items: [] };
+  } catch (e) {
+    console.error('[Reports] debug fallback failed', e);
   }
+
+  await renderCharts(transactionsForCharts, currentUser.businessId, { startDate: dateRange.start, endDate: dateRange.end });
 };
 
 const loadPayrollReport = async (businessId, dateRange) => {
@@ -882,6 +1319,293 @@ const loadPayrollReport = async (businessId, dateRange) => {
   } catch (error) {
     console.error('Error loading payroll report:', error);
     payrollData.value = { totalHours: 0, totalPayroll: 0, employees: [] };
+  }
+};
+
+// Load Top/Bottom Performers Report
+const loadPerformersReport = async (businessId, dateRange) => {
+  try {
+    const result = await ipcRenderer.invoke('analytics:top-bottom-performers', {
+      businessId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+      limit: 10
+    });
+    
+    if (result && result.values) {
+      const performers = result.values.map(row => ({
+        item_name: row[0],
+        quantity_sold: row[1],
+        revenue: row[2],
+        estimated_cost: row[3],
+        estimated_profit: row[4],
+        profit_margin: row[5]
+      }));
+      
+      performersData.value.topPerformers = performers.slice(0, 10);
+      performersData.value.bottomPerformers = performers.slice(-10).reverse();
+    } else {
+      performersData.value = { topPerformers: [], bottomPerformers: [] };
+    }
+  } catch (error) {
+    console.error('Error loading performers report:', error);
+    performersData.value = { topPerformers: [], bottomPerformers: [] };
+  }
+};
+
+// Load Inventory Analytics Report
+const loadInventoryReport = async (businessId) => {
+  try {
+    const items = await ipcRenderer.invoke('inventory:get-all-items', businessId);
+    
+    // Apply filters
+    let filteredItems = items;
+    
+    if (inventoryFilters.value.category !== 'all') {
+      filteredItems = filteredItems.filter(item => item.category === inventoryFilters.value.category);
+    }
+    
+    if (inventoryFilters.value.supplier) {
+      filteredItems = filteredItems.filter(item => 
+        item.supplier && item.supplier.toLowerCase().includes(inventoryFilters.value.supplier.toLowerCase())
+      );
+    }
+    
+    if (inventoryFilters.value.stockStatus === 'low') {
+      filteredItems = filteredItems.filter(item => {
+        const minQty = item.minimum_quantity || item.min_quantity || 0;
+        return item.quantity <= minQty;
+      });
+    } else if (inventoryFilters.value.stockStatus === 'in-stock') {
+      filteredItems = filteredItems.filter(item => {
+        const minQty = item.minimum_quantity || item.min_quantity || 0;
+        return item.quantity > minQty;
+      });
+    }
+    
+    inventoryData.value.items = filteredItems;
+    inventoryData.value.totalItems = filteredItems.length;
+    inventoryData.value.lowStockCount = filteredItems.filter(item => item.quantity <= (item.minimum_quantity || item.min_quantity || 0)).length;
+    inventoryData.value.totalValue = filteredItems.reduce((sum, item) => {
+      const qty = parseFloat(item.quantity || 0);
+      const cost = parseFloat(item.unit_cost || 0);
+      return sum + (qty * cost);
+    }, 0);
+    
+    // Load analytics data
+    const analyticsResult = await ipcRenderer.invoke('analytics:inventory', businessId);
+    if (analyticsResult && analyticsResult.values) {
+      const analytics = analyticsResult.values.map(row => ({
+        item_name: row[0],
+        quantity: row[1],
+        unit_cost: row[2],
+        total_value: row[3],
+        turnover_rate: row[4],
+        sold_last_30_days: row[5],
+        stock_status: row[6]
+      }));
+      
+      inventoryAnalytics.value.totalValue = analytics.reduce((sum, item) => sum + (parseFloat(item.total_value) || 0), 0);
+      inventoryAnalytics.value.averageTurnover = analytics.length > 0
+        ? analytics.reduce((sum, item) => sum + (parseFloat(item.turnover_rate) || 0), 0) / analytics.length
+        : 0;
+      inventoryAnalytics.value.lowStockItems = analytics.filter(item => item.stock_status === 'low');
+    }
+    
+    // Load waste data
+    const dateRange = getDateRange();
+    const wasteResult = await ipcRenderer.invoke('analytics:waste', {
+      businessId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    });
+    
+    if (wasteResult && wasteResult.values) {
+      inventoryAnalytics.value.wasteData = wasteResult.values.map(row => ({
+        item_name: row[0],
+        total_quantity: row[1],
+        total_cost: row[2],
+        reason: row[3]
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading inventory report:', error);
+    inventoryData.value = { totalItems: 0, lowStockCount: 0, totalValue: 0, items: [] };
+    inventoryAnalytics.value = { totalValue: 0, averageTurnover: 0, lowStockItems: [], wasteData: [] };
+  }
+};
+
+// Load Cost Analysis Report
+const loadCostsReport = async (businessId, dateRange) => {
+  try {
+    const result = await ipcRenderer.invoke('analytics:cost-analysis', {
+      businessId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    });
+    
+    if (result && result.foodCost && result.foodCost.values && result.laborCost && result.laborCost.values) {
+      // Calculate average percentages
+      const foodCostData = result.foodCost.values.map(row => ({
+        date: row[0],
+        revenue: row[1],
+        food_cost: row[2],
+        food_cost_percentage: row[3]
+      }));
+      
+      const laborCostData = result.laborCost.values.map(row => ({
+        date: row[0],
+        revenue: row[1],
+        labor_cost: row[2],
+        labor_cost_percentage: row[3]
+      }));
+      
+      costsData.value.foodCostTrend = foodCostData;
+      costsData.value.laborCostTrend = laborCostData;
+      
+      // Calculate averages
+      costsData.value.foodCostPercentage = foodCostData.length > 0
+        ? foodCostData.reduce((sum, d) => sum + (parseFloat(d.food_cost_percentage) || 0), 0) / foodCostData.length
+        : 0;
+      
+      costsData.value.laborCostPercentage = laborCostData.length > 0
+        ? laborCostData.reduce((sum, d) => sum + (parseFloat(d.labor_cost_percentage) || 0), 0) / laborCostData.length
+        : 0;
+      
+      costsData.value.primeCost = costsData.value.foodCostPercentage + costsData.value.laborCostPercentage;
+    }
+  } catch (error) {
+    console.error('Error loading costs report:', error);
+    costsData.value = { foodCostPercentage: 0, laborCostPercentage: 0, primeCost: 0, foodCostTrend: [], laborCostTrend: [] };
+  }
+};
+
+// Load Employee Performance Report
+const loadEmployeePerformanceReport = async (businessId, dateRange) => {
+  try {
+    const result = await ipcRenderer.invoke('analytics:employee-performance', {
+      businessId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    });
+    
+    if (result && result.values) {
+      employeePerformance.value.employees = result.values.map(row => ({
+        employee_name: row[0],
+        total_hours: row[1],
+        overtime_hours: row[2],
+        total_labor_cost: row[3],
+        sales_per_labor_hour: row[4]
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading employee performance report:', error);
+    employeePerformance.value = { employees: [] };
+  }
+};
+
+// Load Peak Hours Report
+const loadPeakHoursReport = async (businessId, dateRange) => {
+  try {
+    const result = await ipcRenderer.invoke('analytics:peak-hours', {
+      businessId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    });
+    
+    console.log('Peak hours raw result:', result);
+    
+    if (result && result.values) {
+      // SQLite strftime('%w') returns: 0=Sunday, 1=Monday, ..., 6=Saturday
+      // UI table expects: 0=Monday, 1=Tuesday, ..., 6=Sunday
+      // So we need to convert: (day_of_week + 6) % 7
+      const heatmap = result.values.map(row => ({
+        day_of_week: (parseInt(row[0]) + 6) % 7, // Convert Sunday=0 to Sunday=6
+        hour_of_day: parseInt(row[1]),
+        transaction_count: row[2],
+        total_revenue: row[3],
+        avg_transaction_value: row[4]
+      }));
+      
+      console.log('Processed heatmap data:', heatmap);
+      
+      peakHoursData.value.heatmapData = heatmap;
+      peakHoursData.value.dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      peakHoursData.value.hourLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+    }
+  } catch (error) {
+    console.error('Error loading peak hours report:', error);
+    peakHoursData.value = { heatmapData: [], hourLabels: [], dayLabels: [] };
+  }
+};
+
+// Load Customer Insights Report
+const loadCustomerInsightsReport = async (businessId, dateRange) => {
+  try {
+    const result = await ipcRenderer.invoke('analytics:customer-insights', {
+      businessId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    });
+    
+    if (result && result.avgTransaction && result.avgTransaction.values && result.avgTransaction.values.length > 0) {
+      const avg = result.avgTransaction.values[0];
+      customerInsights.value.avgTransaction = avg[0] || 0;
+      customerInsights.value.minTransaction = avg[1] || 0;
+      customerInsights.value.maxTransaction = avg[2] || 0;
+    }
+    
+    if (result && result.popularCombos && result.popularCombos.values) {
+      customerInsights.value.popularCombos = result.popularCombos.values.map(row => ({
+        item_combo: row[0],
+        combo_count: row[1]
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading customer insights report:', error);
+    customerInsights.value = { avgTransaction: 0, minTransaction: 0, maxTransaction: 0, popularCombos: [] };
+  }
+};
+
+// Load Financial Summary Report
+const loadFinancialSummaryReport = async (businessId, dateRange) => {
+  try {
+    const result = await ipcRenderer.invoke('analytics:financial-summary', {
+      businessId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    });
+    
+    if (result && result.revenue && result.expenses) {
+      // Parse revenue data
+      const revenueData = result.revenue.values && result.revenue.values.length > 0 
+        ? result.revenue.values[0] 
+        : [0, 0, 0, 0];
+      
+      const totalRevenue = parseFloat(revenueData[0]) || 0;
+      const totalTax = parseFloat(revenueData[1]) || 0;
+      
+      // Parse expense data
+      const expenseData = result.expenses.values && result.expenses.values.length > 0 
+        ? result.expenses.values[0] 
+        : [0, 0];
+      
+      const laborCost = parseFloat(expenseData[0]) || 0;
+      const inventoryPurchases = parseFloat(expenseData[1]) || 0;
+      const totalExpenses = laborCost + inventoryPurchases;
+      
+      // Calculate profit and margin
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+      
+      financialSummary.value.revenue = totalRevenue;
+      financialSummary.value.expenses = totalExpenses;
+      financialSummary.value.profit = netProfit;
+      financialSummary.value.profitMargin = profitMargin;
+    }
+  } catch (error) {
+    console.error('Error loading financial summary report:', error);
+    financialSummary.value = { revenue: 0, expenses: 0, profit: 0, profitMargin: 0, revenueBreakdown: [], expenseBreakdown: [] };
   }
 };
 
@@ -1002,16 +1726,19 @@ const exportToPDF = () => {
       ]
     });
 
-    // Employee payroll
+    // Employee payroll (detailed)
     if (payrollData.value.employees.length > 0) {
       doc.autoTable({
         startY: doc.lastAutoTable.finalY + 10,
-        head: [['Employee', 'Hours', 'Hourly Rate', 'Gross Pay']],
+        head: [['Employee', 'Regular Hours', 'Overtime Hours', 'Pay Rate', 'Regular Pay', 'Overtime Pay', 'Total Pay']],
         body: payrollData.value.employees.map(emp => [
           emp.name,
-          formatNumber(emp.hours),
-          `$${formatNumber(emp.hourly_rate)}`,
-          `$${formatNumber(emp.gross_pay)}`
+          emp.regularHours !== undefined ? emp.regularHours.toFixed(2) : formatNumber(emp.regularHours || 0),
+          emp.overtimeHours !== undefined ? emp.overtimeHours.toFixed(2) : formatNumber(emp.overtimeHours || 0),
+          `$${formatNumber(emp.payRate || emp.hourly_rate || 0)}`,
+          `$${formatNumber(emp.regularPay || emp.regular_pay || 0)}`,
+          `$${formatNumber(emp.overtimePay || emp.overtime_pay || 0)}`,
+          `$${formatNumber(emp.totalPay || emp.gross_pay || 0)}`
         ])
       });
     }
@@ -1114,16 +1841,19 @@ const exportToExcel = () => {
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
 
-    // Employees sheet
+    // Employees sheet (detailed payroll)
     if (payrollData.value.employees.length > 0) {
       const employeesData = [
-        ['Employee ID', 'Employee Name', 'Hours', 'Hourly Rate', 'Gross Pay'],
+        ['Employee ID', 'Employee Name', 'Regular Hours', 'Overtime Hours', 'Hourly Rate', 'Regular Pay', 'Overtime Pay', 'Total Pay'],
         ...payrollData.value.employees.map(emp => [
           emp.id,
           emp.name,
-          parseFloat(emp.hours),
-          parseFloat(emp.hourly_rate),
-          parseFloat(emp.gross_pay)
+          parseFloat(emp.regularHours || emp.regular_hours || 0),
+          parseFloat(emp.overtimeHours || emp.overtime_hours || 0),
+          parseFloat(emp.payRate || emp.hourly_rate || 0),
+          parseFloat(emp.regularPay || emp.regular_pay || 0),
+          parseFloat(emp.overtimePay || emp.overtime_pay || 0),
+          parseFloat(emp.totalPay || emp.gross_pay || 0)
         ])
       ];
       const employeesSheet = XLSX.utils.aoa_to_sheet(employeesData);
@@ -1140,41 +1870,189 @@ const printReport = () => {
   window.print();
 };
 
-const renderCharts = async (transactions, businessId, dateRange) => {
-  // Destroy existing charts
-  Object.values(chartInstances).forEach(chart => {
-    if (chart) chart.destroy();
-  });
-
-  if (!salesTrendChart.value) return;
-
-  const totalRevenue = metrics.value.totalRevenue;
-
-  // 1. Sales Trend Chart (Last 7 Days)
-  const last7Days = [];
-  const salesByDay = {};
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
-    last7Days.push(dateStr);
-    salesByDay[dateStr] = 0;
+const exportPayrollToExcel = () => {
+  if (!payrollData.value || payrollData.value.employees.length === 0) {
+    alert('No payroll data to export. Please generate a report first.');
+    return;
   }
 
-  transactions.forEach(t => {
-    const dateKey = normalizeToISODate(t.created_at) || normalizeToISODate(t.created_at?.created_at) || null;
-    if (dateKey && salesByDay.hasOwnProperty(dateKey)) {
-      salesByDay[dateKey] += parseFloat(t.total || 0) || 0;
+  // Prepare data for Excel
+  const excelData = payrollData.value.employees.map(emp => ({
+    'Employee Name': emp.name,
+    'Regular Hours': emp.regularHours.toFixed(2),
+    'Overtime Hours': emp.overtimeHours.toFixed(2),
+    'Pay Rate': `$${emp.payRate.toFixed(2)}`,
+    'Regular Pay': `$${emp.regularPay.toFixed(2)}`,
+    'Overtime Pay': `$${emp.overtimePay.toFixed(2)}`,
+    'Total Pay': `$${emp.totalPay.toFixed(2)}`
+  }));
+
+  // Add summary row
+  excelData.push({
+    'Employee Name': 'TOTAL',
+    'Regular Hours': payrollData.value.employees.reduce((sum, e) => sum + e.regularHours, 0).toFixed(2),
+    'Overtime Hours': payrollData.value.employees.reduce((sum, e) => sum + e.overtimeHours, 0).toFixed(2),
+    'Pay Rate': '',
+    'Regular Pay': `$${payrollData.value.employees.reduce((sum, e) => sum + e.regularPay, 0).toFixed(2)}`,
+    'Overtime Pay': `$${payrollData.value.employees.reduce((sum, e) => sum + e.overtimePay, 0).toFixed(2)}`,
+    'Total Pay': `$${payrollData.value.totalPayroll.toFixed(2)}`
+  });
+
+  // Create worksheet and workbook
+  const worksheet = XLSX.utils.json_to_sheet(excelData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Payroll Report');
+
+  // Set column widths
+  const maxWidth = 20;
+  worksheet['!cols'] = [
+    { wch: 25 }, // Employee Name
+    { wch: 15 }, // Regular Hours
+    { wch: 15 }, // Overtime Hours
+    { wch: 12 }, // Pay Rate
+    { wch: 15 }, // Regular Pay
+    { wch: 15 }, // Overtime Pay
+    { wch: 15 }  // Total Pay
+  ];
+
+  // Generate filename with date range
+  const startDate = filters.value.startDate || 'all';
+  const endDate = filters.value.endDate || 'all';
+  const filename = `Payroll_Report_${startDate}_to_${endDate}.xlsx`;
+
+  // Download file
+  XLSX.writeFile(workbook, filename);
+};
+
+const renderCharts = async (transactions, businessId, dateRange) => {
+  // Destroy all existing chart instances
+  Object.keys(chartInstances).forEach(key => {
+    if (chartInstances[key]) {
+      try {
+        chartInstances[key].destroy();
+      } catch (e) {
+        console.warn(`Chart ${key} already destroyed:`, e);
+      }
+      chartInstances[key] = null;
     }
   });
+
+  // Wait for DOM to update
+  await nextTick();
+
+  // Check if canvas elements exist
+  if (!salesTrendChart.value || !costBreakdownChart.value || !laborCostChart.value) {
+    console.error('Chart canvas elements not found');
+    return;
+  }
+
+  // Clear canvas contexts to ensure clean slate
+  [salesTrendChart.value, costBreakdownChart.value, laborCostChart.value].forEach(canvas => {
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  });
+
+  const totalRevenue = metrics.value.totalRevenue;
+  
+  console.log('Rendering charts with dateRange:', dateRange);
+  console.log('Total revenue:', totalRevenue);
+  console.log('Selected period:', selectedPeriod.value);
+
+  // 1. Sales Trend Chart - Dynamic based on period
+  let chartLabels = [];
+  let chartData = [];
+  let chartLabel = 'Sales ($)';
+  
+  if (selectedPeriod.value === 'today') {
+    // For "today", show hourly breakdown
+    const salesByHour = {};
+    for (let h = 0; h < 24; h++) {
+      salesByHour[h] = 0;
+    }
+    
+    transactions.forEach(t => {
+      try {
+        const timestamp = t.created_at;
+        let hour = null;
+        
+        // Try to extract hour from timestamp
+        if (timestamp) {
+          const dateObj = new Date(timestamp);
+          if (!isNaN(dateObj.getTime())) {
+            hour = dateObj.getHours();
+          } else if (typeof timestamp === 'string' && timestamp.includes(' ')) {
+            // Try parsing "YYYY-MM-DD HH:MM:SS" format
+            const timePart = timestamp.split(' ')[1];
+            if (timePart) {
+              hour = parseInt(timePart.split(':')[0], 10);
+            }
+          }
+        }
+        
+        if (hour !== null && hour >= 0 && hour < 24) {
+          salesByHour[hour] += parseFloat(t.total || 0) || 0;
+        }
+      } catch (e) {
+        console.warn('Error parsing transaction time:', e);
+      }
+    });
+    
+    chartLabels = Array.from({ length: 24 }, (_, h) => {
+      const period = h < 12 ? 'AM' : 'PM';
+      const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      return `${displayHour}${period}`;
+    });
+    chartData = Array.from({ length: 24 }, (_, h) => salesByHour[h]);
+    chartLabel = 'Hourly Sales ($)';
+    
+  } else {
+    // For week, month, year, custom - show daily breakdown
+    const last7Days = [];
+    const salesByDay = {};
+    
+    // Determine how many days to show
+    let daysToShow = 7;
+    if (selectedPeriod.value === 'month') {
+      daysToShow = 30;
+    } else if (selectedPeriod.value === 'year') {
+      daysToShow = 365;
+    } else if (selectedPeriod.value === 'custom' && dateRange.startDate && dateRange.endDate) {
+      const start = new Date(dateRange.startDate);
+      const end = new Date(dateRange.endDate);
+      daysToShow = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    
+    for (let i = daysToShow - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      last7Days.push(dateStr);
+      salesByDay[dateStr] = 0;
+    }
+
+    transactions.forEach(t => {
+      const dateKey = normalizeToISODate(t.created_at) || normalizeToISODate(t.created_at?.created_at) || null;
+      if (dateKey && salesByDay.hasOwnProperty(dateKey)) {
+        salesByDay[dateKey] += parseFloat(t.total || 0) || 0;
+      }
+    });
+    
+    chartLabels = last7Days.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    chartData = last7Days.map(d => salesByDay[d]);
+    chartLabel = 'Daily Sales ($)';
+  }
 
   chartInstances.salesTrend = new Chart(salesTrendChart.value, {
     type: 'line',
     data: {
-      labels: last7Days.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+      labels: chartLabels,
       datasets: [{
-        label: 'Daily Sales ($)',
-        data: last7Days.map(d => salesByDay[d]),
+        label: chartLabel,
+        data: chartData,
         borderColor: '#3b82f6',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         tension: 0.4,
@@ -1209,196 +2087,88 @@ const renderCharts = async (transactions, businessId, dateRange) => {
     }
   });
 
-  // 2. Peak Hours Chart
-  const hourCounts = Array(24).fill(0);
-  const hourTxCounts = Array(24).fill(0);
-  
-  // Debug: Log first transaction to check timezone
-  if (transactions.length > 0) {
-    const firstTx = transactions[0];
-    console.log('Sample transaction timestamp:', firstTx.created_at);
-    console.log('Parsed as Date:', new Date(firstTx.created_at));
-    console.log('Local hour:', new Date(firstTx.created_at).getHours());
-    console.log('Current local time:', new Date());
-    console.log('Current local hour:', new Date().getHours());
-  }
-  
-  transactions.forEach(t => {
-    try {
-      const orig = t.created_at || t.timestamp || t.createdAt || null;
-      const transactionDate = normalizeToDate(orig) || null;
-      const parsedStr = transactionDate ? transactionDate.toISOString() : null;
-      const hour = transactionDate ? transactionDate.getHours() : null;
-      const amount = parseFloat(t.total || t.amount || 0) || 0;
-      console.log('[Reports] tx id=', t.id, 'orig=', orig, 'parsed=', parsedStr, 'hour=', hour, 'amount=', amount);
-      if (hour !== null && hour >= 0 && hour < 24) {
-        hourCounts[hour] += amount;
-        hourTxCounts[hour] += 1;
-      }
-    } catch (err) {
-      console.error('Error processing transaction for peak hours', t && t.id, err);
-    }
-  });
-
-  const operatingHours = hourCounts.slice(6, 23); // 6 AM to 10 PM
-  const operatingTxCounts = hourTxCounts.slice(6, 23);
-  const hourLabels = [];
-  for (let i = 6; i < 23; i++) {
-    const period = i < 12 ? 'AM' : 'PM';
-    const displayHour = i % 12 || 12;
-    hourLabels.push(`${displayHour}${period}`);
-  }
-
-  // Get current hour for display (optional: highlight current hour)
-  const currentHour = new Date().getHours();
-  const currentHourIndex = currentHour - 6; // Adjust for 6 AM start
-  // Defensive rendering: ensure canvas exists and data are valid
-  try {
-    if (!peakHoursChart.value) throw new Error('peakHours canvas not mounted');
-
-    const peakData = operatingHours.map(v => Number(v) || 0);
-    const peakTxData = operatingTxCounts.map(v => Number(v) || 0);
-    console.log('Peak hours labels:', hourLabels);
-    console.log('Peak hours data:', peakData, 'txCounts:', peakTxData);
-
-    chartInstances.peakHours = new Chart(peakHoursChart.value, {
-      type: 'bar',
-      data: {
-        labels: hourLabels,
-        datasets: [{
-          label: 'Sales by Hour',
-          data: peakData,
-          backgroundColor: peakData.map((_, index) => 
-            index === currentHourIndex ? 'rgba(16, 185, 129, 0.6)' : 'rgba(139, 92, 246, 0.6)'
-          ),
-          borderColor: peakData.map((_, index) => 
-            index === currentHourIndex ? '#10b981' : '#8b5cf6'
-          ),
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                const value = (context.parsed.y || 0).toFixed(2);
-                const idx = context.dataIndex || 0;
-                const txCount = peakTxData && peakTxData[idx] ? peakTxData[idx] : 0;
-                return [`$${value}`, `${txCount} transaction${txCount !== 1 ? 's' : ''}`];
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (value) => `$${value}`,
-              color: '#9ca3af'
-            },
-            grid: { color: 'rgba(75, 85, 99, 0.2)' }
-          },
-          x: {
-            ticks: { color: '#9ca3af' },
-            grid: { display: false }
-          }
-        }
-      }
-    });
-  } catch (err) {
-    console.error('Error rendering Peak Hours chart:', err);
-    // Create a minimal fallback chart so UI isn't blank
-    try {
-      const fallbackData = Array(hourLabels.length).fill(0);
-      if (peakHoursChart.value) {
-        chartInstances.peakHours = new Chart(peakHoursChart.value, {
-          type: 'bar',
-          data: { labels: hourLabels, datasets: [{ label: 'Sales by Hour', data: fallbackData, backgroundColor: 'rgba(107,114,128,0.2)', borderWidth: 0 }] },
-          options: { responsive: true, maintainAspectRatio: false }
-        });
-      }
-    } catch (err2) {
-      console.error('Failed to render fallback Peak Hours chart:', err2);
-    }
-  }
+  // Peak Hours chart removed
 
   // 3. Cost Breakdown Chart (Real expense data)
-  let foodCost = 0;
-  let overheadCost = 0;
+  let otherExpenses = 0;
   try {
-    // Get expenses by category to separate food costs from overhead
-    console.log('Fetching expenses by category with params:', { businessId, startDate: dateRange.startDate, endDate: dateRange.endDate });
-    const expensesByCategory = await ipcRenderer.invoke('expense:get-by-category', {
-      businessId: businessId,
-      startDate: dateRange.startDate,
-      endDate: dateRange.endDate
+    // Get total expenses (excluding labor which comes from payroll)
+    console.log('Fetching expenses with params:', {
+      businessId,
+      startDate: dateRange.startDate || dateRange.start,
+      endDate: dateRange.endDate || dateRange.end
     });
-    console.log('Expenses by category:', expensesByCategory);
-    
-    // Separate food costs from other overhead
-    if (Array.isArray(expensesByCategory) && expensesByCategory.length > 0) {
-      expensesByCategory.forEach(cat => {
-        if (cat.category && cat.category.toLowerCase().includes('food')) {
-          foodCost += parseFloat(cat.total_amount || 0);
-        } else {
-          overheadCost += parseFloat(cat.total_amount || 0);
-        }
-      });
-    } else {
-      // Fallback: fetch raw expenses and compute totals by category client-side
-      try {
-        const rawExpenses = await ipcRenderer.invoke('expense:get-by-date', {
-          businessId,
-          startDate: dateRange.startDate || dateRange.start,
-          endDate: dateRange.endDate || dateRange.end
-        });
-        if (Array.isArray(rawExpenses) && rawExpenses.length > 0) {
-          rawExpenses.forEach(e => {
-            const amt = parseFloat(e.amount || e.total_amount || 0) || 0;
-            const cat = (e.category || '').toLowerCase();
-            if (cat.includes('food')) foodCost += amt; else overheadCost += amt;
-          });
-        }
-      } catch (err) {
-        console.error('Fallback expense fetch failed:', err);
-      }
+    const rawExpenses = await ipcRenderer.invoke('expense:get-by-date', {
+      businessId,
+      startDate: dateRange.startDate || dateRange.start,
+      endDate: dateRange.endDate || dateRange.end
+    });
+    console.log('Raw expenses response:', rawExpenses);
+    if (Array.isArray(rawExpenses) && rawExpenses.length > 0) {
+      otherExpenses = rawExpenses.reduce((sum, expense) => {
+        const amt = parseFloat(expense.amount || expense.total_amount || 0) || 0;
+        console.log(`Expense: ${expense.description} - $${amt} on ${expense.expense_date}`);
+        return sum + amt;
+      }, 0);
     }
-    
-    console.log('Food cost:', foodCost, 'Overhead cost:', overheadCost);
+    console.log('Other expenses total:', otherExpenses);
   } catch (error) {
     console.error('Error loading expenses:', error);
   }
 
-  // Calculate cost breakdown percentages
-  const laborCost = payrollData.value.totalPayroll;
-  const totalCosts = foodCost + laborCost + overheadCost;
-  const profit = Math.max(0, totalRevenue - totalCosts);
+  // Calculate labor cost directly from time logs (don't rely on payroll report being loaded)
+  let laborCost = 0;
+  try {
+    console.log('Fetching labor cost from time logs for date range:', {
+      businessId,
+      startDate: dateRange.startDate || dateRange.start,
+      endDate: dateRange.endDate || dateRange.end
+    });
+    
+    const laborResult = await ipcRenderer.invoke('analytics:cost-analysis', {
+      businessId,
+      startDate: dateRange.startDate || dateRange.start,
+      endDate: dateRange.endDate || dateRange.end
+    });
+    
+    console.log('Labor cost analysis result:', laborResult);
+    
+    // Extract labor cost from the result
+    if (laborResult && laborResult.laborCost && laborResult.laborCost.values && laborResult.laborCost.values.length > 0) {
+      // Sum up labor costs from all days in the period
+      laborCost = laborResult.laborCost.values.reduce((sum, row) => {
+        const dailyLaborCost = parseFloat(row[1]) || 0; // labor_cost is second column
+        return sum + dailyLaborCost;
+      }, 0);
+      console.log('Calculated labor cost from time logs:', laborCost);
+    }
+  } catch (error) {
+    console.error('Error calculating labor cost:', error);
+  }
+  
+  const totalExpenses = otherExpenses + laborCost;
+  const profit = Math.max(0, totalRevenue - totalExpenses);
+  
+  console.log('Cost breakdown:', { otherExpenses, laborCost, totalExpenses, profit, totalRevenue });
 
-  // Calculate percentages
-  const foodPercent = totalRevenue > 0 ? (foodCost / totalRevenue * 100) : 0;
+  // Calculate percentages of total revenue
+  const otherExpensesPercent = totalRevenue > 0 ? (otherExpenses / totalRevenue * 100) : 0;
   const laborPercent = totalRevenue > 0 ? (laborCost / totalRevenue * 100) : 0;
-  const overheadPercent = totalRevenue > 0 ? (overheadCost / totalRevenue * 100) : 0;
   const profitPercent = totalRevenue > 0 ? (profit / totalRevenue * 100) : 0;
 
   chartInstances.costBreakdown = new Chart(costBreakdownChart.value, {
     type: 'doughnut',
     data: {
-      labels: ['Food Cost', 'Labor', 'Overhead', 'Profit'],
+      labels: ['Other Expenses', 'Labor Cost', 'Profit'],
       datasets: [{
         data: [
-          parseFloat(foodPercent.toFixed(1)),
+          parseFloat(otherExpensesPercent.toFixed(1)),
           parseFloat(laborPercent.toFixed(1)),
-          parseFloat(overheadPercent.toFixed(1)),
           parseFloat(profitPercent.toFixed(1))
         ],
         backgroundColor: [
           'rgba(239, 68, 68, 0.8)',
           'rgba(245, 158, 11, 0.8)',
-          'rgba(107, 114, 128, 0.8)',
           'rgba(16, 185, 129, 0.8)'
         ],
         borderWidth: 0
@@ -1418,9 +2188,8 @@ const renderCharts = async (transactions, businessId, dateRange) => {
               const label = context.label;
               const percent = context.parsed;
               let dollarAmount = 0;
-              if (label === 'Food Cost') dollarAmount = foodCost;
-              else if (label === 'Labor') dollarAmount = laborCost;
-              else if (label === 'Overhead') dollarAmount = overheadCost;
+              if (label === 'Other Expenses') dollarAmount = otherExpenses;
+              else if (label === 'Labor Cost') dollarAmount = laborCost;
               else if (label === 'Profit') dollarAmount = profit;
               return `${label}: ${percent}% ($${dollarAmount.toFixed(2)})`;
             }
@@ -1441,15 +2210,11 @@ const renderCharts = async (transactions, businessId, dateRange) => {
         label: 'Percentage',
         data: [laborPercentage, 30],
         backgroundColor: [
-          laborPercentage > 35 ? 'rgba(239, 68, 68, 0.8)' : 
-          laborPercentage > 30 ? 'rgba(245, 158, 11, 0.8)' : 
-          'rgba(16, 185, 129, 0.8)',
+          'rgba(245, 158, 11, 0.8)', // Always use amber/yellow color to match cost breakdown
           'rgba(59, 130, 246, 0.4)'
         ],
         borderColor: [
-          laborPercentage > 35 ? '#ef4444' : 
-          laborPercentage > 30 ? '#f59e0b' : 
-          '#10b981',
+          '#f59e0b', // Amber border
           '#3b82f6'
         ],
         borderWidth: 2
@@ -1485,39 +2250,31 @@ const renderCharts = async (transactions, businessId, dateRange) => {
   });
 };
 
-const loadTopItems = async (businessId, dateRange, transactions) => {
+const loadTopSellingItems = async (businessId) => {
   try {
-    const itemSales = {};
-    
-    for (const transaction of transactions) {
-      if (transaction.transaction_items) {
-        const items = JSON.parse(transaction.transaction_items);
-        items.forEach(item => {
-          if (!itemSales[item.id]) {
-            itemSales[item.id] = {
-              id: item.id,
-              name: item.name,
-              quantitySold: 0,
-              revenue: 0
-            };
-          }
-          itemSales[item.id].quantitySold += item.quantity;
-          itemSales[item.id].revenue += item.price * item.quantity;
-        });
-      }
+    let period = 'week';
+    if (selectedPeriod.value === 'today') period = 'today';
+    else if (selectedPeriod.value === 'month') period = 'month';
+    else if (selectedPeriod.value === 'year') period = 'month';
+    else if (selectedPeriod.value === 'custom') period = 'week';
+
+    const result = await ipcRenderer.invoke('dashboard:get-top-performers', {
+      businessId,
+      period
+    });
+
+    if (result && Array.isArray(result.topItems)) {
+      topItems.value = result.topItems.map(item => ({
+        name: item.name,
+        quantitySold: item.quantity,
+        revenue: item.revenue,
+        avgPrice: item.quantity ? item.revenue / item.quantity : 0
+      }));
+    } else {
+      topItems.value = [];
     }
-    
-    const itemsArray = Object.values(itemSales).map(item => ({
-      ...item,
-      avgPrice: item.quantitySold > 0 ? item.revenue / item.quantitySold : 0
-    }));
-    
-    topItems.value = itemsArray
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10);
-      
   } catch (error) {
-    console.error('Error loading top items:', error);
+    console.error('Error loading top selling items:', error);
     topItems.value = [];
   }
 };
@@ -1556,8 +2313,14 @@ const getPreviousPeriodData = async (businessId, currentRange) => {
     
     const previousTransactions = await ipcRenderer.invoke('pos:get-transactions-by-date', {
       businessId,
-      startDate: previousStart.toISOString().split('T')[0],
-      endDate: previousEnd.toISOString().split('T')[0]
+      startDate: getLocalDateString(previousStart),
+      endDate: getLocalDateString(previousEnd)
+    });
+    
+    console.log('Previous period data:', {
+      range: `${getLocalDateString(previousStart)} to ${getLocalDateString(previousEnd)}`,
+      transactions: previousTransactions.length,
+      revenue: previousTransactions.reduce((sum, t) => sum + parseFloat(t.total || 0), 0)
     });
     
     const completedPrevious = previousTransactions.filter(t => t.status === 'completed');
@@ -1578,9 +2341,50 @@ const calculatePercentageChange = (current, previous) => {
   return Number(((current - previous) / previous * 100).toFixed(1));
 };
 
+
 onMounted(() => {
+  // Automatically load today's analytics on page load
+  loadReports();
+  // preload employee list for payroll filters
+  loadPayrollEmployees().catch(err => console.warn('Failed to preload payroll employees', err));
+});
+
+// Automatically reload when switching tabs
+watch(() => selectedReportType.value, () => {
   loadReports();
 });
+
+// Automatically reload when date range changes
+watch(() => selectedPeriod.value, () => {
+  loadReports();
+});
+
+// Load employee list when switching to payroll tab
+watch(() => selectedReportType.value, (val) => {
+  if (val === 'payroll') {
+    loadPayrollEmployees().catch(err => console.warn('Failed to load payroll employees on tab switch', err));
+  }
+});
+
+// Load employees for payroll filter
+const loadPayrollEmployees = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (!currentUser || !currentUser.businessId) return;
+    const emps = await ipcRenderer.invoke('employee:get-all', currentUser.businessId);
+    if (Array.isArray(emps)) {
+      payrollEmployees.value = emps.map(e => ({
+        id: e.id,
+        name: e.first_name || e.full_name || `${e.first_name || ''} ${e.last_name || ''}`.trim() || e.name || `Employee ${e.id}`
+      }));
+    } else {
+      payrollEmployees.value = [];
+    }
+  } catch (e) {
+    console.error('loadPayrollEmployees failed', e);
+    payrollEmployees.value = [];
+  }
+};
 
 // Watch inventory filters and auto-reload when changed
 watch(() => inventoryFilters.value.category, () => {
@@ -1889,6 +2693,11 @@ watch(() => inventoryFilters.value.stockStatus, () => {
   overflow-x: auto;
 }
 
+.transactions-scroll {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -2147,4 +2956,189 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .mb-6 { margin-bottom: 1.5rem; }
+
+/* Analytics Report Styles */
+.profit-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.profit-badge.high {
+  background-color: #10b981;
+  color: white;
+}
+
+.profit-badge.medium {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.profit-badge.low {
+  background-color: #ef4444;
+  color: white;
+}
+
+.text-success {
+  color: #10b981;
+}
+
+.text-warning {
+  color: #f59e0b;
+}
+
+.text-danger {
+  color: #ef4444;
+}
+
+.metric-subtext {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.alert-danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-left: 4px solid #ef4444;
+  color: #ef4444;
+}
+
+.efficiency-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.efficiency-badge.high {
+  background-color: #10b981;
+  color: white;
+}
+
+.efficiency-badge.medium {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.efficiency-badge.low {
+  background-color: #6b7280;
+  color: white;
+}
+
+/* Heatmap Styles */
+.heatmap-container {
+  padding: 1rem;
+}
+
+.heatmap-info {
+  margin-bottom: 1rem;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.heatmap-grid {
+  overflow-x: auto;
+}
+
+.heatmap-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+.heatmap-table th {
+  background-color: #1f2937;
+  color: #f3f4f6;
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #374151;
+}
+
+.heatmap-table td {
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.heatmap-cell {
+  background-color: #1f2937;
+  color: #9ca3af;
+}
+
+.heatmap-cell.empty {
+  background-color: #111827;
+  color: #4b5563;
+}
+
+.heatmap-cell.light {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.heatmap-cell.moderate {
+  background-color: #2563eb;
+  color: white;
+}
+
+.heatmap-cell.busy {
+  background-color: #1d4ed8;
+  color: white;
+}
+
+.heatmap-cell.very-busy {
+  background-color: #1e40af;
+  color: white;
+}
+
+.heatmap-table td:hover {
+  transform: scale(1.1);
+  z-index: 10;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Financial Summary Styles */
+.financial-summary {
+  padding: 1rem;
+}
+
+.financial-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #374151;
+}
+
+.financial-row.separator {
+  border-top: 2px solid #374151;
+  border-bottom: 2px solid #374151;
+  margin-top: 0.5rem;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.financial-label {
+  font-size: 1rem;
+  color: #d1d5db;
+}
+
+.financial-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
 </style>
