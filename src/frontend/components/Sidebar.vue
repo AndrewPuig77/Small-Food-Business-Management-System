@@ -19,14 +19,14 @@
         <span>Dashboard</span>
       </router-link>
 
-      <router-link to="/employees" class="nav-item">
+      <router-link v-if="canAccess('employees')" to="/employees" class="nav-item">
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
         <span>Employees</span>
       </router-link>
 
-      <router-link to="/inventory" class="nav-item">
+      <router-link v-if="canAccess('inventory')" to="/inventory" class="nav-item">
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
@@ -47,7 +47,7 @@
         <span>Customers</span>
       </router-link>
 
-      <router-link to="/pos" class="nav-item">
+      <router-link v-if="canAccess('pos')" to="/pos" class="nav-item">
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
@@ -68,21 +68,21 @@
         <span>Reservations</span>
       </router-link>
 
-      <router-link to="/profile" class="nav-item">
+      <router-link v-if="isOwnerOrManager" to="/profile" class="nav-item">
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
         <span>Profile</span>
       </router-link>
 
-      <router-link to="/reports" class="nav-item">
+      <router-link v-if="canAccess('reports')" to="/reports" class="nav-item">
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
         <span>Reports</span>
       </router-link>
 
-      <router-link to="/expenses" class="nav-item">
+      <router-link v-if="isOwnerOrManager" to="/expenses" class="nav-item">
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
@@ -93,19 +93,73 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 const isCollapsed = ref(false);
+const currentUser = ref(null);
+const employeeData = ref(null);
+
+const isOwnerOrManager = computed(() => {
+  return currentUser.value?.role === 'owner' || currentUser.value?.role === 'manager';
+});
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
   localStorage.setItem('sidebarCollapsed', isCollapsed.value);
 };
 
-onMounted(() => {
+const canAccess = (feature) => {
+  // Owner and manager have full access
+  if (currentUser.value?.role === 'owner' || currentUser.value?.role === 'manager') {
+    return true;
+  }
+  
+  // Staff needs specific permissions
+  if (!employeeData.value || !employeeData.value.permissions) {
+    return false;
+  }
+  
+  try {
+    const permissions = typeof employeeData.value.permissions === 'string' 
+      ? JSON.parse(employeeData.value.permissions)
+      : employeeData.value.permissions;
+    
+    const permissionMap = {
+      'pos': permissions.canAccessPOS,
+      'inventory': permissions.canViewInventory || permissions.canEditInventory,
+      'reports': permissions.canViewReports,
+      'employees': permissions.canManageEmployees,
+      'schedule': permissions.canManageSchedule,
+    };
+    
+    return permissionMap[feature] || false;
+  } catch (error) {
+    console.error('Error parsing permissions:', error);
+    return false;
+  }
+};
+
+onMounted(async () => {
   const saved = localStorage.getItem('sidebarCollapsed');
   if (saved !== null) {
     isCollapsed.value = saved === 'true';
+  }
+  
+  // Get current user
+  const stored = localStorage.getItem('currentUser');
+  if (stored) {
+    currentUser.value = JSON.parse(stored);
+    
+    // If staff, load employee data with permissions
+    if (currentUser.value.role === 'staff' && currentUser.value.userId) {
+      try {
+        const { ipcRenderer } = window.require('electron');
+        const employees = await ipcRenderer.invoke('employee:get-all', currentUser.value.businessId);
+        employeeData.value = employees.find(emp => emp.user_id === currentUser.value.userId);
+      } catch (error) {
+        console.error('Error loading employee permissions:', error);
+      }
+    }
   }
 });
 </script>
