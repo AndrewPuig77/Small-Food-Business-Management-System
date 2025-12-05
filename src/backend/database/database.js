@@ -141,6 +141,7 @@ const createTables = () => {
       hourly_rate DECIMAL(10,2),
       hire_date DATE NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
+      permissions TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id),
@@ -312,6 +313,24 @@ const createTables = () => {
     )
   `);
 
+  // Inventory waste tracking table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inventory_waste (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      item_name TEXT NOT NULL,
+      quantity DECIMAL(10,2) NOT NULL,
+      unit TEXT,
+      cost_per_unit DECIMAL(10,2),
+      reason TEXT NOT NULL,
+      notes TEXT,
+      recorded_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
   // POS Tables
   db.run(`
     CREATE TABLE IF NOT EXISTS customers (
@@ -443,6 +462,107 @@ const createTables = () => {
     )
   `);
 
+  // Time off requests table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS time_off_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      request_type TEXT NOT NULL,
+      reason TEXT,
+      status TEXT DEFAULT 'pending',
+      reviewed_by INTEGER,
+      reviewed_at DATETIME,
+      review_notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+      FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Employee availability table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS employee_availability (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      day_of_week INTEGER NOT NULL,
+      is_available BOOLEAN DEFAULT 1,
+      start_time TIME,
+      end_time TIME,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+      UNIQUE(employee_id, day_of_week)
+    )
+  `);
+
+  // Employee tasks table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS employee_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      assigned_to INTEGER,
+      assigned_by INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      task_type TEXT NOT NULL,
+      priority TEXT DEFAULT 'normal',
+      due_date DATE,
+      status TEXT DEFAULT 'pending',
+      completed_at DATETIME,
+      completed_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (assigned_to) REFERENCES employees(id) ON DELETE SET NULL,
+      FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (completed_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Announcements table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      created_by INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      priority TEXT DEFAULT 'normal',
+      target_roles TEXT,
+      is_active BOOLEAN DEFAULT 1,
+      expires_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Shift swap requests table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shift_swap_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shift_id INTEGER NOT NULL,
+      requesting_employee_id INTEGER NOT NULL,
+      target_employee_id INTEGER,
+      reason TEXT,
+      status TEXT DEFAULT 'pending',
+      reviewed_by INTEGER,
+      reviewed_at DATETIME,
+      review_notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE CASCADE,
+      FOREIGN KEY (requesting_employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_employee_id) REFERENCES employees(id) ON DELETE SET NULL,
+      FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
   // Run migrations for existing databases
   runMigrations();
   
@@ -502,6 +622,10 @@ const runMigrations = () => {
         db.run('ALTER TABLE businesses ADD COLUMN reservation_closing_hour INTEGER DEFAULT 22');
         needsSave = true;
       }
+      if (!columns.includes('tax_rate')) {
+        db.run('ALTER TABLE businesses ADD COLUMN tax_rate REAL DEFAULT 7.5');
+        needsSave = true;
+      }
       
       if (needsSave) {
         saveDatabase();
@@ -536,7 +660,9 @@ const runMigrations = () => {
         needsSave = true;
       }
       if (!columns.includes('updated_at')) {
-        db.run('ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+        // sql.js doesn't support DEFAULT CURRENT_TIMESTAMP in ALTER TABLE
+        // Add as nullable column, NULL will be handled by COALESCE in queries
+        db.run('ALTER TABLE transactions ADD COLUMN updated_at DATETIME');
         needsSave = true;
       }
       if (!columns.includes('daily_order_number')) {
@@ -551,6 +677,36 @@ const runMigrations = () => {
     }
   } catch (error) {
     console.error('Kitchen display migration error:', error);
+  }
+
+  // Add owner_code column to businesses table
+  try {
+    const businessResult = db.exec('PRAGMA table_info(businesses)');
+    if (businessResult.length > 0) {
+      const columns = businessResult[0].values.map(row => row[1]);
+      if (!columns.includes('owner_code')) {
+        db.run('ALTER TABLE businesses ADD COLUMN owner_code TEXT');
+        saveDatabase();
+        console.log('Migration completed: owner_code column added to businesses');
+      }
+    }
+  } catch (error) {
+    console.error('Owner code migration error:', error);
+  }
+
+  // Add permissions column to employees table
+  try {
+    const employeesResult = db.exec('PRAGMA table_info(employees)');
+    if (employeesResult.length > 0) {
+      const columns = employeesResult[0].values.map(row => row[1]);
+      if (!columns.includes('permissions')) {
+        db.run('ALTER TABLE employees ADD COLUMN permissions TEXT');
+        saveDatabase();
+        console.log('Migration completed: permissions column added to employees');
+      }
+    }
+  } catch (error) {
+    console.error('Permissions migration error:', error);
   }
 };
 
