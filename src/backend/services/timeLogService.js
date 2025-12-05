@@ -18,12 +18,40 @@ const getLocalDateTime = () => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-// Calculate hours worked between two timestamps
+// Parse a local datetime string in format YYYY-MM-DD HH:MM:SS into a Date (local timezone)
+const parseLocalDateTimeString = (s) => {
+  if (!s) return null;
+  const str = String(s).trim();
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10) - 1;
+  const day = parseInt(m[3], 10);
+  const hour = parseInt(m[4], 10);
+  const minute = parseInt(m[5], 10);
+  const second = parseInt(m[6], 10);
+  return new Date(year, month, day, hour, minute, second);
+};
+
+// Calculate hours worked between two timestamps (returns Number, non-negative)
 const calculateHours = (clockIn, clockOut) => {
-  const startTime = new Date(clockIn);
-  const endTime = new Date(clockOut);
-  const diffMs = endTime - startTime;
-  return (diffMs / (1000 * 60 * 60)).toFixed(2);
+  const startTime = parseLocalDateTimeString(clockIn) || new Date(clockIn);
+  const endTime = parseLocalDateTimeString(clockOut) || new Date(clockOut);
+
+  if (!startTime || !endTime || isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+    return 0;
+  }
+
+  let diffMs = endTime.getTime() - startTime.getTime();
+  if (isNaN(diffMs)) return 0;
+  if (diffMs < 0) {
+    // Defensive: if clock-out is before clock-in, clamp to zero and log for debugging
+    console.warn(`[TimeLogService] Negative hours detected for clockIn=${clockIn}, clockOut=${clockOut} — clamping to 0`);
+    diffMs = 0;
+  }
+
+  const hours = diffMs / (1000 * 60 * 60);
+  return Number(hours.toFixed(2));
 };
 
 // ==================== TIME LOGS ====================
@@ -87,10 +115,11 @@ const clockOut = (employeeId, notes = null) => {
   
   const updateNotes = notes ? `, notes = ${escape(notes)}` : '';
   
+  const safeHours = (typeof hoursWorked === 'number' && !isNaN(hoursWorked) && hoursWorked >= 0) ? hoursWorked : 0;
   const query = `
     UPDATE time_logs 
     SET clock_out = ${escape(clockOutTime)}, 
-        hours_worked = ${hoursWorked}
+        hours_worked = ${safeHours}
         ${updateNotes}
     WHERE id = ${logId}
   `;
@@ -135,7 +164,7 @@ const getTimeLogs = (businessId, startDate = null, endDate = null) => {
   
   let dateFilter = '';
   if (startDate && endDate) {
-    dateFilter = `AND DATE(tl.clock_in) BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})`;
+    dateFilter = `AND DATE(tl.clock_in, 'localtime') BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})`;
   }
   
   const query = `
@@ -173,7 +202,7 @@ const getEmployeeTimeLogs = (employeeId, startDate = null, endDate = null) => {
   
   let dateFilter = '';
   if (startDate && endDate) {
-    dateFilter = `AND DATE(clock_in) BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})`;
+    dateFilter = `AND DATE(clock_in, 'localtime') BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})`;
   }
   
   const query = `
@@ -262,7 +291,8 @@ const updateTimeLog = (logId, updates) => {
     const clockOut = updates.clockOut || logData.clock_out;
     if (clockIn && clockOut) {
       const hours = calculateHours(clockIn, clockOut);
-      setStatements.push(`hours_worked = ${hours}`);
+      const safe = (typeof hours === 'number' && !isNaN(hours) && hours >= 0) ? hours : 0;
+      setStatements.push(`hours_worked = ${safe}`);
     }
   }
   
@@ -364,12 +394,14 @@ const getPayrollData = (businessId, startDate, endDate) => {
       payroll[col] = row[idx];
     });
     
-    // Calculate overtime (over 40 hours per week)
-    const regularHours = Math.min(payroll.total_hours, 40);
-    const overtimeHours = Math.max(0, payroll.total_hours - 40);
-    const overtimePay = overtimeHours * payroll.hourly_rate * 1.5;
-    const regularPay = regularHours * payroll.hourly_rate;
-    
+    // Calculate overtime (over 40 hours per week) — ensure numeric and non-negative
+    const totalHoursNum = Math.max(0, Number(payroll.total_hours) || 0);
+    const regularHours = Math.min(totalHoursNum, 40);
+    const overtimeHours = Math.max(0, totalHoursNum - 40);
+    const overtimePay = overtimeHours * (Number(payroll.hourly_rate) || 0) * 1.5;
+    const regularPay = regularHours * (Number(payroll.hourly_rate) || 0);
+
+    payroll.total_hours = totalHoursNum;
     payroll.regular_hours = regularHours;
     payroll.overtime_hours = overtimeHours;
     payroll.regular_pay = regularPay;
@@ -406,6 +438,81 @@ const getPayrollSummary = (businessId, startDate, endDate) => {
   return summary;
 };
 
+// Admin: cleanup negative hours and optionally set hourly rates for given employees
+// employees param: array of objects { id?: number, full_name?: string, hourly_rate?: number }
+const cleanupAndFixEmployees = (businessId, employees = []) => {
+  const db = getDb();
+  const report = {
+    updatedEmployees: [],
+    updatedLogs: 0,
+    errors: []
+  };
+
+  try {
+    // Resolve employee ids for any entries specifying full_name
+    const resolved = employees.map(e => ({ ...e }));
+
+    for (const e of resolved) {
+      if (!e.id && e.full_name) {
+        const q = `SELECT id, hourly_rate FROM employees WHERE business_id = ${businessId} AND (first_name || ' ' || last_name) = ${escape(e.full_name)}`;
+        const r = db.exec(q);
+        if (r && r.length > 0 && r[0].values.length > 0) {
+          e.id = r[0].values[0][0];
+          if (e.hourly_rate === undefined) e.hourly_rate = r[0].values[0][1];
+        }
+      }
+
+      if (!e.id) {
+        report.errors.push(`Employee not found: ${e.full_name || '<no id>'}`);
+        continue;
+      }
+
+      // If hourly_rate provided, update employee record
+      if (e.hourly_rate !== undefined && e.hourly_rate !== null) {
+        const upd = `UPDATE employees SET hourly_rate = ${Number(e.hourly_rate)} WHERE id = ${e.id} AND business_id = ${businessId}`;
+        db.run(upd);
+      }
+
+      // Find time_logs with negative hours for this employee
+      const findLogsQ = `SELECT id, clock_in, clock_out, hours_worked FROM time_logs WHERE employee_id = ${e.id} AND (hours_worked IS NOT NULL AND hours_worked < 0)`;
+      const found = db.exec(findLogsQ);
+      if (!found || found.length === 0) continue;
+
+      const vals = found[0].values;
+      for (const row of vals) {
+        const logId = row[0];
+        const clockIn = row[1];
+        const clockOut = row[2];
+
+        let newHours = 0;
+        if (clockIn && clockOut) {
+          // Recompute using service calculateHours (which expects local date strings)
+          try {
+            newHours = calculateHours(clockIn, clockOut);
+            if (typeof newHours !== 'number' || isNaN(newHours) || newHours < 0) newHours = 0;
+          } catch (err) {
+            newHours = 0;
+          }
+        } else {
+          newHours = 0;
+        }
+
+        const updateQ = `UPDATE time_logs SET hours_worked = ${newHours} WHERE id = ${logId}`;
+        db.run(updateQ);
+        report.updatedLogs += 1;
+      }
+
+      report.updatedEmployees.push({ id: e.id, hourly_rate: e.hourly_rate });
+    }
+
+    saveDatabase();
+  } catch (ex) {
+    report.errors.push(String(ex && ex.message ? ex.message : ex));
+  }
+
+  return report;
+};
+
 module.exports = {
   clockIn,
   clockOut,
@@ -418,4 +525,7 @@ module.exports = {
   deleteTimeLog,
   getPayrollData,
   getPayrollSummary
+  ,
+  // Admin helper to clean negative hours and optionally set hourly rates for employees
+  cleanupAndFixEmployees
 };

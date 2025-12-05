@@ -19,25 +19,30 @@ const getShifts = (businessId, startDate, endDate) => {
   
   query += ' ORDER BY shift_date, start_time';
   
+  console.log('[ScheduleService] getShifts query:', query);
   const result = db.exec(query);
+  console.log('[ScheduleService] getShifts result length:', result.length);
   
   if (result.length === 0) return [];
   
   const columns = result[0].columns;
   const values = result[0].values;
   
-  return values.map(row => {
+  const shifts = values.map(row => {
     const shift = {};
     columns.forEach((col, idx) => {
       shift[col] = row[idx];
     });
     return shift;
   });
+  console.log('[ScheduleService] Returning', shifts.length, 'shifts:', shifts);
+  return shifts;
 };
 
 // Create shift
 const createShift = (businessId, shiftData) => {
   const db = getDb();
+  console.log('[ScheduleService] Creating shift:', { businessId, shiftData });
   
   const query = `
     INSERT INTO shifts (
@@ -53,8 +58,10 @@ const createShift = (businessId, shiftData) => {
     )
   `;
   
+  console.log('[ScheduleService] Insert query:', query);
   db.run(query);
   saveDatabase();
+  console.log('[ScheduleService] Shift saved to database');
   
   const lastIdResult = db.exec('SELECT last_insert_rowid() as id');
   const shiftId = lastIdResult[0].values[0][0];
