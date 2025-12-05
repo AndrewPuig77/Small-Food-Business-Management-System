@@ -105,6 +105,71 @@
               </div>
             </div>
 
+            <!-- Time Off & Availability Tab -->
+            <div v-if="activeTab === 'timeoff'" class="tab-panel">
+              <!-- Time Off Requests Section -->
+              <div class="timeoff-section">
+                <div class="panel-header">
+                  <h2>Time Off Requests</h2>
+                  <button @click="showTimeOffModal = true" class="btn-primary">Request Time Off</button>
+                </div>
+                
+                <div v-if="timeOffRequests.length === 0" class="empty-state">
+                  <p>No time off requests</p>
+                </div>
+                
+                <div v-else class="timeoff-list">
+                  <div v-for="request in timeOffRequests" :key="request.id" class="timeoff-item">
+                    <div class="timeoff-header">
+                      <span class="timeoff-dates">{{ formatDate(request.start_date) }} - {{ formatDate(request.end_date) }}</span>
+                      <span :class="['status-badge', request.status]">{{ request.status }}</span>
+                    </div>
+                    <div class="timeoff-info">
+                      <span class="timeoff-type">{{ request.request_type }}</span>
+                      <span v-if="request.reason" class="timeoff-reason">{{ request.reason }}</span>
+                    </div>
+                    <div v-if="request.status === 'pending' && isOwner" class="timeoff-actions">
+                      <button @click="reviewTimeOff(request.id, 'approved')" class="btn-approve">Approve</button>
+                      <button @click="reviewTimeOff(request.id, 'denied')" class="btn-deny">Deny</button>
+                    </div>
+                    <div v-if="request.status !== 'pending' && request.reviewed_by_name" class="timeoff-review">
+                      <span>Reviewed by {{ request.reviewed_by_name }}</span>
+                      <span v-if="request.review_notes"> - {{ request.review_notes }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Availability Section -->
+              <div class="availability-section">
+                <div class="panel-header">
+                  <h2>Weekly Availability</h2>
+                  <button @click="editAvailability" class="btn-primary">Edit Availability</button>
+                </div>
+                
+                <div v-if="availability.length === 0" class="empty-state">
+                  <p>No availability set</p>
+                </div>
+                
+                <div v-else class="availability-grid">
+                  <div v-for="day in availability" :key="day.id" class="availability-item">
+                    <div class="day-name">{{ getDayName(day.day_of_week) }}</div>
+                    <div v-if="day.is_available" class="available">
+                      <span class="status-indicator available"></span>
+                      <span v-if="day.start_time && day.end_time">
+                        {{ formatTime(day.start_time) }} - {{ formatTime(day.end_time) }}
+                      </span>
+                      <span v-else>Available</span>
+                    </div>
+                    <div v-else class="unavailable">
+                      <span class="status-indicator unavailable"></span>
+                      <span>Not Available</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Performance Notes Tab -->
             <div v-if="activeTab === 'notes'" class="tab-panel">
               <div class="panel-header">
@@ -125,6 +190,46 @@
                   </div>
                   <p class="note-text">{{ note.note_text }}</p>
                   <p v-if="note.created_by_name" class="note-author">— {{ note.created_by_name }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tasks Tab -->
+            <div v-if="activeTab === 'tasks'" class="tab-panel">
+              <div class="panel-header">
+                <h2>Assigned Tasks</h2>
+                <button @click="showTaskModal = true" class="btn-primary">Assign Task</button>
+              </div>
+              
+              <div v-if="employeeTasks.length === 0" class="empty-state">
+                <p>No tasks assigned</p>
+              </div>
+              
+              <div v-else class="tasks-list">
+                <div v-for="task in employeeTasks" :key="task.id" class="task-item" :class="{ 'completed': task.status === 'completed' }">
+                  <div class="task-header">
+                    <div class="task-main-info">
+                      <input 
+                        type="checkbox" 
+                        :checked="task.status === 'completed'" 
+                        @change="toggleTaskCompletion(task.id, task.status)"
+                        class="task-checkbox"
+                      />
+                      <div class="task-details">
+                        <h3 class="task-title">{{ task.title }}</h3>
+                        <p v-if="task.description" class="task-description">{{ task.description }}</p>
+                      </div>
+                    </div>
+                    <div class="task-meta">
+                      <span :class="['priority-badge', task.priority]">{{ task.priority }}</span>
+                      <span v-if="task.due_date" class="due-date" :class="{ 'overdue': isOverdue(task.due_date) && task.status !== 'completed' }">
+                        Due: {{ formatDate(task.due_date) }}
+                      </span>
+                    </div>
+                  </div>
+                  <div v-if="task.completed_at" class="task-footer">
+                    <span class="completion-info">Completed {{ formatDateTime(task.completed_at) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -223,7 +328,7 @@
                   <tr v-for="log in timeLogs" :key="log.id">
                     <td>{{ formatDateTime(log.clock_in) }}</td>
                     <td>{{ log.clock_out ? formatDateTime(log.clock_out) : 'Active' }}</td>
-                    <td>{{ log.hours_worked ? log.hours_worked.toFixed(2) : '—' }}</td>
+                    <td>{{ formatHours(log.hours_worked) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -289,6 +394,53 @@
           <div class="modal-actions">
             <button type="button" @click="showNoteModal = false" class="btn-secondary">Cancel</button>
             <button type="submit" class="btn-primary">Save Note</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Assign Task Modal -->
+    <div v-if="showTaskModal" class="modal-overlay" @click.self="showTaskModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Assign Task</h2>
+          <button @click="showTaskModal = false" class="modal-close">×</button>
+        </div>
+        <form @submit.prevent="saveTask" class="modal-content">
+          <div class="form-group">
+            <label class="form-label">Task Title</label>
+            <input v-model="taskForm.title" type="text" class="form-input" required placeholder="e.g., Clean kitchen equipment">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea v-model="taskForm.description" class="form-textarea" rows="3" placeholder="Additional details..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Task Type</label>
+            <select v-model="taskForm.taskType" class="form-input" required>
+              <option value="general">General</option>
+              <option value="opening">Opening Task</option>
+              <option value="closing">Closing Task</option>
+              <option value="training">Training</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select v-model="taskForm.priority" class="form-input" required>
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Due Date (Optional)</label>
+            <input v-model="taskForm.dueDate" type="date" class="form-input">
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showTaskModal = false" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary">Assign Task</button>
           </div>
         </form>
       </div>
@@ -406,6 +558,95 @@
       </div>
     </div>
 
+    <!-- Time Off Request Modal -->
+    <div v-if="showTimeOffModal" class="modal-overlay" @click.self="showTimeOffModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Request Time Off</h2>
+          <button @click="showTimeOffModal = false" class="modal-close">×</button>
+        </div>
+        <form @submit.prevent="saveTimeOffRequest">
+          <div class="modal-content">
+            <div class="form-group">
+              <label class="form-label">Request Type</label>
+              <select v-model="timeOffForm.requestType" class="form-input" required>
+                <option value="vacation">Vacation</option>
+                <option value="sick">Sick Leave</option>
+                <option value="personal">Personal</option>
+                <option value="unpaid">Unpaid Leave</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Start Date</label>
+              <input type="date" v-model="timeOffForm.startDate" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Date</label>
+              <input type="date" v-model="timeOffForm.endDate" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Reason (Optional)</label>
+              <textarea v-model="timeOffForm.reason" class="form-input" rows="3" placeholder="Provide additional details..."></textarea>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showTimeOffModal = false" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary">Submit Request</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Availability Edit Modal -->
+    <div v-if="showAvailabilityModal" class="modal-overlay" @click.self="showAvailabilityModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Edit Availability</h2>
+          <button @click="showAvailabilityModal = false" class="modal-close">×</button>
+        </div>
+        <form @submit.prevent="saveAvailability">
+          <div class="modal-content">
+            <p class="section-description">Set the days and times {{ employee.first_name }} is available to work.</p>
+            <div class="availability-editor">
+              <div v-for="day in availabilityDays" :key="day.value" class="availability-day-row">
+                <div class="day-checkbox">
+                  <input 
+                    type="checkbox" 
+                    :id="'avail-' + day.value" 
+                    v-model="day.isAvailable"
+                    class="form-checkbox"
+                  />
+                  <label :for="'avail-' + day.value" class="day-label">{{ day.name }}</label>
+                </div>
+                <div class="time-inputs" v-if="day.isAvailable">
+                  <input 
+                    type="time" 
+                    v-model="day.startTime" 
+                    class="form-input time-input"
+                    placeholder="Start"
+                  />
+                  <span class="time-separator">to</span>
+                  <input 
+                    type="time" 
+                    v-model="day.endTime" 
+                    class="form-input time-input"
+                    placeholder="End"
+                  />
+                </div>
+                <div class="time-placeholder" v-else>
+                  <span class="text-gray-500">Not available</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showAvailabilityModal = false" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary">Save Availability</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -432,13 +673,26 @@ const contacts = ref([]);
 const documents = ref([]);
 const timeLogs = ref([]);
 const payrollData = ref(null);
+const timeOffRequests = ref([]);
+const availability = ref([]);
+const employeeTasks = ref([]);
 
 const showNoteModal = ref(false);
 const showContactModal = ref(false);
 const showScheduleModal = ref(false);
+const showTimeOffModal = ref(false);
+const showAvailabilityModal = ref(false);
+const showTaskModal = ref(false);
 
 const noteForm = ref({ noteType: 'general', noteText: '', rating: null });
 const contactForm = ref({ name: '', relationship: '', phone: '', email: '' });
+const taskForm = ref({
+  title: '',
+  description: '',
+  taskType: 'general',
+  priority: 'normal',
+  dueDate: ''
+});
 const scheduleForm = ref({
   0: { enabled: false, startTime: '09:00', endTime: '17:00' },
   1: { enabled: false, startTime: '09:00', endTime: '17:00' },
@@ -448,6 +702,21 @@ const scheduleForm = ref({
   5: { enabled: false, startTime: '09:00', endTime: '17:00' },
   6: { enabled: false, startTime: '09:00', endTime: '17:00' }
 });
+const timeOffForm = ref({
+  requestType: 'vacation',
+  startDate: '',
+  endDate: '',
+  reason: ''
+});
+const availabilityDays = ref([
+  { name: 'Sunday', value: 0, isAvailable: false, startTime: '09:00', endTime: '17:00' },
+  { name: 'Monday', value: 1, isAvailable: false, startTime: '09:00', endTime: '17:00' },
+  { name: 'Tuesday', value: 2, isAvailable: false, startTime: '09:00', endTime: '17:00' },
+  { name: 'Wednesday', value: 3, isAvailable: false, startTime: '09:00', endTime: '17:00' },
+  { name: 'Thursday', value: 4, isAvailable: false, startTime: '09:00', endTime: '17:00' },
+  { name: 'Friday', value: 5, isAvailable: false, startTime: '09:00', endTime: '17:00' },
+  { name: 'Saturday', value: 6, isAvailable: false, startTime: '09:00', endTime: '17:00' }
+]);
 
 const daysOfWeek = [
   { name: 'Sunday', value: 0 },
@@ -466,6 +735,8 @@ const payrollEndDate = ref('');
 
 const tabs = [
   { id: 'schedules', label: 'Schedules' },
+  { id: 'timeoff', label: 'Time Off & Availability' },
+  { id: 'tasks', label: 'Tasks' },
   { id: 'notes', label: 'Performance Notes' },
   { id: 'contacts', label: 'Emergency Contacts' },
   { id: 'documents', label: 'Documents' },
@@ -499,7 +770,10 @@ const loadEmployee = async () => {
       loadNotes(),
       loadContacts(),
       loadDocuments(),
-      loadTimeLogs()
+      loadTimeLogs(),
+      loadTimeOffRequests(),
+      loadAvailability(),
+      loadTasks()
     ]);
   } catch (error) {
     console.error('Error loading employee:', error);
@@ -532,6 +806,188 @@ const loadTimeLogs = async () => {
   });
 };
 
+const loadTimeOffRequests = async () => {
+  try {
+    timeOffRequests.value = await ipcRenderer.invoke('timeoff:get-employee', parseInt(route.params.id));
+  } catch (error) {
+    console.error('Error loading time-off requests:', error);
+  }
+};
+
+const loadAvailability = async () => {
+  try {
+    const availData = await ipcRenderer.invoke('availability:get', parseInt(route.params.id));
+    // Update availabilityDays with loaded data
+    availabilityDays.value.forEach(day => {
+      const existingDay = availData.find(a => a.day_of_week === day.value);
+      if (existingDay) {
+        day.isAvailable = existingDay.is_available === 1;
+        day.startTime = existingDay.start_time || '09:00';
+        day.endTime = existingDay.end_time || '17:00';
+      } else {
+        day.isAvailable = false;
+        day.startTime = '09:00';
+        day.endTime = '17:00';
+      }
+    });
+    availability.value = availData;
+  } catch (error) {
+    console.error('Error loading availability:', error);
+  }
+};
+
+const saveTimeOffRequest = async () => {
+  try {
+    if (!timeOffForm.value.startDate || !timeOffForm.value.endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    await ipcRenderer.invoke('timeoff:create', {
+      employeeId: parseInt(route.params.id),
+      startDate: timeOffForm.value.startDate,
+      endDate: timeOffForm.value.endDate,
+      requestType: timeOffForm.value.requestType,
+      reason: timeOffForm.value.reason || null
+    });
+
+    showTimeOffModal.value = false;
+    timeOffForm.value = {
+      requestType: 'vacation',
+      startDate: '',
+      endDate: '',
+      reason: ''
+    };
+    await loadTimeOffRequests();
+  } catch (error) {
+    console.error('Error creating time-off request:', error);
+    alert('Failed to create time-off request');
+  }
+};
+
+const reviewTimeOff = async (requestId, status) => {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+    await ipcRenderer.invoke('timeoff:review', {
+      requestId,
+      reviewData: {
+        status,
+        reviewedBy: storedUser.userId,
+        reviewedAt: new Date().toISOString()
+      }
+    });
+    await loadTimeOffRequests();
+  } catch (error) {
+    console.error('Error reviewing time-off:', error);
+    alert('Failed to review time-off request');
+  }
+};
+
+const editAvailability = () => {
+  showAvailabilityModal.value = true;
+};
+
+const saveAvailability = async () => {
+  try {
+    const availabilityData = availabilityDays.value
+      .filter(day => day.isAvailable)
+      .map(day => ({
+        dayOfWeek: day.value,
+        isAvailable: 1,
+        startTime: day.startTime,
+        endTime: day.endTime
+      }));
+
+    await ipcRenderer.invoke('availability:update', {
+      employeeId: parseInt(route.params.id),
+      availabilityData
+    });
+
+    showAvailabilityModal.value = false;
+    await loadAvailability();
+  } catch (error) {
+    console.error('Error saving availability:', error);
+    alert('Failed to save availability');
+  }
+};
+
+const loadTasks = async () => {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+    employeeTasks.value = await ipcRenderer.invoke('tasks:get-employee', {
+      businessId: storedUser.businessId,
+      employeeId: parseInt(route.params.id)
+    });
+  } catch (error) {
+    console.error('Error loading tasks:', error);
+  }
+};
+
+const saveTask = async () => {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+    
+    if (!taskForm.value.title) {
+      alert('Please enter a task title');
+      return;
+    }
+
+    await ipcRenderer.invoke('tasks:create', {
+      businessId: storedUser.businessId,
+      assignedTo: parseInt(route.params.id),
+      assignedBy: storedUser.userId || storedUser.id,
+      title: taskForm.value.title,
+      description: taskForm.value.description || null,
+      taskType: taskForm.value.taskType,
+      priority: taskForm.value.priority,
+      dueDate: taskForm.value.dueDate || null
+    });
+
+    showTaskModal.value = false;
+    taskForm.value = {
+      title: '',
+      description: '',
+      taskType: 'general',
+      priority: 'normal',
+      dueDate: ''
+    };
+    await loadTasks();
+  } catch (error) {
+    console.error('Error creating task:', error);
+    alert('Failed to create task');
+  }
+};
+
+const toggleTaskCompletion = async (taskId, currentStatus) => {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+    
+    if (currentStatus === 'completed') {
+      // Reopen task
+      await ipcRenderer.invoke('tasks:update', {
+        taskId,
+        updates: { status: 'pending' }
+      });
+    } else {
+      // Complete task
+      await ipcRenderer.invoke('tasks:complete', {
+        taskId,
+        completedBy: storedUser.userId
+      });
+    }
+    
+    await loadTasks();
+  } catch (error) {
+    console.error('Error toggling task completion:', error);
+    alert('Failed to update task');
+  }
+};
+
+const isOverdue = (dueDate) => {
+  if (!dueDate) return false;
+  return new Date(dueDate) < new Date();
+};
+
 const calculatePayroll = async () => {
   if (!payrollStartDate.value || !payrollEndDate.value) {
     alert('Please select both start and end dates');
@@ -557,9 +1013,32 @@ const formatTime = (time) => {
 
 const formatDate = (date) => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
+// Parse local datetime strings (YYYY-MM-DD HH:MM:SS or T variant) to local Date
+const parseLocalDateTime = (s) => {
+  if (!s) return null;
+  const str = String(s).trim();
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10) - 1;
+  const day = parseInt(m[3], 10);
+  const hour = parseInt(m[4], 10);
+  const minute = parseInt(m[5], 10);
+  const second = parseInt(m[6], 10);
+  return new Date(year, month, day, hour, minute, second);
+};
+
 const formatDateTime = (datetime) => {
-  const d = new Date(datetime);
+  const d = parseLocalDateTime(datetime) || new Date(datetime);
+  if (!d || isNaN(d.getTime())) return '';
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+const formatHours = (h) => {
+  if (h === null || h === undefined) return '—';
+  const n = Number(h) || 0;
+  const safe = n < 0 ? 0 : n;
+  return safe.toFixed(2);
 };
 
 const editSchedule = () => {
@@ -1491,5 +1970,314 @@ const performResetPassword = async () => {
 .time-separator {
   color: #9ca3af;
   font-size: 0.875rem;
+}
+
+/* Time Off & Availability Styles */
+.timeoff-section {
+  background: #1f2937;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.timeoff-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #111827;
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid #374151;
+}
+
+.timeoff-info {
+  flex: 1;
+}
+
+.timeoff-dates {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
+}
+
+.timeoff-type {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.denied {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.timeoff-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.btn-approve {
+  padding: 0.5rem 1rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-approve:hover {
+  background: #059669;
+}
+
+.btn-deny {
+  padding: 0.5rem 1rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-deny:hover {
+  background: #dc2626;
+}
+
+.availability-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.availability-day {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #111827;
+  border-radius: 0.5rem;
+  border: 1px solid #374151;
+}
+
+.day-name {
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.availability-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.indicator-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.indicator-dot.available {
+  background: #10b981;
+}
+
+.indicator-dot.unavailable {
+  background: #ef4444;
+}
+
+.availability-time {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.availability-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.availability-day-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: #111827;
+  border-radius: 0.5rem;
+  border: 1px solid #374151;
+}
+
+.day-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+.day-label {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.form-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+}
+
+/* Task Styles */
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.task-item {
+  padding: 1rem;
+  background: #111827;
+  border-radius: 0.5rem;
+  border: 1px solid #374151;
+  transition: all 0.2s;
+}
+
+.task-item.completed {
+  opacity: 0.7;
+  background: #0f1419;
+}
+
+.task-item.completed .task-title {
+  text-decoration: line-through;
+  color: #6b7280;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.task-main-info {
+  display: flex;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.task-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.25rem;
+  cursor: pointer;
+}
+
+.task-details {
+  flex: 1;
+}
+
+.task-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 0.25rem;
+}
+
+.task-description {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.task-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.priority-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.priority-badge.urgent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.priority-badge.high {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.priority-badge.normal {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.priority-badge.low {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.due-date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.due-date.overdue {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.task-footer {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #374151;
+}
+
+.completion-info {
+  font-size: 0.75rem;
+  color: #10b981;
+  font-style: italic;
+}
+
+.time-placeholder {
+  flex: 1;
+  padding: 0.5rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.review-info {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
 }
 </style>

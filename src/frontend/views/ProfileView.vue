@@ -33,111 +33,61 @@
 
         
 
-        <!-- Change PIN Card -->
+        <!-- System Settings Card -->
         <div class="card mb-6">
-          <h2 class="text-xl font-semibold text-gray-100 mb-4">Manager PIN</h2>
-          <p class="text-gray-400 text-sm mb-4">
-            Your 4-digit PIN is required to authorize sensitive operations like voids and large discounts.
-          </p>
-
+          <h2 class="text-xl font-semibold text-gray-100 mb-4">System Settings</h2>
+          
           <div class="space-y-4 max-w-md">
             <div>
-              <label class="block text-gray-300 font-semibold mb-2">Current PIN</label>
+              <label class="block text-gray-300 font-semibold mb-2">Sales Tax Rate (%)</label>
               <input
-                v-model="pinForm.currentPin"
-                type="password"
-                maxlength="4"
+                v-model.number="taxRate"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
                 class="form-input"
-                placeholder="****"
+                placeholder="e.g., 7.5"
+                @change="saveTaxRate"
               />
+              <p class="text-gray-400 text-xs mt-1">Applied to all POS transactions</p>
             </div>
 
-            <div>
-              <label class="block text-gray-300 font-semibold mb-2">New PIN</label>
-              <input
-                v-model="pinForm.newPin"
-                type="password"
-                maxlength="4"
-                class="form-input"
-                placeholder="****"
-              />
+            <div v-if="taxRateSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">
+              {{ taxRateSuccess }}
             </div>
-
-            <div>
-              <label class="block text-gray-300 font-semibold mb-2">Confirm New PIN</label>
-              <input
-                v-model="pinForm.confirmPin"
-                type="password"
-                maxlength="4"
-                class="form-input"
-                placeholder="****"
-              />
-            </div>
-
-            <div v-if="pinError" class="p-3 bg-red-900/50 border border-red-700 text-red-300 rounded-lg text-sm">
-              {{ pinError }}
-            </div>
-
-            <div v-if="pinSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">
-              {{ pinSuccess }}
-            </div>
-
-            <button @click="changePin" class="btn-primary">
-              Change PIN
-            </button>
           </div>
         </div>
 
-        <!-- Forgot PIN Card -->
-        <div class="card">
-          <h2 class="text-xl font-semibold text-gray-100 mb-4">Forgot Your PIN?</h2>
+        <!-- Owner Code Card (Owner Only) -->
+        <div v-if="currentUser?.role === 'owner'" class="card mb-6">
+          <h2 class="text-xl font-semibold text-gray-100 mb-4">Owner Security Code</h2>
           <p class="text-gray-400 text-sm mb-4">
-            If you've forgotten your PIN, you can reset it by verifying your password.
+            This code is required for employees to perform sensitive operations like deleting customers or menu items.
           </p>
 
           <div class="space-y-4 max-w-md">
             <div>
-              <label class="block text-gray-300 font-semibold mb-2">Verify Password</label>
+              <label class="block text-gray-300 font-semibold mb-2">Owner Code (4 digits)</label>
               <input
-                v-model="resetForm.password"
-                type="password"
-                class="form-input"
-                placeholder="Enter your account password"
-              />
-            </div>
-
-            <div>
-              <label class="block text-gray-300 font-semibold mb-2">New PIN</label>
-              <input
-                v-model="resetForm.newPin"
+                v-model="ownerCodeForm.code"
                 type="password"
                 maxlength="4"
                 class="form-input"
-                placeholder="****"
+                placeholder="Enter 4-digit code"
               />
             </div>
 
-            <div>
-              <label class="block text-gray-300 font-semibold mb-2">Confirm New PIN</label>
-              <input
-                v-model="resetForm.confirmPin"
-                type="password"
-                maxlength="4"
-                class="form-input"
-                placeholder="****"
-              />
+            <div v-if="ownerCodeError" class="p-3 bg-red-900/50 border border-red-700 text-red-300 rounded-lg text-sm">
+              {{ ownerCodeError }}
             </div>
 
-            <div v-if="resetError" class="p-3 bg-red-900/50 border border-red-700 text-red-300 rounded-lg text-sm">
-              {{ resetError }}
+            <div v-if="ownerCodeSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">
+              {{ ownerCodeSuccess }}
             </div>
 
-            <div v-if="resetSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">
-              {{ resetSuccess }}
-            </div>
-
-            <button @click="resetPin" class="btn-secondary">
-              Reset PIN
+            <button @click="saveOwnerCode" class="btn-primary">
+              Update Owner Code
             </button>
           </div>
         </div>
@@ -154,6 +104,11 @@ const { ipcRenderer } = window.require('electron');
 
 const currentUser = ref(null);
 
+const ownerCodeForm = ref({
+  code: ''
+});
+const ownerCodeError = ref('');
+const ownerCodeSuccess = ref('');
 
 const pinForm = ref({
   currentPin: '',
@@ -171,14 +126,66 @@ const pinError = ref('');
 const pinSuccess = ref('');
 const resetError = ref('');
 const resetSuccess = ref('');
+const taxRate = ref(7.5);
+const taxRateSuccess = ref('');
 
 onMounted(() => {
   const user = localStorage.getItem('currentUser');
   if (user) {
     currentUser.value = JSON.parse(user);
+    
+    // Load tax rate from localStorage
+    const savedTaxRate = localStorage.getItem(`taxRate_${currentUser.value.businessId}`);
+    if (savedTaxRate) {
+      taxRate.value = parseFloat(savedTaxRate);
+    }
   }
 });
 
+const saveTaxRate = () => {
+  if (currentUser.value) {
+    localStorage.setItem(`taxRate_${currentUser.value.businessId}`, taxRate.value.toString());
+    taxRateSuccess.value = 'Tax rate saved successfully!';
+    setTimeout(() => {
+      taxRateSuccess.value = '';
+    }, 3000);
+  }
+};
+
+const saveOwnerCode = async () => {
+  ownerCodeError.value = '';
+  ownerCodeSuccess.value = '';
+
+  if (!ownerCodeForm.value.code) {
+    ownerCodeError.value = 'Please enter an owner code';
+    return;
+  }
+
+  if (ownerCodeForm.value.code.length !== 4 || !/^\d{4}$/.test(ownerCodeForm.value.code)) {
+    ownerCodeError.value = 'Owner code must be 4 digits';
+    return;
+  }
+
+  try {
+    const result = await ipcRenderer.invoke('business:update-owner-code', {
+      businessId: currentUser.value.businessId,
+      ownerCode: ownerCodeForm.value.code
+    });
+
+    if (result.success) {
+      ownerCodeSuccess.value = 'Owner code updated successfully!';
+      ownerCodeForm.value.code = '';
+      setTimeout(() => {
+        ownerCodeSuccess.value = '';
+      }, 3000);
+    } else {
+      ownerCodeError.value = result.error || 'Failed to update owner code';
+    }
+  } catch (error) {
+    console.error('Error updating owner code:', error);
+    ownerCodeError.value = 'Error updating owner code';
+  }
+};
 
 const changePin = async () => {
   pinError.value = '';
