@@ -87,10 +87,16 @@ const createEmployee = async (businessId, employeeData) => {
   }
   
   // Create employee record
+  const hourlyRateValue = employeeData.hourlyRate != null && employeeData.hourlyRate !== '' 
+    ? parseFloat(employeeData.hourlyRate) 
+    : 'NULL';
+  
+  const permissionsJson = employeeData.permissions ? escape(JSON.stringify(employeeData.permissions)) : 'NULL';
+  
   const query = `
     INSERT INTO employees (
       business_id, user_id, first_name, last_name, email, phone, 
-      role, hourly_rate, hire_date, status
+      role, hourly_rate, hire_date, status, permissions
     ) VALUES (
       ${businessId},
       ${userId || 'NULL'},
@@ -99,9 +105,10 @@ const createEmployee = async (businessId, employeeData) => {
       ${escape(employeeData.email)},
       ${escape(employeeData.phone)},
       ${escape(employeeData.role)},
-      ${employeeData.hourlyRate || 'NULL'},
+      ${hourlyRateValue},
       ${escape(employeeData.hireDate)},
-      ${escape(employeeData.status || 'active')}
+      ${escape(employeeData.status || 'active')},
+      ${permissionsJson}
     )
   `;
   
@@ -115,8 +122,14 @@ const createEmployee = async (businessId, employeeData) => {
 };
 
 // Update employee
-const updateEmployee = (businessId, employeeId, employeeData) => {
+const updateEmployee = async (businessId, employeeId, employeeData) => {
   const db = getDb();
+  
+  const hourlyRateValue = employeeData.hourlyRate != null && employeeData.hourlyRate !== '' 
+    ? parseFloat(employeeData.hourlyRate) 
+    : 'NULL';
+  
+  const permissionsJson = employeeData.permissions ? escape(JSON.stringify(employeeData.permissions)) : 'NULL';
   
   const query = `
     UPDATE employees SET
@@ -125,14 +138,56 @@ const updateEmployee = (businessId, employeeId, employeeData) => {
       email = ${escape(employeeData.email)},
       phone = ${escape(employeeData.phone)},
       role = ${escape(employeeData.role)},
-      hourly_rate = ${employeeData.hourlyRate || 'NULL'},
+      hourly_rate = ${hourlyRateValue},
       hire_date = ${escape(employeeData.hireDate)},
       status = ${escape(employeeData.status)},
+      permissions = ${permissionsJson},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${employeeId} AND business_id = ${businessId}
   `;
   
   db.run(query);
+  
+  // If employee has an account and password is provided, update it
+  if (employeeData.hasAccount && employeeData.password) {
+    const employee = getEmployeeById(businessId, employeeId);
+    if (employee && employee.user_id) {
+      const passwordHash = await bcrypt.hash(employeeData.password, 10);
+      db.run(`
+        UPDATE users 
+        SET password_hash = ${escape(passwordHash)},
+            full_name = ${escape(`${employeeData.firstName} ${employeeData.lastName}`)}
+        WHERE id = ${employee.user_id} AND business_id = ${businessId}
+      `);
+    }
+  }
+  
+  // If createAccount is true and employee doesn't have account, create one
+  if (employeeData.createAccount && !employeeData.hasAccount && employeeData.username && employeeData.password) {
+    const passwordHash = await bcrypt.hash(employeeData.password, 10);
+    
+    const userQuery = `
+      INSERT INTO users (
+        business_id, username, password_hash, full_name, email, role, active
+      ) VALUES (
+        ${businessId},
+        ${escape(employeeData.username)},
+        ${escape(passwordHash)},
+        ${escape(`${employeeData.firstName} ${employeeData.lastName}`)},
+        ${escape(employeeData.email)},
+        ${escape(employeeData.role)},
+        1
+      )
+    `;
+    
+    db.run(userQuery);
+    const userIdResult = db.exec('SELECT last_insert_rowid() as id');
+    const newUserId = userIdResult[0].values[0][0];
+    
+    // Link user to employee
+    db.run(`UPDATE employees SET user_id = ${newUserId} WHERE id = ${employeeId}`);
+  }
+  
   saveDatabase();
   
   return getEmployeeById(businessId, employeeId);
@@ -463,52 +518,15 @@ const getTimeLogs = (employeeId, startDate = null, endDate = null) => {
   });
 };
 
-// Clock in
+// Clock in (delegate to timeLogService for consistent behavior)
+const TimeLogService = require('./timeLogService');
 const clockIn = (employeeId) => {
-  const db = getDb();
-  
-  const query = `
-    INSERT INTO time_logs (employee_id, clock_in)
-    VALUES (${employeeId}, datetime('now'))
-  `;
-  
-  db.run(query);
-  saveDatabase();
-  
-  return { success: true, message: 'Clocked in successfully' };
+  return TimeLogService.clockIn(employeeId);
 };
 
-// Clock out
+// Clock out (delegate to timeLogService for consistent behavior)
 const clockOut = (employeeId) => {
-  const db = getDb();
-  
-  // Find the most recent clock-in without a clock-out
-  const findQuery = `
-    SELECT id, clock_in FROM time_logs 
-    WHERE employee_id = ${employeeId} AND clock_out IS NULL 
-    ORDER BY clock_in DESC LIMIT 1
-  `;
-  const result = db.exec(findQuery);
-  
-  if (result.length === 0 || result[0].values.length === 0) {
-    return { success: false, message: 'No active clock-in found' };
-  }
-  
-  const logId = result[0].values[0][0];
-  const clockInTime = result[0].values[0][1];
-  
-  // Calculate hours worked
-  const updateQuery = `
-    UPDATE time_logs SET
-      clock_out = datetime('now'),
-      hours_worked = (julianday(datetime('now')) - julianday(${escape(clockInTime)})) * 24
-    WHERE id = ${logId}
-  `;
-  
-  db.run(updateQuery);
-  saveDatabase();
-  
-  return { success: true, message: 'Clocked out successfully' };
+  return TimeLogService.clockOut(employeeId);
 };
 
 // Calculate payroll for employee
@@ -529,7 +547,11 @@ const calculatePayroll = (employeeId, startDate, endDate) => {
   
   // Get time logs in date range
   const logs = getTimeLogs(employeeId, startDate, endDate);
-  const totalHours = logs.reduce((sum, log) => sum + (log.hours_worked || 0), 0);
+  // Sum only non-negative hours (defensive against malformed older rows)
+  const totalHours = logs.reduce((sum, log) => {
+    const h = Number(log.hours_worked) || 0;
+    return sum + (h > 0 ? h : 0);
+  }, 0);
   const totalPay = totalHours * hourlyRate;
   
   return {

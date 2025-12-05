@@ -15,11 +15,13 @@ class AuthService {
 
       // Insert business using exec (sql.js doesn't support parameterized run)
       db.exec(`
-        INSERT INTO businesses (name, type, address, phone)
+        INSERT INTO businesses (name, type, address, phone, tax_rate, owner_code)
         VALUES ('${setupData.business.name.replace(/'/g, "''")}', 
                 '${setupData.business.type}', 
                 ${setupData.business.address ? `'${setupData.business.address.replace(/'/g, "''")}'` : 'NULL'}, 
-                ${setupData.business.phone ? `'${setupData.business.phone.replace(/'/g, "''")}'` : 'NULL'})
+                ${setupData.business.phone ? `'${setupData.business.phone.replace(/'/g, "''")}'` : 'NULL'},
+                ${setupData.business.taxRate || 7.5},
+                '${setupData.owner.pin.replace(/'/g, "''")}')
       `);
 
       // Get business ID
@@ -123,6 +125,7 @@ class AuthService {
         token,
         user: {
           id: user.id,
+          userId: user.id,
           username: user.username,
           fullName: user.full_name,
           email: user.email,
