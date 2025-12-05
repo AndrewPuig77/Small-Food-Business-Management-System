@@ -149,6 +149,7 @@
               <th>Total Value</th>
               <th>Supplier</th>
               <th>Location</th>
+              <th>Expiry Date</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -173,6 +174,18 @@
               <td class="total-value">${{ item.total_value ? parseFloat(item.total_value).toFixed(2) : '0.00' }}</td>
               <td class="text-muted">{{ item.supplier_name || '—' }}</td>
               <td class="text-muted">{{ item.location || '—' }}</td>
+              <td>
+                <span v-if="item.expiry_date && isExpired(item.expiry_date)" class="status-badge expired" title="Expired">
+                  {{ formatDate(item.expiry_date) }}
+                </span>
+                <span v-else-if="item.expiry_date && isExpiringSoon(item.expiry_date)" class="status-badge expiring" title="Expiring Soon">
+                  {{ formatDate(item.expiry_date) }}
+                </span>
+                <span v-else-if="item.expiry_date" class="text-muted">
+                  {{ formatDate(item.expiry_date) }}
+                </span>
+                <span v-else class="text-muted">—</span>
+              </td>
               <td>
                 <span v-if="item.is_low_stock" class="status-badge low">Low Stock</span>
                 <span v-else class="status-badge ok">In Stock</span>
@@ -788,6 +801,29 @@ const deleteItem = async (item) => {
   }
 };
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString();
+};
+
+const isExpired = (dateStr) => {
+  if (!dateStr) return false;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime()) || date < new Date('1970-01-01')) return false;
+  return date < new Date();
+};
+
+const isExpiringSoon = (dateStr) => {
+  if (!dateStr) return false;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime()) || date < new Date('1970-01-01')) return false;
+  const threeDaysFromNow = new Date();
+  threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+  return date >= new Date() && date <= threeDaysFromNow;
+};
+
 const openStockModal = (item) => {
   stockItem.value = item;
   stockForm.value = {
@@ -1349,6 +1385,17 @@ onMounted(() => {
 .status-badge.low {
   background: rgba(239, 68, 68, 0.1);
   color: #f87171;
+}
+
+.status-badge.expired {
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.status-badge.expiring {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
 }
 
 .action-buttons {

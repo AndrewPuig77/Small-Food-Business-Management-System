@@ -64,11 +64,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </button>
-          <button @click="toggleDarkMode" class="control-btn" title="Toggle Dark Mode">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
-          </button>
         </div>
 
         <!-- Daily Summary -->
@@ -226,14 +221,14 @@
               <input v-model="newCustomer.name" type="text" class="form-input" placeholder="Name *" required />
             </div>
             <div class="form-group">
-              <input v-model="newCustomer.phone" type="tel" class="form-input" placeholder="Phone" />
+              <input v-model="newCustomer.phone" type="tel" class="form-input" placeholder="Phone *" required />
             </div>
             <div class="form-group">
               <input v-model="newCustomer.email" type="email" class="form-input" placeholder="Email" />
             </div>
             <div class="modal-actions">
               <button type="button" @click="showNewCustomerForm = false" class="btn-secondary">Cancel</button>
-              <button type="submit" class="btn-primary">Create</button>
+              <button type="submit" class="btn-primary" :disabled="!newCustomer.name || !newCustomer.phone">Create</button>
             </div>
           </form>
         </div>
@@ -513,21 +508,30 @@
       </div>
     </div>
 
-    <!-- Manager PIN Modal -->
-    <div v-if="showPinModal" class="modal-overlay">
-      <div class="modal">
+    <!-- Owner Code Verification Modal -->
+    <div v-if="showOwnerCodeModal" class="modal-overlay" @click.self="cancelOwnerVerification">
+      <div class="modal" @click.stop>
         <div class="modal-header">
-          <h2>Manager Authorization Required</h2>
+          <h2>Owner Authorization Required</h2>
+          <button @click="cancelOwnerVerification" class="modal-close">×</button>
         </div>
         <div class="modal-content">
-          <p>Action: {{ pinAction }}</p>
+          <p class="mb-4">{{ ownerCodeMessage }}</p>
           <div class="form-group">
-            <label>Enter Manager PIN</label>
-            <input v-model="pinInput" type="password" class="form-input" placeholder="****" autofocus />
+            <label>Owner Code *</label>
+            <input 
+              ref="ownerCodeInput"
+              v-model="ownerCode" 
+              type="password" 
+              class="form-input" 
+              placeholder="Enter 4-digit owner code"
+              @keyup.enter="submitOwnerCode"
+            />
           </div>
+          <div v-if="ownerCodeError" class="error-message">{{ ownerCodeError }}</div>
           <div class="modal-actions">
-            <button @click="cancelPin" class="btn-secondary">Cancel</button>
-            <button @click="validatePin" class="btn-primary">Authorize</button>
+            <button type="button" @click="cancelOwnerVerification" class="btn-secondary">Cancel</button>
+            <button type="button" @click="submitOwnerCode" class="btn-primary">Verify</button>
           </div>
         </div>
       </div>
@@ -572,7 +576,7 @@
             <input v-model="historySearch" type="text" class="form-input" placeholder="Search by transaction ID, customer..." />
           </div>
           <div class="order-history-list">
-            <div v-for="transaction in orderHistory" :key="transaction.id" class="history-item">
+            <div v-for="transaction in filteredOrderHistory" :key="transaction.id" class="history-item">
               <div class="history-item-header">
                 <span class="history-id">#{{ transaction.id }}</span>
                 <span class="history-date">{{ new Date(transaction.created_at).toLocaleString() }}</span>
@@ -595,7 +599,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 
 const { ipcRenderer } = window.require('electron');
@@ -656,11 +660,22 @@ const currentModifierItem = ref(null);
 const selectedModifiers = ref([]);
 const itemNotes = ref('');
 
-// Manager PIN
-const showPinModal = ref(false);
-const pinInput = ref('');
-const pinAction = ref(null);
-const pinCallback = ref(null);
+// Owner Code Verification
+const showOwnerCodeModal = ref(false);
+const ownerCode = ref('');
+const ownerCodeError = ref('');
+const ownerCodeMessage = ref('');
+const pendingAction = ref(null);
+const ownerCodeInput = ref(null);
+
+// Watch for owner code modal open and focus input
+watch(() => showOwnerCodeModal.value, (newVal) => {
+  if (newVal) {
+    setTimeout(() => {
+      ownerCodeInput.value?.focus();
+    }, 100);
+  }
+});
 
 // Void
 const showVoidModal = ref(false);
@@ -671,6 +686,18 @@ const transactionToVoid = ref(null);
 const showOrderHistory = ref(false);
 const orderHistory = ref([]);
 const historySearch = ref('');
+
+const filteredOrderHistory = computed(() => {
+  if (!historySearch.value) return orderHistory.value;
+  const search = historySearch.value.toLowerCase();
+  return orderHistory.value.filter(transaction => {
+    return (
+      transaction.id.toString().includes(search) ||
+      (transaction.customer_name && transaction.customer_name.toLowerCase().includes(search)) ||
+      (transaction.cashier_name && transaction.cashier_name.toLowerCase().includes(search))
+    );
+  });
+});
 
 // Dark mode
 const darkMode = ref(false);
@@ -1057,18 +1084,28 @@ const openDiscountModal = () => {
 };
 
 const applyDiscount = async () => {
-  // Check if manager PIN required for large discounts
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  
+  // Calculate discount amount
   const discountAmount = discountType.value === 'percentage' 
     ? (subtotal.value * discountValue.value) / 100
     : discountValue.value;
   
-  if (discountAmount > 20) {
-    // Require manager PIN for discounts over $20
-    await requestManagerPin('Apply Discount', () => {
-      manualDiscount.value = discountAmount;
-      showDiscountModal.value = false;
-    });
+  // Check if owner code required (for staff roles or large discounts)
+  const requiresOwnerCode = user.role === 'staff' || discountAmount > 20;
+  
+  if (requiresOwnerCode && user.role !== 'owner' && user.role !== 'manager') {
+    // Staff always requires owner code for any discount
+    ownerCodeMessage.value = `Apply ${discountType.value === 'percentage' ? discountValue.value + '%' : '$' + discountAmount.toFixed(2)} discount`;
+    pendingAction.value = { type: 'discount', amount: discountAmount };
+    showOwnerCodeModal.value = true;
+  } else if (discountAmount > 20 && (user.role === 'manager' || user.role === 'owner')) {
+    // Large discounts require verification even for managers
+    ownerCodeMessage.value = `Verify discount over $20: $${discountAmount.toFixed(2)}`;
+    pendingAction.value = { type: 'discount', amount: discountAmount };
+    showOwnerCodeModal.value = true;
   } else {
+    // Small discount, no verification needed for managers/owners
     manualDiscount.value = discountAmount;
     showDiscountModal.value = false;
   }
@@ -1113,46 +1150,51 @@ const addToCartWithModifiers = () => {
   showModifierModal.value = false;
 };
 
-// Manager PIN
-const requestManagerPin = (action, callback) => {
-  return new Promise((resolve) => {
-    pinAction.value = action;
-    pinCallback.value = () => {
-      callback();
-      resolve(true);
-    };
-    showPinModal.value = true;
-  });
-};
-
-const validatePin = async () => {
+// Owner Code Verification
+const submitOwnerCode = async () => {
+  if (!ownerCode.value) {
+    ownerCodeError.value = 'Please enter owner code';
+    return;
+  }
+  
   try {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    const isValid = await ipcRenderer.invoke('pos:validate-manager-pin', {
-      businessId: currentUser.businessId,
-      userId: currentUser.id,
-      pin: pinInput.value
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    
+    const verifyResult = await ipcRenderer.invoke('auth:verify-owner-code', {
+      businessId: user.businessId,
+      code: ownerCode.value
     });
     
-    if (isValid) {
-      if (pinCallback.value) {
-        pinCallback.value();
+    if (!verifyResult.success) {
+      ownerCodeError.value = 'Invalid owner code';
+      return;
+    }
+    
+    // Code verified, proceed with pending action
+    showOwnerCodeModal.value = false;
+    ownerCode.value = '';
+    ownerCodeError.value = '';
+    
+    if (pendingAction.value) {
+      if (pendingAction.value.type === 'discount') {
+        manualDiscount.value = pendingAction.value.amount;
+        showDiscountModal.value = false;
+      } else if (pendingAction.value.type === 'void') {
+        await performVoidTransaction();
       }
-      showPinModal.value = false;
-      pinInput.value = '';
-    } else {
-      alert('Invalid PIN');
+      pendingAction.value = null;
     }
   } catch (error) {
-    console.error('Error validating PIN:', error);
-    alert('Error validating PIN');
+    console.error('Error verifying owner code:', error);
+    ownerCodeError.value = 'Error verifying code';
   }
 };
 
-const cancelPin = () => {
-  showPinModal.value = false;
-  pinInput.value = '';
-  pinCallback.value = null;
+const cancelOwnerVerification = () => {
+  showOwnerCodeModal.value = false;
+  ownerCode.value = '';
+  ownerCodeError.value = '';
+  pendingAction.value = null;
 };
 
 // Void Transaction
@@ -1168,24 +1210,39 @@ const voidTransaction = async () => {
     return;
   }
   
-  await requestManagerPin('Void Transaction', async () => {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-      await ipcRenderer.invoke('pos:void-transaction', {
-        businessId: currentUser.businessId,
-        transactionId: transactionToVoid.value.id,
-        voidReason: voidReason.value,
-        voidedBy: currentUser.id
-      });
-      
-      alert('Transaction voided successfully');
-      showVoidModal.value = false;
-      loadOrderHistory();
-    } catch (error) {
-      console.error('Error voiding transaction:', error);
-      alert('Error voiding transaction');
-    }
-  });
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  
+  // Check if owner code required (for staff roles)
+  if (user.role === 'staff') {
+    ownerCodeMessage.value = `Void Transaction #${transactionToVoid.value.id}`;
+    pendingAction.value = { type: 'void' };
+    showVoidModal.value = false;
+    showOwnerCodeModal.value = true;
+  } else {
+    // Owner/manager can void without additional verification
+    await performVoidTransaction();
+  }
+};
+
+const performVoidTransaction = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    await ipcRenderer.invoke('pos:void-transaction', {
+      businessId: currentUser.businessId,
+      transactionId: transactionToVoid.value.id,
+      voidReason: voidReason.value,
+      voidedBy: currentUser.id
+    });
+    
+    alert('Transaction voided successfully');
+    showVoidModal.value = false;
+    voidReason.value = '';
+    transactionToVoid.value = null;
+    loadOrderHistory();
+  } catch (error) {
+    console.error('Error voiding transaction:', error);
+    alert('Error voiding transaction');
+  }
 };
 
 // Order History
@@ -1242,11 +1299,17 @@ onMounted(() => {
     document.documentElement.classList.add('dark');
   }
   
-  // Load loyalty settings
+  // Load loyalty settings and tax rate
   const currentUser = JSON.parse(localStorage.getItem('currentUser'));
   const savedSettings = localStorage.getItem(`loyaltySettings_${currentUser.businessId}`);
   if (savedSettings) {
     loyaltySettings.value = JSON.parse(savedSettings);
+  }
+  
+  // Load tax rate from localStorage
+  const savedTaxRate = localStorage.getItem(`taxRate_${currentUser.businessId}`);
+  if (savedTaxRate) {
+    taxRate.value = parseFloat(savedTaxRate);
   }
 });
 </script>
@@ -2511,5 +2574,12 @@ onMounted(() => {
 /* Summary Tip Display */
 .summary-row.tip {
   color: #34d399;
+}
+
+/* Error message styling */
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
 }
 </style>

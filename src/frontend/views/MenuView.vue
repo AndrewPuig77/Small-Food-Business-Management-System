@@ -174,12 +174,45 @@
         </form>
       </div>
     </div>
+
+    <!-- Owner Code Verification Modal -->
+    <div v-if="showOwnerCodeModal" class="modal-overlay" @mousedown.prevent @click.self="showOwnerCodeModal = false">
+      <div class="modal modal-small" @click.stop>
+        <div class="modal-header">
+          <h2 class="text-xl font-bold">Owner Verification Required</h2>
+          <button @click="cancelOwnerVerification" class="modal-close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-4 text-gray-300">{{ ownerCodeMessage }}</p>
+          <div class="form-group">
+            <label>Owner Code *</label>
+            <input 
+              ref="ownerCodeInput"
+              v-model="ownerCode" 
+              type="password" 
+              class="input-field" 
+              placeholder="Enter 4-digit owner code"
+              @keyup.enter="submitOwnerCode"
+            />
+          </div>
+          <div v-if="ownerCodeError" class="text-red-500 text-sm mt-2">{{ ownerCodeError }}</div>
+          <div class="modal-actions">
+            <button type="button" @click="cancelOwnerVerification" class="btn-secondary">Cancel</button>
+            <button type="button" @click="submitOwnerCode" class="btn-primary">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 
 const loading = ref(false);
@@ -189,6 +222,23 @@ const selectedCategory = ref(null);
 const showAddItemModal = ref(false);
 const showCategoryModal = ref(false);
 const editingItem = ref(null);
+
+// Owner verification
+const showOwnerCodeModal = ref(false);
+const ownerCode = ref('');
+const ownerCodeError = ref('');
+const ownerCodeMessage = ref('');
+const pendingAction = ref(null);
+const ownerCodeInput = ref(null);
+
+// Watch for modal open and focus input
+watch(showOwnerCodeModal, (newVal) => {
+  if (newVal) {
+    setTimeout(() => {
+      ownerCodeInput.value?.focus();
+    }, 100);
+  }
+});
 
 const itemForm = ref({
   name: '',
@@ -265,6 +315,21 @@ const closeItemModal = () => {
 };
 
 const saveItem = async () => {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  
+  // Check if owner verification is needed
+  if (user.role !== 'owner' && user.role !== 'manager') {
+    ownerCodeMessage.value = 'Enter owner code to save menu item:';
+    pendingAction.value = { type: 'save' };
+    showOwnerCodeModal.value = true;
+    return;
+  }
+  
+  // If owner/manager, proceed directly
+  await performSaveItem();
+};
+
+const performSaveItem = async () => {
   try {
     const { ipcRenderer } = window.require('electron');
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -309,6 +374,21 @@ const confirmDelete = async (item) => {
     return;
   }
 
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  
+  // Check if owner verification is needed
+  if (user.role !== 'owner' && user.role !== 'manager') {
+    ownerCodeMessage.value = `Enter owner code to delete "${item.name}":`;
+    pendingAction.value = { type: 'delete', item };
+    showOwnerCodeModal.value = true;
+    return;
+  }
+  
+  // If owner/manager, proceed directly
+  await performDeleteItem(item);
+};
+
+const performDeleteItem = async (item) => {
   try {
     const { ipcRenderer } = window.require('electron');
     const result = await ipcRenderer.invoke('menu:delete-item', item.id);
@@ -370,6 +450,53 @@ const handleImageUpload = (event) => {
 
 const removeImage = () => {
   itemForm.value.imageUrl = '';
+};
+
+// Owner verification functions
+const submitOwnerCode = async () => {
+  if (!ownerCode.value) {
+    ownerCodeError.value = 'Please enter owner code';
+    return;
+  }
+  
+  try {
+    const { ipcRenderer } = window.require('electron');
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    
+    const verifyResult = await ipcRenderer.invoke('auth:verify-owner-code', {
+      businessId: user.businessId,
+      code: ownerCode.value
+    });
+    
+    if (!verifyResult.success) {
+      ownerCodeError.value = 'Invalid owner code';
+      return;
+    }
+    
+    // Code verified, proceed with pending action
+    showOwnerCodeModal.value = false;
+    ownerCode.value = '';
+    ownerCodeError.value = '';
+    
+    if (pendingAction.value) {
+      if (pendingAction.value.type === 'save') {
+        await performSaveItem();
+      } else if (pendingAction.value.type === 'delete') {
+        await performDeleteItem(pendingAction.value.item);
+      }
+      pendingAction.value = null;
+    }
+  } catch (error) {
+    console.error('Error verifying owner code:', error);
+    ownerCodeError.value = 'Error verifying code';
+  }
+};
+
+const cancelOwnerVerification = () => {
+  showOwnerCodeModal.value = false;
+  ownerCode.value = '';
+  ownerCodeError.value = '';
+  pendingAction.value = null;
 };
 </script>
 
@@ -671,6 +798,9 @@ const removeImage = () => {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1001;
 }
 
 .modal-small {
