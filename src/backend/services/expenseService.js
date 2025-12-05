@@ -39,7 +39,8 @@ const getExpensesByDateRange = (businessId, startDate, endDate) => {
     FROM expenses e
     LEFT JOIN users u ON e.created_by = u.id
     WHERE e.business_id = ?
-      AND DATE(e.expense_date, 'localtime') BETWEEN DATE(?) AND DATE(?)
+      AND e.expense_date >= ?
+      AND e.expense_date <= ?
     ORDER BY e.expense_date DESC, e.created_at DESC
   `;
   

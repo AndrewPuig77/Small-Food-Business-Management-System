@@ -110,10 +110,24 @@ const createTransaction = (businessId, transactionData) => {
   const pointsEarned = transactionData.pointsEarned || 0;
   const pointsRedeemed = transactionData.pointsRedeemed || 0;
 
+  // Generate local datetime string for created_at
+  const now = new Date();
+  const localDateTime = now.getFullYear() + '-' + 
+    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(now.getDate()).padStart(2, '0') + ' ' + 
+    String(now.getHours()).padStart(2, '0') + ':' + 
+    String(now.getMinutes()).padStart(2, '0') + ':' + 
+    String(now.getSeconds()).padStart(2, '0');
+  
+  console.log('[POS] Local datetime generated:', localDateTime);
+
   // Determine next daily_order_number for this business (resets each day)
   let nextDailyOrderNumber = 1;
   try {
-    const maxRes = db.exec(`SELECT COALESCE(MAX(daily_order_number), 0) as maxnum FROM transactions WHERE business_id = ${businessId} AND DATE(created_at) = DATE('now')`);
+    const todayStr = now.getFullYear() + '-' + 
+      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(now.getDate()).padStart(2, '0');
+    const maxRes = db.exec(`SELECT COALESCE(MAX(daily_order_number), 0) as maxnum FROM transactions WHERE business_id = ${businessId} AND DATE(created_at) = '${todayStr}'`);
     if (maxRes.length && maxRes[0].values && maxRes[0].values.length) {
       const maxnum = maxRes[0].values[0][0];
       nextDailyOrderNumber = (Number(maxnum) || 0) + 1;
@@ -125,7 +139,7 @@ const createTransaction = (businessId, transactionData) => {
   const query = `
     INSERT INTO transactions (
       business_id, cashier_id, customer_id, subtotal, tax, discount, tip_amount, total, 
-      points_earned, points_redeemed, status, notes, kitchen_status, daily_order_number
+      points_earned, points_redeemed, status, notes, kitchen_status, daily_order_number, created_at
     ) VALUES (
       ${businessId},
       ${transactionData.cashierId},
@@ -140,10 +154,12 @@ const createTransaction = (businessId, transactionData) => {
       ${escape(transactionData.status || 'completed')},
       ${escape(transactionData.notes)},
       ${escape(transactionData.kitchenStatus || 'pending')},
-      ${nextDailyOrderNumber}
+      ${nextDailyOrderNumber},
+      '${localDateTime}'
     )
   `;
   
+  console.log('[POS] About to execute query with localDateTime:', localDateTime);
   db.run(query);
   saveDatabase();
 
@@ -348,33 +364,45 @@ const getRecentTransactions = (businessId, limit = 50) => {
 
 // Get transactions by date range
 const getTransactionsByDateRange = (businessId, startDate, endDate) => {
-  const db = getDb();
-  const query = `
-    SELECT 
-      t.*,
-      u.full_name as cashier_name,
-      c.name as customer_name
-    FROM transactions t
-    LEFT JOIN users u ON t.cashier_id = u.id
-    LEFT JOIN customers c ON t.customer_id = c.id
-    WHERE t.business_id = ${businessId}
-      AND DATE(t.created_at) BETWEEN ${escape(startDate)} AND ${escape(endDate)}
-    ORDER BY t.created_at DESC
-  `;
-  
-  const result = db.exec(query);
-  if (result.length === 0) return [];
-  
-  const columns = result[0].columns;
-  const values = result[0].values;
-  
-  return values.map(row => {
-    const transaction = {};
-    columns.forEach((col, idx) => {
-      transaction[col] = row[idx];
+  try {
+    const db = getDb();
+    console.log('[POSService] getTransactionsByDateRange params:', { businessId, startDate, endDate });
+
+    const startDateTime = `${startDate} 00:00:00`;
+    const endDateTime = `${endDate} 23:59:59`;
+    const query = `
+      SELECT 
+        t.*,
+        u.full_name as cashier_name,
+        c.name as customer_name
+      FROM transactions t
+      LEFT JOIN users u ON t.cashier_id = u.id
+      LEFT JOIN customers c ON t.customer_id = c.id
+      WHERE t.business_id = ${businessId}
+        AND t.created_at >= ${escape(startDateTime)}
+        AND t.created_at <= ${escape(endDateTime)}
+      ORDER BY t.created_at DESC
+    `;
+
+    const result = db.exec(query);
+    const rowCount = result?.[0]?.values?.length || 0;
+    console.log('[POSService] primary query result count:', rowCount);
+    if (rowCount === 0) {
+      return [];
+    }
+
+    const columns = result[0].columns;
+    return result[0].values.map(row => {
+      const transaction = {};
+      columns.forEach((col, idx) => {
+        transaction[col] = row[idx];
+      });
+      return transaction;
     });
-    return transaction;
-  });
+  } catch (error) {
+    console.error('[POSService] getTransactionsByDateRange failed:', error);
+    return [];
+  }
 };
 
 // Get daily sales summary
@@ -389,7 +417,7 @@ const getDailySalesSummary = (businessId, date) => {
       SUM(total) as total_sales
     FROM transactions
     WHERE business_id = ${businessId}
-      AND DATE(created_at) = ${escape(date)}
+      AND DATE(created_at, 'localtime') = ${escape(date)}
       AND status = 'completed'
   `;
   
@@ -496,7 +524,7 @@ const getPaymentMethodsByDateRange = (businessId, startDate, endDate) => {
     FROM payment_methods pm
     INNER JOIN transactions t ON pm.transaction_id = t.id
     WHERE t.business_id = ?
-      AND DATE(t.created_at) BETWEEN DATE(?) AND DATE(?)
+      AND DATE(t.created_at, 'localtime') BETWEEN DATE(?) AND DATE(?)
       AND t.status = 'completed'
     GROUP BY pm.method_type
     ORDER BY total_amount DESC
