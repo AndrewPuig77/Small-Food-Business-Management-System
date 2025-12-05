@@ -17,6 +17,12 @@
             </svg>
             Manage Schedules
           </button>
+          <button @click="openAnnouncementModal" class="btn-secondary" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #818cf8;">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+            </svg>
+            Post Announcement
+          </button>
           <button @click="openEmployeeModal()" class="btn-primary">
             <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -120,17 +126,6 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
-                  <button v-if="isOwner && !employee.user_id" @click="openCreateAccount(employee)" class="action-icon-btn" title="Create Account">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A7 7 0 0112 15a7 7 0 016.879 2.804M15 11a3 3 0 10-6 0 3 3 0 006 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 10v4m-2-2h4" />
-                    </svg>
-                  </button>
-                  <button v-if="isOwner" @click="openResetPassword(employee)" class="action-icon-btn" :title="employee.user_id ? 'Reset Password' : 'Create account to enable reset'">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.657 1.343-3 3-3s3 1.343 3 3v2h1a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4a2 2 0 012-2h1v-2a5 5 0 1110 0v2" />
-                    </svg>
-                  </button>
                   <button @click="confirmDelete(employee)" class="action-icon-btn delete" title="Delete">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -142,6 +137,62 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Posted Announcements Section -->
+      <section class="announcements-section">
+        <div class="section-header">
+          <h2 class="section-title">Posted Announcements</h2>
+          <button @click="loadAnnouncements" class="btn-icon" title="Refresh">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+        
+        <div v-if="loadingAnnouncements" class="loading">Loading announcements...</div>
+        <div v-else-if="postedAnnouncements.length === 0" class="empty-state-sm">
+          <svg class="empty-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+          </svg>
+          <p>No announcements posted yet</p>
+        </div>
+        <div v-else class="announcements-grid">
+          <div v-for="announcement in postedAnnouncements" :key="announcement.id" class="announcement-card" :class="'priority-' + announcement.priority">
+            <div class="announcement-header">
+              <div class="announcement-meta">
+                <span class="priority-badge" :class="announcement.priority">{{ announcement.priority }}</span>
+                <span class="date-text">{{ formatAnnouncementDate(announcement.created_at) }}</span>
+              </div>
+              <div class="announcement-actions">
+                <button @click="toggleAnnouncementStatus(announcement)" class="btn-icon" :title="announcement.is_active ? 'Deactivate' : 'Activate'">
+                  <svg v-if="announcement.is_active" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <svg v-else fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                </button>
+                <button @click="deleteAnnouncement(announcement)" class="btn-icon btn-danger" title="Delete">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <h3 class="announcement-title">{{ announcement.title }}</h3>
+            <p class="announcement-message">{{ announcement.message }}</p>
+            <div class="announcement-footer">
+              <div class="target-roles">
+                <span class="label">For:</span>
+                <span v-for="role in parseTargetRoles(announcement.target_roles)" :key="role" class="role-tag">{{ role }}</span>
+              </div>
+              <span v-if="!announcement.is_active" class="inactive-badge">Inactive</span>
+              <span v-else-if="isExpired(announcement.expires_at)" class="expired-badge">Expired</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- Add/Edit Employee Modal -->
@@ -260,18 +311,22 @@
             </div>
           </div>
 
-          <!-- Account Creation Section -->
-          <div v-if="!editingEmployee" class="account-section">
+          <!-- Account Credentials Section -->
+          <div class="account-section">
             <div class="section-header">
-              <h3>System Access (Optional)</h3>
-              <label class="toggle-switch">
+              <h3>{{ editingEmployee && employeeForm.hasAccount ? 'Account Credentials' : 'System Access (Optional)' }}</h3>
+              <!-- Only show toggle if creating new employee or editing employee without account -->
+              <label v-if="(!editingEmployee || !employeeForm.hasAccount)" class="toggle-switch">
                 <input type="checkbox" v-model="employeeForm.createAccount" />
                 <span class="toggle-slider"></span>
               </label>
+              <span v-else class="account-status-badge">Active Account</span>
             </div>
-            <p class="section-description">Create a login account for this employee to access the system</p>
+            <p v-if="!editingEmployee" class="section-description">Create a login account for this employee to access the system</p>
+            <p v-else-if="!employeeForm.hasAccount" class="section-description">Enable system access for this employee</p>
+            <p v-else class="section-description">View and manage account credentials and permissions</p>
             
-            <div v-if="employeeForm.createAccount" class="account-fields">
+            <div v-if="employeeForm.createAccount || (editingEmployee && employeeForm.hasAccount)" class="account-fields">
               <div class="form-row">
                 <div class="form-group">
                   <label for="username" class="form-label">Username *</label>
@@ -280,19 +335,22 @@
                     v-model="employeeForm.username" 
                     type="text" 
                     class="form-input"
-                    :required="employeeForm.createAccount"
+                    :required="employeeForm.createAccount && !editingEmployee"
+                    :readonly="editingEmployee && employeeForm.hasAccount"
+                    :class="{ 'readonly-input': editingEmployee && employeeForm.hasAccount }"
                     placeholder="john.doe"
                   />
+                  <p v-if="editingEmployee && employeeForm.hasAccount" class="field-hint">Username cannot be changed</p>
                 </div>
                 <div class="form-group">
-                  <label for="password" class="form-label">Password *</label>
+                  <label for="password" class="form-label">{{ editingEmployee && employeeForm.hasAccount ? 'New Password (leave blank to keep current)' : 'Password *' }}</label>
                   <input 
                     id="password"
                     v-model="employeeForm.password" 
                     type="password" 
                     class="form-input"
-                    :required="employeeForm.createAccount"
-                    placeholder="••••••••"
+                    :required="employeeForm.createAccount && !editingEmployee"
+                    :placeholder="editingEmployee && employeeForm.hasAccount ? 'Enter new password to change' : '••••••••'"
                   />
                 </div>
               </div>
@@ -487,6 +545,67 @@
       </div>
     </div>
   </div>
+
+  <!-- Announcement Modal -->
+  <div v-if="showAnnouncementModal" class="modal-overlay" @click.self="showAnnouncementModal = false">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Post Announcement</h2>
+        <button @click="showAnnouncementModal = false" class="modal-close">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <form @submit.prevent="saveAnnouncement" class="modal-content">
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input v-model="announcementForm.title" type="text" class="form-input" required placeholder="e.g., New Menu Launch">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea v-model="announcementForm.message" class="form-textarea" rows="4" required placeholder="Enter the announcement details..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select v-model="announcementForm.priority" class="form-input" required>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Roles (select multiple)</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="announcementForm.targetRoles" value="owner" class="form-checkbox">
+              <span>Owners</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="announcementForm.targetRoles" value="manager" class="form-checkbox">
+              <span>Managers</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="announcementForm.targetRoles" value="admin" class="form-checkbox">
+              <span>Admins</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="announcementForm.targetRoles" value="staff" class="form-checkbox">
+              <span>Staff</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expiration Date (Optional)</label>
+          <input v-model="announcementForm.expiresAt" type="datetime-local" class="form-input">
+        </div>
+        <div class="modal-actions">
+          <button type="button" @click="showAnnouncementModal = false" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Post Announcement</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -501,6 +620,7 @@ const searchQuery = ref('');
 const selectedStatus = ref(null);
 const showEmployeeModal = ref(false);
 const showScheduleManager = ref(false);
+const showAnnouncementModal = ref(false);
 const editingEmployee = ref(null);
 const currentUser = ref(null);
 const showResetModal = ref(false);
@@ -516,6 +636,17 @@ const createAccountForm = ref({ username: '', password: '' });
 const createAccountError = ref('');
 const createAccountSuccess = ref('');
 
+// Announcement state
+const announcementForm = ref({
+  title: '',
+  message: '',
+  priority: 'normal',
+  targetRoles: [],
+  expiresAt: ''
+});
+const postedAnnouncements = ref([]);
+const loadingAnnouncements = ref(false);
+
 const employeeForm = ref({
   firstName: '',
   lastName: '',
@@ -529,7 +660,7 @@ const employeeForm = ref({
   username: '',
   password: '',
   permissions: {
-    canAccessPOS: false,
+    canAccessPOS: true,
     canViewInventory: false,
     canEditInventory: false,
     canViewReports: false,
@@ -550,11 +681,89 @@ const loadEmployees = async () => {
 
     const { ipcRenderer } = window.require('electron');
     const result = await ipcRenderer.invoke('employee:get-all', stored.businessId);
+    console.log('Loaded employees:', result);
     employees.value = result;
   } catch (error) {
     console.error('Error loading employees:', error);
   } finally {
     loading.value = false;
+  }
+};
+
+// Open announcement modal
+const openAnnouncementModal = () => {
+  showAnnouncementModal.value = true;
+};
+
+// Load announcements
+const loadAnnouncements = async () => {
+  loadingAnnouncements.value = true;
+  try {
+    const stored = JSON.parse(localStorage.getItem('currentUser'));
+    if (!stored) return;
+
+    const { ipcRenderer } = window.require('electron');
+    const result = await ipcRenderer.invoke('announcements:get-all', {
+      businessId: stored.businessId,
+      includeExpired: true
+    });
+    postedAnnouncements.value = result;
+  } catch (error) {
+    console.error('Error loading announcements:', error);
+  } finally {
+    loadingAnnouncements.value = false;
+  }
+};
+
+const parseTargetRoles = (targetRoles) => {
+  if (!targetRoles) return ['All'];
+  // Split by comma and filter out empty strings
+  const roles = targetRoles.split(',')
+    .map(r => r.trim())
+    .filter(r => r.length > 0)
+    .map(r => {
+      // Capitalize first letter
+      const role = r.toLowerCase();
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    });
+  return roles.length > 0 ? roles : ['All'];
+};
+
+const formatAnnouncementDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+const isExpired = (expiresAt) => {
+  if (!expiresAt) return false;
+  return new Date(expiresAt) < new Date();
+};
+
+const toggleAnnouncementStatus = async (announcement) => {
+  try {
+    const { ipcRenderer } = window.require('electron');
+    await ipcRenderer.invoke('announcements:update', {
+      announcementId: announcement.id,
+      announcementData: { isActive: !announcement.is_active }
+    });
+    await loadAnnouncements();
+  } catch (error) {
+    console.error('Error toggling announcement status:', error);
+    alert('Failed to update announcement status');
+  }
+};
+
+const deleteAnnouncement = async (announcement) => {
+  if (!confirm(`Are you sure you want to delete the announcement "${announcement.title}"?`)) return;
+  
+  try {
+    const { ipcRenderer } = window.require('electron');
+    await ipcRenderer.invoke('announcements:delete', announcement.id);
+    await loadAnnouncements();
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
+    alert('Failed to delete announcement');
   }
 };
 
@@ -634,9 +843,61 @@ const formatDate = (dateString) => {
 };
 
 // Open employee modal
-const openEmployeeModal = (employee = null) => {
+const openEmployeeModal = async (employee = null) => {
   if (employee) {
     editingEmployee.value = employee;
+    
+    console.log('Opening modal for employee:', employee);
+    console.log('Employee user_id:', employee.user_id);
+    
+    // Parse permissions if they exist
+    let permissions = {
+      canAccessPOS: true,
+      canViewInventory: false,
+      canEditInventory: false,
+      canViewReports: false,
+      canManageEmployees: false,
+      canManageSchedule: false,
+      canApproveTimeOff: false,
+      canViewPayroll: false
+    };
+    
+    if (employee.permissions) {
+      try {
+        permissions = JSON.parse(employee.permissions);
+        console.log('Parsed permissions:', permissions);
+      } catch (e) {
+        console.error('Error parsing permissions:', e);
+      }
+    }
+    
+    // Check if employee has a user account
+    let hasAccount = false;
+    let username = '';
+    
+    if (employee.user_id) {
+      try {
+        const { ipcRenderer } = window.require('electron');
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        console.log('Fetching user account for user_id:', employee.user_id);
+        const result = await ipcRenderer.invoke('user:get-by-id', {
+          businessId: currentUser.businessId,
+          userId: employee.user_id
+        });
+        
+        console.log('User account result:', result);
+        
+        if (result) {
+          hasAccount = true;
+          username = result.username;
+        }
+      } catch (error) {
+        console.error('Error loading user account:', error);
+      }
+    }
+    
+    console.log('Final hasAccount:', hasAccount, 'username:', username);
+    
     employeeForm.value = {
       firstName: employee.first_name,
       lastName: employee.last_name,
@@ -646,20 +907,14 @@ const openEmployeeModal = (employee = null) => {
       hourlyRate: employee.hourly_rate || null,
       hireDate: employee.hire_date,
       status: employee.status,
+      hasAccount: hasAccount,
       createAccount: false,
-      username: '',
+      username: username,
       password: '',
-      permissions: {
-        canAccessPOS: false,
-        canViewInventory: false,
-        canEditInventory: false,
-        canViewReports: false,
-        canManageEmployees: false,
-        canManageSchedule: false,
-        canApproveTimeOff: false,
-        canViewPayroll: false
-      }
+      permissions: permissions
     };
+    
+    console.log('Employee form set to:', employeeForm.value);
   } else {
     editingEmployee.value = null;
     employeeForm.value = {
@@ -712,6 +967,12 @@ const saveEmployee = async () => {
     if (!currentUser) return;
 
     const { ipcRenderer } = window.require('electron');
+    
+    // For editing, include permissions if account exists OR being created
+    const includePermissions = editingEmployee.value 
+      ? (employeeForm.value.hasAccount || employeeForm.value.createAccount)
+      : employeeForm.value.createAccount;
+    
     const employeeData = {
       firstName: employeeForm.value.firstName,
       lastName: employeeForm.value.lastName,
@@ -724,7 +985,8 @@ const saveEmployee = async () => {
       createAccount: employeeForm.value.createAccount,
       username: employeeForm.value.username || null,
       password: employeeForm.value.password || null,
-      permissions: employeeForm.value.createAccount ? { ...employeeForm.value.permissions } : null
+      permissions: includePermissions ? { ...employeeForm.value.permissions } : null,
+      hasAccount: employeeForm.value.hasAccount || false
     };
 
     if (editingEmployee.value) {
@@ -782,6 +1044,7 @@ const openEmployeeSchedule = (employee) => {
 
 onMounted(() => {
   loadEmployees();
+  loadAnnouncements();
 });
 
 const openResetPassword = (employee) => {
@@ -897,6 +1160,50 @@ const performCreateAccount = async () => {
     } else {
       createAccountError.value = 'An error occurred while creating the account';
     }
+  }
+};
+
+const saveAnnouncement = async () => {
+  try {
+    const { ipcRenderer } = window.require('electron');
+    
+    if (!announcementForm.value.title || !announcementForm.value.message) {
+      alert('Please enter both title and message');
+      return;
+    }
+    
+    if (announcementForm.value.targetRoles.length === 0) {
+      alert('Please select at least one target role');
+      return;
+    }
+
+    await ipcRenderer.invoke('announcements:create', {
+      businessId: currentUser.value.businessId,
+      createdBy: currentUser.value.userId || currentUser.value.id,
+      title: announcementForm.value.title,
+      message: announcementForm.value.message,
+      priority: announcementForm.value.priority,
+      targetRoles: announcementForm.value.targetRoles.join(','),
+      expiresAt: announcementForm.value.expiresAt || null
+    });
+
+    showAnnouncementModal.value = false;
+    announcementForm.value = {
+      title: '',
+      message: '',
+      priority: 'normal',
+      targetRoles: [],
+      expiresAt: ''
+    };
+    
+    // Could add a success notification here
+    alert('Announcement posted successfully!');
+    
+    // Reload announcements to show the new one
+    await loadAnnouncements();
+  } catch (error) {
+    console.error('Error creating announcement:', error);
+    alert('Failed to post announcement');
   }
 };
 </script>
@@ -1318,6 +1625,12 @@ const performCreateAccount = async () => {
   border-color: #3b82f6;
 }
 
+.readonly-input {
+  background: #111827 !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .account-section {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
@@ -1341,6 +1654,16 @@ const performCreateAccount = async () => {
   font-size: 0.875rem;
   color: #9ca3af;
   margin-bottom: 1rem;
+}
+
+.account-status-badge {
+  padding: 0.375rem 0.75rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 0.375rem;
+  color: #22c55e;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .account-fields {
@@ -1569,5 +1892,281 @@ const performCreateAccount = async () => {
   color: #9ca3af;
   font-size: 0.875rem;
   margin-bottom: 1rem;
+}
+
+/* Announcement Modal Styles */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkbox-group .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: background 0.2s;
+}
+
+.checkbox-group .checkbox-label:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.checkbox-group .checkbox-label span {
+  font-size: 0.875rem;
+  color: #e5e7eb;
+}
+
+.form-checkbox {
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid #374151;
+  border-radius: 0.25rem;
+  background: #111827;
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.form-checkbox:checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.form-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.form-checkbox:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  color: #f3f4f6;
+  font-size: 0.875rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Announcements Section */
+.announcements-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: #9ca3af;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f3f4f6;
+}
+
+.btn-icon.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.empty-state-sm {
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+}
+
+.empty-icon-sm {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  opacity: 0.5;
+}
+
+.announcements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.announcement-card {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all 0.2s;
+}
+
+.announcement-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.announcement-card.priority-urgent {
+  border-left: 3px solid #ef4444;
+}
+
+.announcement-card.priority-high {
+  border-left: 3px solid #f59e0b;
+}
+
+.announcement-card.priority-normal {
+  border-left: 3px solid #3b82f6;
+}
+
+.announcement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.announcement-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.priority-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.priority-badge.urgent {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.priority-badge.high {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.priority-badge.normal {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.date-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.announcement-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.announcement-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 0.5rem;
+}
+
+.announcement-message {
+  font-size: 0.875rem;
+  color: #d1d5db;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.announcement-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.target-roles {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.target-roles .label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.role-tag {
+  padding: 0.125rem 0.5rem;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: #818cf8;
+}
+
+.inactive-badge {
+  padding: 0.25rem 0.5rem;
+  background: rgba(107, 114, 128, 0.2);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.expired-badge {
+  padding: 0.25rem 0.5rem;
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: #ef4444;
 }
 </style>
