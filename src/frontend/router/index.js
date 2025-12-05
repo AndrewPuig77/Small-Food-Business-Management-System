@@ -5,6 +5,7 @@ import DashboardView from '../views/DashboardView.vue';
 import MenuView from '../views/MenuView.vue';
 import EmployeesView from '../views/EmployeesView.vue';
 import EmployeeDetailView from '../views/EmployeeDetailView.vue';
+import EmployeeAccountView from '../views/EmployeeAccountView.vue';
 import ScheduleView from '../views/ScheduleView.vue';
 import InventoryView from '../views/InventoryView.vue';
 import POSView from '../views/POSView.vue';
@@ -28,6 +29,11 @@ const routes = [
     component: LoginView
   },
   {
+    path: '/login',
+    name: 'LoginPage',
+    component: LoginView
+  },
+  {
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: ForgotPasswordView
@@ -36,6 +42,12 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: DashboardView,
+    meta: { requiresAuth: true, requiresRole: ['owner', 'manager', 'admin'] }
+  },
+  {
+    path: '/employee-account',
+    name: 'EmployeeAccount',
+    component: EmployeeAccountView,
     meta: { requiresAuth: true }
   },
   {
@@ -161,6 +173,22 @@ router.beforeEach(async (to, from, next) => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
         next({ name: 'Login' });
+        return;
+      }
+      
+      // Role-based routing: redirect staff to employee account view
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const userRole = currentUser.role?.toLowerCase();
+      
+      // If user is staff and trying to access management views, redirect to employee account
+      if (userRole === 'staff' && to.meta.requiresRole && !to.meta.requiresRole.includes(userRole)) {
+        next({ name: 'EmployeeAccount' });
+        return;
+      }
+      
+      // If non-staff user tries to access employee account view, redirect to dashboard
+      if (to.name === 'EmployeeAccount' && userRole !== 'staff' && userRole !== 'employee') {
+        next({ name: 'Dashboard' });
         return;
       }
     }
