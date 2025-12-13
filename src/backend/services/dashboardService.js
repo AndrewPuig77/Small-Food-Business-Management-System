@@ -816,7 +816,8 @@ class DashboardService {
    */
   async getProfitPulse(businessId) {
     try {
-      const financialSummary = await this.getFinancialSummary(businessId, 'today');
+      // Use week period for more stable business health indicator
+      const financialSummary = await this.getFinancialSummary(businessId, 'week');
       
       let status = 'neutral';
       let message = 'Business is operating normally';
@@ -832,7 +833,7 @@ class DashboardService {
         message = 'Margins are tight but still profitable';
       } else {
         status = 'negative';
-        message = 'Alert: Business is operating at a loss today';
+        message = 'Alert: Business is operating at a loss this week';
       }
       
       return {
