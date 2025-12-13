@@ -1,5 +1,8 @@
 import { ref } from 'vue';
 
+const showOwnerModal = ref(false);
+const ownerVerificationResolve = ref(null);
+
 export function useOwnerVerification() {
   const verifyOwnerCode = async () => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -9,11 +12,15 @@ export function useOwnerVerification() {
       return true;
     }
     
-    // Staff needs to enter owner code
-    const code = prompt('Enter owner code to proceed:');
-    if (!code) {
-      return false;
-    }
+    // Show modal and wait for result
+    return new Promise((resolve) => {
+      showOwnerModal.value = true;
+      ownerVerificationResolve.value = resolve;
+    });
+  };
+
+  const handleOwnerCodeSubmit = async (code) => {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     
     try {
       const { ipcRenderer } = window.require('electron');
@@ -22,20 +29,40 @@ export function useOwnerVerification() {
         code: code
       });
       
-      if (!result.success) {
-        alert('Invalid owner code');
-        return false;
+      showOwnerModal.value = false;
+      
+      if (ownerVerificationResolve.value) {
+        ownerVerificationResolve.value(result.success);
+        ownerVerificationResolve.value = null;
       }
       
-      return true;
+      return result.success;
     } catch (error) {
       console.error('Error verifying owner code:', error);
-      alert('Error verifying owner code');
+      showOwnerModal.value = false;
+      
+      if (ownerVerificationResolve.value) {
+        ownerVerificationResolve.value(false);
+        ownerVerificationResolve.value = null;
+      }
+      
       return false;
+    }
+  };
+
+  const handleOwnerCodeCancel = () => {
+    showOwnerModal.value = false;
+    
+    if (ownerVerificationResolve.value) {
+      ownerVerificationResolve.value(false);
+      ownerVerificationResolve.value = null;
     }
   };
   
   return {
-    verifyOwnerCode
+    showOwnerModal,
+    verifyOwnerCode,
+    handleOwnerCodeSubmit,
+    handleOwnerCodeCancel
   };
 }

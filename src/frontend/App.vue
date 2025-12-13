@@ -26,6 +26,16 @@
       :show="loadingState.show"
       :message="loadingState.message"
     />
+    
+    <!-- Toast Notifications -->
+    <Toast />
+    
+    <!-- Owner Code Verification -->
+    <OwnerCodeModal
+      :show="showOwnerModal"
+      @confirm="handleOwnerCodeSubmit"
+      @cancel="handleOwnerCodeCancel"
+    />
   </div>
 </template>
 
@@ -33,9 +43,13 @@
 import AlertModal from './components/AlertModal.vue';
 import ConfirmModal from './components/ConfirmModal.vue';
 import LoadingSpinner from './components/LoadingSpinner.vue';
+import Toast from './components/Toast.vue';
+import OwnerCodeModal from './components/OwnerCodeModal.vue';
 import { useModals } from './composables/useModals';
+import { useOwnerVerification } from './composables/useOwnerVerification';
 
 const { alertState, confirmState, loadingState, closeAlert } = useModals();
+const { showOwnerModal, handleOwnerCodeSubmit, handleOwnerCodeCancel } = useOwnerVerification();
 </script>
 
 <style>
