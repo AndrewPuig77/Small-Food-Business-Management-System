@@ -601,8 +601,13 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import { useToast } from '../composables/useToast';
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
+import { useDebounce } from '../composables/useDebounce';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const { ipcRenderer } = window.require('electron');
+const { showSuccess, showError, showWarning } = useToast();
 
 // Common modifiers for customization
 const commonModifiers = [
@@ -949,7 +954,7 @@ const createNewCustomer = async () => {
     newCustomer.value = { name: '', phone: '', email: '' };
   } catch (error) {
     console.error('Error creating customer:', error);
-    alert('Failed to create customer');
+    showError('Failed to create customer');
   }
 };
 
@@ -1033,7 +1038,7 @@ const completeTransaction = async () => {
     loadDailySummary();
   } catch (error) {
     console.error('Error completing transaction:', error);
-    alert('Failed to complete transaction');
+    showError('Failed to complete transaction');
   }
 };
 
@@ -1234,14 +1239,14 @@ const performVoidTransaction = async () => {
       voidedBy: currentUser.id
     });
     
-    alert('Transaction voided successfully');
+    showSuccess('Transaction voided successfully');
     showVoidModal.value = false;
     voidReason.value = '';
     transactionToVoid.value = null;
     loadOrderHistory();
   } catch (error) {
     console.error('Error voiding transaction:', error);
-    alert('Error voiding transaction');
+    showError('Error voiding transaction');
   }
 };
 
@@ -1290,7 +1295,6 @@ const toggleDarkMode = () => {
 
 onMounted(() => {
   loadData();
-  loadDailySummary();
   
   // Load dark mode preference
   const savedDarkMode = localStorage.getItem('posDarkMode');
@@ -1310,6 +1314,46 @@ onMounted(() => {
   const savedTaxRate = localStorage.getItem(`taxRate_${currentUser.businessId}`);
   if (savedTaxRate) {
     taxRate.value = parseFloat(savedTaxRate);
+  }
+});
+
+// Auto-refresh daily summary every 30 seconds to show real-time sales
+const { isRefreshing: isRefreshingSummary } = useAutoRefresh(loadDailySummary, 30000);
+
+// Keyboard Shortcuts
+useKeyboardShortcuts({
+  'ctrl+n': () => {
+    console.log('[Shortcut] Ctrl+N triggered, cart length:', cart.value.length);
+    if (cart.value.length > 0) {
+      clearCart();
+    } else {
+      showInfo('Cart is already empty');
+    }
+  },
+  'ctrl+p': () => {
+    console.log('[Shortcut] Ctrl+P triggered, cart length:', cart.value.length);
+    if (cart.value.length > 0) {
+      showCheckout.value = true;
+    } else {
+      showWarning('Add items to cart first');
+    }
+  },
+  'ctrl+h': () => {
+    console.log('[Shortcut] Ctrl+H triggered');
+    toggleOrderHistory();
+  },
+  'escape': () => {
+    // ESC closes whatever is open: checkout, receipt, notes modal, or order history
+    if (showCheckout.value) {
+      showCheckout.value = false;
+      showInfo('Checkout cancelled');
+    } else if (showReceipt.value) {
+      closeReceipt();
+    } else if (showNotesModal.value) {
+      closeNotesModal();
+    } else if (showOrderHistory.value) {
+      showOrderHistory.value = false;
+    }
   }
 });
 </script>
