@@ -589,14 +589,19 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import { useToast } from '../composables/useToast';
+import { useDebounce } from '../composables/useDebounce';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const { ipcRenderer } = window.require('electron');
+const { showSuccess, showError } = useToast();
 
 const items = ref([]);
 const categories = ref([]);
 const suppliers = ref([]);
 const loading = ref(true);
 const searchQuery = ref('');
+const debouncedSearch = useDebounce(searchQuery, 300);
 const selectedCategory = ref(null);
 
 const showItemModal = ref(false);
@@ -657,8 +662,8 @@ const filteredItems = computed(() => {
     filtered = filtered.filter(item => item.category_id === selectedCategory.value);
   }
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
+  if (debouncedSearch.value) {
+    const query = debouncedSearch.value.toLowerCase();
     filtered = filtered.filter(item =>
       item.name.toLowerCase().includes(query) ||
       item.description?.toLowerCase().includes(query) ||
@@ -1065,8 +1070,11 @@ const closeBatchImportModal = () => {
   batchImportResults.value = null;
 };
 
+// Auto-refresh inventory every 15 seconds to see real-time stock changes
+const { isRefreshing, manualRefresh } = useAutoRefresh(loadInventory, 15000);
+
 onMounted(() => {
-  loadInventory();
+  // Initial load handled by useAutoRefresh
 });
 </script>
 
