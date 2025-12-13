@@ -262,6 +262,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -727,6 +728,16 @@ const goToToday = () => {
 
 // Update current time every minute for elapsed time calculations
 let timeInterval;
+
+// Auto-refresh schedule data every 15 seconds for real-time updates
+const refreshScheduleData = async () => {
+  await Promise.all([
+    loadClockedInEmployees(),
+    loadWeeklyTimeLogs()
+  ]);
+};
+
+const { isRefreshing, manualRefresh } = useAutoRefresh(refreshScheduleData, 15000, false);
 
 onMounted(() => {
   goToToday();

@@ -215,6 +215,7 @@ import FinancialSummaryWidget from '../components/dashboard/FinancialSummaryWidg
 import ClockInOutModal from '../components/dashboard/ClockInOutModal.vue';
 import QuickInventoryModal from '../components/dashboard/QuickInventoryModal.vue';
 import OutOfStockModal from '../components/dashboard/OutOfStockModal.vue';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const router = useRouter();
 const { ipcRenderer } = window.require('electron');
@@ -257,28 +258,13 @@ const todaysSales = ref(0);
 const ordersToday = ref(0);
 const lowStockCount = ref(0);
 
-onMounted(async () => {
-  const userDataStr = localStorage.getItem('currentUser');
-  if (userDataStr) {
-    currentUser.value = JSON.parse(userDataStr);
-    businessName.value = currentUser.value.businessName || 'My Business';
-    
-    await loadDashboardData();
-    
-    // Auto-refresh every 30 seconds
-    refreshInterval = setInterval(() => {
-      loadDashboardData();
-    }, 30000);
-  }
-});
-
-onUnmounted(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-  }
-});
-
 const loadDashboardData = async () => {
+  // Don't load if user data isn't available yet
+  if (!currentUser.value) {
+    console.log('⏸️ Skipping dashboard load - user not loaded yet');
+    return;
+  }
+  
   try {
     console.log('🔄 Loading dashboard data...');
     const businessId = currentUser.value.businessId;
@@ -577,6 +563,21 @@ const handleViewUpcoming = (type) => {
     router.push('/schedule');
   }
 };
+
+// Auto-refresh dashboard every 15 seconds for real-time updates
+const { isRefreshing, manualRefresh } = useAutoRefresh(loadDashboardData, 15000);
+
+onMounted(async () => {
+  const userDataStr = localStorage.getItem('currentUser');
+  if (userDataStr) {
+    currentUser.value = JSON.parse(userDataStr);
+    businessName.value = currentUser.value.businessName || 'My Business';
+  }
+});
+
+onUnmounted(() => {
+  // Cleanup handled by useAutoRefresh
+});
 </script>
 
 <style scoped>

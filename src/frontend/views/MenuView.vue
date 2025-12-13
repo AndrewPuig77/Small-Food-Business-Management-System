@@ -214,6 +214,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const loading = ref(false);
 const menuItems = ref([]);
@@ -258,10 +259,6 @@ const filteredItems = computed(() => {
     return menuItems.value;
   }
   return menuItems.value.filter(item => item.category_id === selectedCategory.value);
-});
-
-onMounted(async () => {
-  await loadMenuData();
 });
 
 const loadMenuData = async () => {
@@ -498,6 +495,13 @@ const cancelOwnerVerification = () => {
   ownerCodeError.value = '';
   pendingAction.value = null;
 };
+
+// Auto-refresh menu data every 20 seconds to see changes from other accounts
+const { isRefreshing, manualRefresh } = useAutoRefresh(loadMenuData, 20000);
+
+onMounted(async () => {
+  // Initial load handled by useAutoRefresh
+});
 </script>
 
 <style scoped>

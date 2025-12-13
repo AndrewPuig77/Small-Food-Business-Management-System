@@ -612,6 +612,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const router = useRouter();
 const employees = ref([]);
@@ -1042,9 +1043,21 @@ const openEmployeeSchedule = (employee) => {
   router.push(`/employees/${employee.id}`);
 };
 
+// Auto-refresh data every 10 seconds for real-time sync between owner and employees
+const refreshData = async () => {
+  await Promise.all([
+    loadEmployees(),
+    loadAnnouncements()
+  ]);
+};
+
+const { isRefreshing, manualRefresh } = useAutoRefresh(refreshData, 10000);
+
 onMounted(() => {
-  loadEmployees();
-  loadAnnouncements();
+  const userDataStr = localStorage.getItem('currentUser');
+  if (userDataStr) {
+    currentUser.value = JSON.parse(userDataStr);
+  }
 });
 
 const openResetPassword = (employee) => {

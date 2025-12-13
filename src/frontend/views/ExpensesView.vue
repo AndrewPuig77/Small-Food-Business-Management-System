@@ -296,6 +296,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -591,9 +592,18 @@ const closeRecurringModal = () => {
   };
 };
 
+// Auto-refresh expenses every 20 seconds
+const refreshExpenses = async () => {
+  await Promise.all([
+    loadExpenses(),
+    loadRecurringExpenses()
+  ]);
+};
+
+const { isRefreshing, manualRefresh } = useAutoRefresh(refreshExpenses, 20000);
+
 onMounted(() => {
-  loadExpenses();
-  loadRecurringExpenses();
+  // Initial load handled by useAutoRefresh
 });
 </script>
 

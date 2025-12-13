@@ -305,6 +305,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -587,9 +588,18 @@ const cancelOwnerVerification = () => {
   pendingDeleteCustomer.value = null;
 };
 
+// Auto-refresh customers and loyalty settings every 20 seconds
+const refreshData = async () => {
+  await Promise.all([
+    loadCustomers(),
+    loadLoyaltySettings()
+  ]);
+};
+
+const { isRefreshing, manualRefresh } = useAutoRefresh(refreshData, 20000);
+
 onMounted(() => {
-  loadCustomers();
-  loadLoyaltySettings();
+  // Initial load handled by useAutoRefresh
 });
 </script>
 

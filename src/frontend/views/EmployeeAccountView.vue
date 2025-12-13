@@ -262,6 +262,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
+import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const router = useRouter();
 const { ipcRenderer } = window.require('electron');
@@ -708,6 +709,21 @@ const initializeWeek = () => {
   currentWeekStart.value = start;
 };
 
+// Auto-refresh all data every 10 seconds for real-time sync
+const refreshAllData = async () => {
+  if (!employeeData.value) return;
+  
+  await Promise.all([
+    checkClockStatus(),
+    loadTimeLogs(),
+    loadWeeklyShifts(),
+    loadTasks(),
+    loadAnnouncements()
+  ]);
+};
+
+const { isRefreshing, manualRefresh } = useAutoRefresh(refreshAllData, 10000, false);
+
 onMounted(() => {
   initializeWeek();
   loadEmployeeData();
@@ -717,34 +733,12 @@ onMounted(() => {
     currentTime.value = new Date();
   }, 60000);
   
-  // Refresh clock status every 5 seconds for better sync
+  // Refresh clock status every 5 seconds for instant feedback
   clockStatusInterval = setInterval(() => {
-    console.log('[Interval] Clock status check triggered, employeeData:', !!employeeData.value);
     if (employeeData.value) {
       checkClockStatus();
     }
   }, 5000);
-  
-  // Also reload time logs periodically
-  const timeLogsInterval = setInterval(() => {
-    console.log('[Interval] Time logs refresh triggered, employeeData:', !!employeeData.value);
-    if (employeeData.value) {
-      loadTimeLogs();
-    }
-  }, 10000);
-  
-  // Reload shifts, tasks, and announcements every 30 seconds for real-time sync
-  const dataRefreshInterval = setInterval(() => {
-    console.log('[Interval] Data refresh triggered (shifts/tasks/announcements), employeeData:', !!employeeData.value);
-    if (employeeData.value) {
-      loadWeeklyShifts();
-      loadTasks();
-      loadAnnouncements();
-    }
-  }, 30000);
-  
-  // Store interval IDs for cleanup
-  window.employeeIntervals = { timeInterval, clockStatusInterval, timeLogsInterval, dataRefreshInterval };
 });
 
 onUnmounted(() => {
