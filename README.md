@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🍽️ Food Business Manager
+# Food Business Manager
 
 **An all-in-one desktop app for cafes, food trucks, and small restaurants.**
 
@@ -17,18 +17,18 @@ Run your POS, staff, inventory, and finances from one place, with role-based acc
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 ![Course](https://img.shields.io/badge/COP%204331-Fall%202025-orange?style=flat-square)
 
-[Features](#-features) •
-[Quick Start](#-quick-start) •
-[Tech Stack](#️-tech-stack) •
-[Roles](#-roles--permissions) •
-[Project Structure](#-project-structure) •
-[Team](#-team)
+[Features](#features) •
+[Quick Start](#quick-start) •
+[Tech Stack](#tech-stack) •
+[Roles](#roles--permissions) •
+[Project Structure](#project-structure) •
+[Team](#team)
 
 </div>
 
 ---
 
-## ✨ Overview
+## Overview
 
 Food Business Manager is a cross-platform **Electron + Vue 3** desktop application built as a class project for **COP 4331: Software Engineering**. It gives small food-service operators the tools a larger restaurant would have, without the enterprise price tag or complexity.
 
@@ -37,13 +37,13 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 
 ---
 
-## 🚀 Features
+## Features
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 💰 Point of Sale
+### Point of Sale
 - Fast checkout with keyboard shortcuts
 - Cash, card, and digital payments
 - Split bills and custom discounts
@@ -52,7 +52,7 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 </td>
 <td width="50%" valign="top">
 
-### 📊 Dashboard & Analytics
+### Dashboard & Analytics
 - Live KPIs, sales trends (week / month / year)
 - **Profit Pulse** business-health indicator
 - Live order feed and top performers
@@ -63,7 +63,7 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 <tr>
 <td valign="top">
 
-### 👥 Employee Management
+### Employee Management
 - Profiles, accounts, and granular permissions
 - Time clock with regular and overtime hours
 - Payroll and weekly schedule calendar
@@ -72,7 +72,7 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 </td>
 <td valign="top">
 
-### 💼 Employee Portal
+### Employee Portal
 - Clock in/out with elapsed-time tracking
 - Personal daily and weekly schedule
 - Task checklist and announcements
@@ -83,7 +83,7 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 <tr>
 <td valign="top">
 
-### 📦 Inventory Control
+### Inventory Control
 - Stock levels with minimum thresholds
 - Low-stock and reorder alerts
 - Quick adjustments and out-of-stock marking
@@ -92,7 +92,7 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 </td>
 <td valign="top">
 
-### 🍽️ Menu Management
+### Menu Management
 - Items, categories, and descriptions
 - Pricing and availability controls
 - One-click out-of-stock toggles
@@ -102,7 +102,7 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 <tr>
 <td valign="top">
 
-### 🧑‍🤝‍🧑 Customers & Loyalty
+### Customers & Loyalty
 - Customer profiles and purchase history
 - Loyalty points, rewards, and promotions
 - Reservations
@@ -110,7 +110,7 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 </td>
 <td valign="top">
 
-### 📈 Reports
+### Reports
 - Sales, expenses, and profit and loss
 - Employee performance and inventory reports
 - Date-range filtering
@@ -120,12 +120,12 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 </tr>
 </table>
 
-### 🔒 Security
+### Security
 Multi-user authentication · bcrypt password hashing · role-based permissions · owner-code verification for sensitive actions · session management
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 > [!IMPORTANT]
 > Requires **Node.js 20.19+** (needed by Vite 7) and **npm**.
@@ -144,7 +144,7 @@ npm run dev
 
 For detailed setup and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)**.
 
-### 📜 Scripts
+### Scripts
 
 | Command | Description |
 | --- | --- |
@@ -158,7 +158,7 @@ For detailed setup and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -176,24 +176,24 @@ For detailed setup and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)
 
 ```mermaid
 flowchart LR
-    UI["🖥️ Vue 3 Frontend<br/>views · components · router"]
-    IPC["🔌 Electron IPC"]
-    SVC["⚙️ Service Layer<br/>auth · pos · inventory · analytics …"]
-    DB[("🗄️ SQLite<br/>sql.js")]
+    UI["Vue 3 Frontend<br/>views · components · router"]
+    IPC["Electron IPC"]
+    SVC["Service Layer<br/>auth · pos · inventory · analytics …"]
+    DB[("SQLite<br/>sql.js")]
     UI <--> IPC <--> SVC <--> DB
 ```
 
 ---
 
-## 🔐 Roles & Permissions
+## Roles & Permissions
 
 | Role | Lands on | Access |
 | --- | --- | --- |
-| 👑 **Owner / Manager** | Main dashboard | Full system access, employee and account management, financials, configuration, bypasses owner-code checks |
-| 👨‍🍳 **Chef** | Employee portal | Menu management, kitchen view, order tracking, inventory viewing |
-| 🧾 **Server / Cashier** | Employee portal | POS, order management, customer interaction, limited inventory view |
-| 🚗 **Driver** | Employee portal | Order tracking, delivery management, customer info |
-| 🧑‍💼 **Staff** | Employee portal | Time tracking, tasks, announcements, plus any assigned permissions |
+| **Owner / Manager** | Main dashboard | Full system access, employee and account management, financials, configuration, bypasses owner-code checks |
+| **Chef** | Employee portal | Menu management, kitchen view, order tracking, inventory viewing |
+| **Server / Cashier** | Employee portal | POS, order management, customer interaction, limited inventory view |
+| **Driver** | Employee portal | Order tracking, delivery management, customer info |
+| **Staff** | Employee portal | Time tracking, tasks, announcements, plus any assigned permissions |
 
 <details>
 <summary><b>How it works under the hood</b></summary>
@@ -210,7 +210,7 @@ flowchart LR
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 <details>
 <summary><b>Click to expand</b></summary>
@@ -287,7 +287,7 @@ Full schema: [docs/design/database-schema.md](docs/design/database-schema.md)
 
 ---
 
-## 🗺️ Recent Updates
+## Recent Updates
 
 - [x] Employee portal with clock in/out, schedule, tasks, and announcements
 - [x] Modern dashboard with analytics widgets
@@ -300,7 +300,7 @@ Full schema: [docs/design/database-schema.md](docs/design/database-schema.md)
 
 ---
 
-## 👥 Team
+## Team
 
 <table>
 <tr>
@@ -317,7 +317,7 @@ Full schema: [docs/design/database-schema.md](docs/design/database-schema.md)
 
 ---
 
-## 📄 License
+## License
 
 Released under the [MIT License](LICENSE). Built for educational purposes as part of **COP 4331 Software Engineering** (Fall 2025).
 
@@ -325,6 +325,5 @@ Released under the [MIT License](LICENSE). Built for educational purposes as par
 
 **Questions or found a bug?** [Open an issue](https://github.com/AndrewPuig77/Small-Food-Business-Management-System/issues)
 
-<sub>Made with ☕ and Vue</sub>
 
 </div>
