@@ -1,308 +1,330 @@
-# Small Food Business Management System
+<div align="center">
 
-**Class Project** - COP 4331 (Software Engineering)  
-**Fall 2025**
+# 🍽️ Food Business Manager
 
-A comprehensive desktop application for managing small food service establishments (cafes, food trucks, small restaurants) with role-based access control and real-time business analytics.
+**An all-in-one desktop app for cafes, food trucks, and small restaurants.**
 
-##  Team Members
+Run your POS, staff, inventory, and finances from one place, with role-based access and live analytics.
 
-- **Andrew Puig**
-- **Treasure Brown**
-- **Jorge Carmenate**
-- **Joseph Contreras**
-- **Steven Palacios**
-- **Andreani Pineda**
+[![Electron](https://img.shields.io/badge/Electron-28-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Vue](https://img.shields.io/badge/Vue-3-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-sql.js-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sql.js.org/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 
-##  Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+![Version](https://img.shields.io/badge/version-0.1.0-blue?style=flat-square)
+![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
+![Course](https://img.shields.io/badge/COP%204331-Fall%202025-orange?style=flat-square)
 
-### 👥 Employee Management
-- Complete employee profiles with contact information and roles
-- User account creation with customizable permissions
-- Role-based access control (Owner, Manager, Chef, Server, Cashier, Driver, Staff)
-- Time clock system with clock in/out tracking
-- Hours tracking with regular and overtime calculations
-- Comprehensive payroll management
-- Schedule management with weekly calendar view
-- Shift swap requests and time-off management
-- Task assignment and tracking
-- Performance analytics
+[Features](#-features) •
+[Quick Start](#-quick-start) •
+[Tech Stack](#️-tech-stack) •
+[Roles](#-roles--permissions) •
+[Project Structure](#-project-structure) •
+[Team](#-team)
+
+</div>
+
+---
+
+## ✨ Overview
+
+Food Business Manager is a cross-platform **Electron + Vue 3** desktop application built as a class project for **COP 4331: Software Engineering**. It gives small food-service operators the tools a larger restaurant would have, without the enterprise price tag or complexity.
+
+> [!NOTE]
+> Owners and managers get a full analytics dashboard. Operational staff (chefs, servers, cashiers, drivers) are routed to a focused **Employee Portal** with only the tools they need.
+
+---
+
+## 🚀 Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 💰 Point of Sale
+- Fast checkout with keyboard shortcuts
+- Cash, card, and digital payments
+- Split bills and custom discounts
+- Receipt generation and transaction history
+
+</td>
+<td width="50%" valign="top">
 
 ### 📊 Dashboard & Analytics
-- Real-time business metrics and KPIs
-- Sales trend charts with period selection (week/month/year)
-- Profit pulse indicator with business health status
-- Live order feed with status tracking
-- Top-selling items and performers
-- Financial summary widgets
-- Activity feed and alerts panel
-- Upcoming shifts and time-off notifications
-- Low stock alerts and reorder notifications
-- Goal tracking and progress monitoring
+- Live KPIs, sales trends (week / month / year)
+- **Profit Pulse** business-health indicator
+- Live order feed and top performers
+- Goal tracking, alerts, and activity feed
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 👥 Employee Management
+- Profiles, accounts, and granular permissions
+- Time clock with regular and overtime hours
+- Payroll and weekly schedule calendar
+- Shift swaps, time-off requests, and tasks
+
+</td>
+<td valign="top">
 
 ### 💼 Employee Portal
-- Dedicated employee dashboard for non-admin users
-- Clock in/out with elapsed time tracking
-- Personal schedule view (daily and weekly)
-- Task management with completion tracking
-- Announcements and communications
+- Clock in/out with elapsed-time tracking
+- Personal daily and weekly schedule
+- Task checklist and announcements
 - Time history and hours summary
-- Real-time data synchronization
+
+</td>
+</tr>
+<tr>
+<td valign="top">
 
 ### 📦 Inventory Control
-- Stock tracking with quantity management
-- Low-stock alerts and minimum quantity thresholds
-- Quick inventory adjustment tools
-- Out-of-stock marking system
+- Stock levels with minimum thresholds
+- Low-stock and reorder alerts
+- Quick adjustments and out-of-stock marking
 - Supplier management
-- Reorder notifications
 
-### 💰 Point of Sale (POS)
-- Fast transaction processing
-- Multiple payment types (cash, card, digital)
-- Order management with status tracking
-- Split bills and custom discounts
-- Receipt generation
-- Transaction history
+</td>
+<td valign="top">
 
 ### 🍽️ Menu Management
-- Add, edit, and organize menu items
-- Category management
+- Items, categories, and descriptions
 - Pricing and availability controls
-- Item descriptions and specifications
-- Quick out-of-stock toggles
+- One-click out-of-stock toggles
 
-### 👥 Customer Management
-- Customer profiles and contact information
-- Loyalty points system
-- Purchase history tracking
-- Rewards and promotions
+</td>
+</tr>
+<tr>
+<td valign="top">
 
-### 📈 Reports & Analytics
-- Sales reports with date range filtering
-- Expense tracking and categorization
-- Profit and loss analysis
-- Employee performance reports
-- Inventory reports
-- Custom report generation
-- Export to PDF and Excel
+### 🧑‍🤝‍🧑 Customers & Loyalty
+- Customer profiles and purchase history
+- Loyalty points, rewards, and promotions
+- Reservations
 
-### 🔒 Security & Access Control
-- Multi-user authentication system
-- Role-based permissions
-- Owner code verification for sensitive operations
-- Secure password hashing
-- Session management
+</td>
+<td valign="top">
 
-##  Tech Stack
+### 📈 Reports
+- Sales, expenses, and profit and loss
+- Employee performance and inventory reports
+- Date-range filtering
+- Export to **PDF** and **Excel**
 
-**Frontend:** Electron + Vue 3 (Composition API) + Tailwind CSS  
-**Backend:** Node.js + SQLite  
-**IPC:** Electron IPC for frontend-backend communication  
-**Charts:** Canvas-based custom charts  
-**Security:** bcrypt for password hashing
+</td>
+</tr>
+</table>
 
-##  Project Structure
+### 🔒 Security
+Multi-user authentication · bcrypt password hashing · role-based permissions · owner-code verification for sensitive actions · session management
+
+---
+
+## ⚡ Quick Start
+
+> [!IMPORTANT]
+> Requires **Node.js 20.19+** (needed by Vite 7) and **npm**.
+
+```bash
+# 1. Clone
+git clone https://github.com/AndrewPuig77/Small-Food-Business-Management-System.git
+cd Small-Food-Business-Management-System
+
+# 2. Install
+npm install
+
+# 3. Run
+npm run dev
+```
+
+For detailed setup and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)**.
+
+### 📜 Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the app in development mode |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview the production build |
+| `npm run lint` | Lint the codebase |
+| `npm test` | Run the test suite (Jest) |
+| `npm run dist` | Build and package installers for the current OS |
+| `npm run dist:win` / `dist:mac` / `dist:linux` | Package for a specific platform |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| **Desktop shell** | Electron |
+| **UI** | Vue 3 (Composition API), Vue Router, Vuex |
+| **Styling** | Tailwind CSS |
+| **Build** | Vite + `vite-plugin-electron` |
+| **Database** | SQLite via sql.js |
+| **Charts** | Chart.js |
+| **Auth** | bcryptjs, JSON Web Tokens |
+| **Exports** | jsPDF, SheetJS (xlsx) |
+| **Packaging** | electron-builder (NSIS, portable, DMG, AppImage, deb) |
+
+### Architecture
+
+```mermaid
+flowchart LR
+    UI["🖥️ Vue 3 Frontend<br/>views · components · router"]
+    IPC["🔌 Electron IPC"]
+    SVC["⚙️ Service Layer<br/>auth · pos · inventory · analytics …"]
+    DB[("🗄️ SQLite<br/>sql.js")]
+    UI <--> IPC <--> SVC <--> DB
+```
+
+---
+
+## 🔐 Roles & Permissions
+
+| Role | Lands on | Access |
+| --- | --- | --- |
+| 👑 **Owner / Manager** | Main dashboard | Full system access, employee and account management, financials, configuration, bypasses owner-code checks |
+| 👨‍🍳 **Chef** | Employee portal | Menu management, kitchen view, order tracking, inventory viewing |
+| 🧾 **Server / Cashier** | Employee portal | POS, order management, customer interaction, limited inventory view |
+| 🚗 **Driver** | Employee portal | Order tracking, delivery management, customer info |
+| 🧑‍💼 **Staff** | Employee portal | Time tracking, tasks, announcements, plus any assigned permissions |
+
+<details>
+<summary><b>How it works under the hood</b></summary>
+
+<br/>
+
+- **Role-based routing:** admins go to the analytics dashboard, operational staff go to the Employee Portal.
+- **Granular permissions:** stored per employee as JSON, so access can be customized beyond the default role.
+- **Owner code:** sensitive operations require owner verification.
+- **Linked accounts:** user logins are tied to employee records, with active/inactive status and password resets that never reveal the current password.
+- **Real-time sync:** dashboard widgets, clock status, schedules, and tasks auto-refresh every 5–30 seconds.
+
+</details>
+
+---
+
+## 📁 Project Structure
+
+<details>
+<summary><b>Click to expand</b></summary>
 
 ```
 src/
 ├── backend/
 │   ├── database/
-│   │   └── database.js          # SQLite database initialization and migrations
-│   ├── services/                # Business logic layer
-│   │   ├── analyticsService.js  # Business metrics and analytics
-│   │   ├── announcementService.js # Employee announcements
-│   │   ├── authService.js       # Authentication and authorization
-│   │   ├── dashboardService.js  # Dashboard data aggregation
-│   │   ├── employeeService.js   # Employee management
-│   │   ├── expenseService.js    # Expense tracking
-│   │   ├── inventoryService.js  # Inventory control
-│   │   ├── menuService.js       # Menu management
-│   │   ├── posService.js        # Point of sale operations
-│   │   ├── reservationService.js # Reservations
-│   │   ├── scheduleService.js   # Employee scheduling
-│   │   ├── shiftSwapService.js  # Shift exchange requests
-│   │   ├── taskService.js       # Task management
-│   │   ├── timeLogService.js    # Time tracking
-│   │   └── timeOffService.js    # Time-off requests
-│   └── ipc.js                   # IPC handlers
+│   │   └── database.js            # SQLite init and migrations
+│   ├── services/                  # Business logic layer
+│   │   ├── analyticsService.js
+│   │   ├── announcementService.js
+│   │   ├── authService.js
+│   │   ├── dashboardService.js
+│   │   ├── employeeService.js
+│   │   ├── expenseService.js
+│   │   ├── inventoryService.js
+│   │   ├── menuService.js
+│   │   ├── posService.js
+│   │   ├── reservationService.js
+│   │   ├── scheduleService.js
+│   │   ├── shiftSwapService.js
+│   │   ├── taskService.js
+│   │   ├── timeLogService.js
+│   │   └── timeOffService.js
+│   └── ipc.js                     # IPC handlers
 ├── frontend/
 │   ├── components/
-│   │   ├── dashboard/           # Dashboard widgets
-│   │   │   ├── ActivityFeed.vue
-│   │   │   ├── AlertsPanel.vue
-│   │   │   ├── ClockInOutModal.vue
-│   │   │   ├── FinancialSummaryWidget.vue
-│   │   │   ├── GoalTracker.vue
-│   │   │   ├── LiveOrderFeed.vue
-│   │   │   ├── OutOfStockModal.vue
-│   │   │   ├── ProfitPulse.vue
-│   │   │   ├── QuickActions.vue
-│   │   │   ├── QuickInventoryModal.vue
-│   │   │   ├── SalesChart.vue
-│   │   │   ├── SalesMetricCard.vue
-│   │   │   ├── TopPerformers.vue
-│   │   │   └── UpcomingItemsWidget.vue
+│   │   ├── dashboard/             # Dashboard widgets (SalesChart, ProfitPulse, LiveOrderFeed, …)
 │   │   ├── AlertModal.vue
 │   │   ├── ConfirmModal.vue
 │   │   ├── LoadingSpinner.vue
 │   │   └── Sidebar.vue
-│   ├── composables/
-│   │   ├── useModals.js
-│   │   └── useOwnerVerification.js
+│   ├── composables/               # useModals, useOwnerVerification
 │   ├── router/
-│   │   └── index.js
-│   ├── views/
-│   │   ├── CustomersView.vue
-│   │   ├── DashboardView.vue
-│   │   ├── EmployeeAccountView.vue  # Employee portal
-│   │   ├── EmployeeDetailView.vue
-│   │   ├── EmployeesView.vue
-│   │   ├── ExpensesView.vue
-│   │   ├── InventoryView.vue
-│   │   ├── LoginView.vue
-│   │   ├── MenuView.vue
-│   │   ├── POSView.vue
-│   │   ├── ProfileView.vue
-│   │   ├── ReportsView.vue
-│   │   ├── ReservationsView.vue
-│   │   ├── ScheduleView.vue
-│   │   └── SetupView.vue
+│   ├── views/                     # Dashboard, POS, Menu, Inventory, Employees, Reports, …
 │   └── App.vue
 └── main/
-    └── main.js                  # Electron main process
+    └── main.js                    # Electron main process
 
-database/                        # SQLite database files (gitignored)
-docs/                           # Documentation
-scripts/                        # Development utility scripts (gitignored)
+config/                            # Vite and build config
+docs/                              # Requirements, design, and specifications
+tests/                             # Test suite
+database/                          # Local SQLite files (gitignored)
 ```
 
-##  Installation & Setup
+</details>
 
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
+<details>
+<summary><b>Database tables</b></summary>
 
-### Installation
+<br/>
 
-1. Clone the repository:
-```bash
-git clone https://github.com/AndrewPuig77/Small-Food-Business-Management-System.git
-cd Small-Food-Business-Management-System
-```
+| Table | Purpose |
+| --- | --- |
+| `businesses` | Business information |
+| `users` | Authentication |
+| `employees` | Employee profiles |
+| `schedules` | Work schedules |
+| `time_logs` | Clock in/out records |
+| `tasks` | Task assignments |
+| `announcements` | Staff communications |
+| `menu_items` | Menu catalog |
+| `inventory` | Stock tracking |
+| `transactions` | Sales records |
+| `customers` | Customer database |
+| `expenses` | Expense tracking |
+| `time_off_requests` | Leave requests |
+| `shift_swaps` | Schedule exchanges |
 
-2. Install dependencies:
-```bash
-npm install
-```
+Full schema: [docs/design/database-schema.md](docs/design/database-schema.md)
 
-3. Run the application:
-```bash
-npm run dev
-```
+</details>
 
-### Build for Production
+---
 
-```bash
-npm run build
-```
+## 🗺️ Recent Updates
 
-##  User Roles & Permissions
+- [x] Employee portal with clock in/out, schedule, tasks, and announcements
+- [x] Modern dashboard with analytics widgets
+- [x] Role-based routing and permissions
+- [x] Owner verification system
+- [x] Account management in the employee edit form
+- [x] Database migrations for schema updates
+- [x] Real-time data synchronization
+- [x] POS keyboard shortcuts
 
-### Owner/Manager
-- Full system access
-- Employee management and account creation
-- Financial reports and analytics
-- System configuration
-- Owner code verification bypass
+---
 
-### Chef
-- Menu management
-- Kitchen view
-- Order tracking
-- Inventory viewing
+## 👥 Team
 
-### Server/Cashier
-- POS operations
-- Order management
-- Customer interaction
-- Limited inventory viewing
+<table>
+<tr>
+<td align="center"><b>Andrew Puig</b></td>
+<td align="center"><b>Treasure Brown</b></td>
+<td align="center"><b>Jorge Carmenate</b></td>
+</tr>
+<tr>
+<td align="center"><b>Joseph Contreras</b></td>
+<td align="center"><b>Steven Palacios</b></td>
+<td align="center"><b>Andreani Pineda</b></td>
+</tr>
+</table>
 
-### Driver
-- Order tracking
-- Delivery management
-- Customer information
+---
 
-### Staff
-- Basic operations based on assigned permissions
-- Time tracking
-- Task management
-- Announcements viewing
+## 📄 License
 
-##  Key Features Explained
+Released under the [MIT License](LICENSE). Built for educational purposes as part of **COP 4331 Software Engineering** (Fall 2025).
 
-### Role-Based Dashboard Routing
-- Admins (Owner/Manager/Admin) → Main dashboard with full analytics
-- Operational staff (Chef/Server/Cashier/Driver) → Employee portal with personal tools
+<div align="center">
 
-### Real-Time Data Sync
-- Dashboard widgets refresh every 5-30 seconds
-- Live clock status updates
-- Automatic schedule and task synchronization
+**Questions or found a bug?** [Open an issue](https://github.com/AndrewPuig77/Small-Food-Business-Management-System/issues)
 
-### Permission System
-- Granular permission controls per employee
-- JSON-based permission storage
-- Owner code protection for sensitive operations
+<sub>Made with ☕ and Vue</sub>
 
-### Employee Account Management
-- Linked user accounts to employee records
-- Password updates without revealing current password
-- Account status tracking (active/inactive)
-
-##  Database Schema
-
-The system uses SQLite with the following main tables:
-- `businesses` - Business information
-- `users` - User authentication
-- `employees` - Employee profiles
-- `schedules` - Work schedules
-- `time_logs` - Clock in/out records
-- `tasks` - Task assignments
-- `announcements` - Employee communications
-- `menu_items` - Menu catalog
-- `inventory` - Stock tracking
-- `transactions` - Sales records
-- `customers` - Customer database
-- `expenses` - Expense tracking
-- `time_off_requests` - Leave requests
-- `shift_swaps` - Schedule exchanges
-
-##  Development
-
-### Project Commands
-
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run lint         # Run linter
-```
-
-### Recent Updates
-
-- ✅ Employee portal with clock in/out, schedule, tasks, and announcements
-- ✅ Modern dashboard with analytics widgets
-- ✅ Role-based routing and permissions
-- ✅ Owner verification system
-- ✅ Comprehensive account management in employee edit form
-- ✅ Database migrations for schema updates
-- ✅ Real-time data synchronization
-
-##  License
-
-This project is for educational purposes as part of COP 4331 Software Engineering course.
-
-##  Contact
-
-For questions or issues, please contact the team members or create an issue in the repository.
-
+</div>
