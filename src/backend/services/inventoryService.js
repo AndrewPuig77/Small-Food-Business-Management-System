@@ -1,18 +1,14 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 const ExpenseService = require('./expenseService');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // ==================== INVENTORY ITEMS ====================
 
 // Get all inventory items
 const getAllItems = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       i.*,
       c.name as category_name,
@@ -46,7 +42,7 @@ const getAllItems = (businessId) => {
 // Get single item by ID
 const getItemById = (businessId, itemId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       i.*,
       c.name as category_name,
@@ -86,25 +82,25 @@ const createItem = (businessId, itemData) => {
     willCreateExpense: itemData.quantity > 0 && itemData.unitCost > 0 && totalValue > 0
   });
   
-  const query = `
+  const query = sql`
     INSERT INTO inventory_items (
       business_id, category_id, supplier_id, name, description, sku,
       unit, quantity, min_quantity, enable_low_stock_alert, unit_cost, total_value, location, expiry_date
     ) VALUES (
       ${businessId},
-      ${itemData.categoryId || 'NULL'},
-      ${itemData.supplierId || 'NULL'},
-      ${escape(itemData.name)},
-      ${escape(itemData.description)},
-      ${escape(itemData.sku)},
-      ${escape(itemData.unit)},
+      ${itemData.categoryId || null},
+      ${itemData.supplierId || null},
+      ${itemData.name},
+      ${itemData.description},
+      ${itemData.sku},
+      ${itemData.unit},
       ${itemData.quantity || 0},
       ${itemData.minQuantity || 0},
       ${itemData.enableLowStockAlert !== undefined ? (itemData.enableLowStockAlert ? 1 : 0) : 1},
-      ${itemData.unitCost || 'NULL'},
-      ${totalValue || 'NULL'},
-      ${escape(itemData.location)},
-      ${escape(itemData.expiryDate)}
+      ${itemData.unitCost || null},
+      ${totalValue || null},
+      ${itemData.location},
+      ${itemData.expiryDate}
     )
   `;
   
@@ -179,24 +175,24 @@ const createItemsBatch = (businessId, itemsArray) => {
         ? itemData.unitCost * itemData.quantity 
         : null;
       
-      const query = `
+      const query = sql`
         INSERT INTO inventory_items (
           business_id, category_id, supplier_id, name, description, sku,
           unit, quantity, min_quantity, unit_cost, total_value, location, expiry_date
         ) VALUES (
           ${businessId},
-          ${itemData.categoryId || 'NULL'},
-          ${itemData.supplierId || 'NULL'},
-          ${escape(itemData.name)},
-          ${escape(itemData.description)},
-          ${escape(itemData.sku)},
-          ${escape(itemData.unit)},
+          ${itemData.categoryId || null},
+          ${itemData.supplierId || null},
+          ${itemData.name},
+          ${itemData.description},
+          ${itemData.sku},
+          ${itemData.unit},
           ${itemData.quantity || 0},
           ${itemData.minQuantity || 0},
-          ${itemData.unitCost || 'NULL'},
-          ${totalValue || 'NULL'},
-          ${escape(itemData.location)},
-          ${escape(itemData.expiryDate)}
+          ${itemData.unitCost || null},
+          ${totalValue || null},
+          ${itemData.location},
+          ${itemData.expiryDate}
         )
       `;
       
@@ -224,21 +220,21 @@ const updateItem = (businessId, itemId, itemData) => {
     ? itemData.unitCost * itemData.quantity 
     : null;
   
-  const query = `
+  const query = sql`
     UPDATE inventory_items SET
-      category_id = ${itemData.categoryId || 'NULL'},
-      supplier_id = ${itemData.supplierId || 'NULL'},
-      name = ${escape(itemData.name)},
-      description = ${escape(itemData.description)},
-      sku = ${escape(itemData.sku)},
-      unit = ${escape(itemData.unit)},
+      category_id = ${itemData.categoryId || null},
+      supplier_id = ${itemData.supplierId || null},
+      name = ${itemData.name},
+      description = ${itemData.description},
+      sku = ${itemData.sku},
+      unit = ${itemData.unit},
       quantity = ${itemData.quantity || 0},
       min_quantity = ${itemData.minQuantity || 0},
       enable_low_stock_alert = ${itemData.enableLowStockAlert !== undefined ? (itemData.enableLowStockAlert ? 1 : 0) : 1},
-      unit_cost = ${itemData.unitCost || 'NULL'},
-      total_value = ${totalValue || 'NULL'},
-      location = ${escape(itemData.location)},
-      expiry_date = ${escape(itemData.expiryDate)},
+      unit_cost = ${itemData.unitCost || null},
+      total_value = ${totalValue || null},
+      location = ${itemData.location},
+      expiry_date = ${itemData.expiryDate},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${itemId} AND business_id = ${businessId}
   `;
@@ -253,7 +249,7 @@ const updateItem = (businessId, itemId, itemData) => {
 const deleteItem = (businessId, itemId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     DELETE FROM inventory_items 
     WHERE id = ${itemId} AND business_id = ${businessId}
   `;
@@ -275,7 +271,7 @@ const adjustStock = (businessId, itemId, adjustment, userId, notes, transactionT
   const newQuantity = parseFloat(item.quantity) + parseFloat(adjustment);
   
   // Update item quantity
-  db.run(`
+  db.run(sql`
     UPDATE inventory_items 
     SET quantity = ${newQuantity},
         total_value = CASE 
@@ -296,13 +292,13 @@ const adjustStock = (businessId, itemId, adjustment, userId, notes, transactionT
   const totalCost = quantity * unitCost;
   
   // Record transaction
-  db.run(`
+  db.run(sql`
     INSERT INTO inventory_transactions (
       business_id, item_id, transaction_type, quantity, 
       unit_cost, total_cost, notes, created_by
     ) VALUES (
-      ${businessId}, ${itemId}, ${escape(transactionType)}, ${quantity},
-      ${unitCost}, ${totalCost}, ${escape(notes)}, ${userId || 'NULL'}
+      ${businessId}, ${itemId}, ${transactionType}, ${quantity},
+      ${unitCost}, ${totalCost}, ${notes}, ${userId || null}
     )
   `);
   
@@ -332,7 +328,7 @@ const adjustStock = (businessId, itemId, adjustment, userId, notes, transactionT
 // Get low stock items
 const getLowStockItems = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       i.*,
       c.name as category_name,
@@ -366,7 +362,7 @@ const getLowStockItems = (businessId) => {
 // Get all categories
 const getAllCategories = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT * FROM inventory_categories 
     WHERE business_id = ${businessId}
     ORDER BY name
@@ -391,9 +387,9 @@ const getAllCategories = (businessId) => {
 const createCategory = (businessId, categoryData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO inventory_categories (business_id, name, description)
-    VALUES (${businessId}, ${escape(categoryData.name)}, ${escape(categoryData.description)})
+    VALUES (${businessId}, ${categoryData.name}, ${categoryData.description})
   `;
   
   db.run(query);
@@ -409,10 +405,10 @@ const createCategory = (businessId, categoryData) => {
 const updateCategory = (businessId, categoryId, categoryData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     UPDATE inventory_categories SET
-      name = ${escape(categoryData.name)},
-      description = ${escape(categoryData.description)}
+      name = ${categoryData.name},
+      description = ${categoryData.description}
     WHERE id = ${categoryId} AND business_id = ${businessId}
   `;
   
@@ -426,7 +422,7 @@ const updateCategory = (businessId, categoryId, categoryData) => {
 const deleteCategory = (businessId, categoryId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     DELETE FROM inventory_categories 
     WHERE id = ${categoryId} AND business_id = ${businessId}
   `;
@@ -442,7 +438,7 @@ const deleteCategory = (businessId, categoryId) => {
 // Get all suppliers
 const getAllSuppliers = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT * FROM suppliers 
     WHERE business_id = ${businessId}
     ORDER BY name
@@ -467,17 +463,17 @@ const getAllSuppliers = (businessId) => {
 const createSupplier = (businessId, supplierData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO suppliers (
       business_id, name, contact_person, email, phone, address, notes
     ) VALUES (
       ${businessId},
-      ${escape(supplierData.name)},
-      ${escape(supplierData.contactPerson)},
-      ${escape(supplierData.email)},
-      ${escape(supplierData.phone)},
-      ${escape(supplierData.address)},
-      ${escape(supplierData.notes)}
+      ${supplierData.name},
+      ${supplierData.contactPerson},
+      ${supplierData.email},
+      ${supplierData.phone},
+      ${supplierData.address},
+      ${supplierData.notes}
     )
   `;
   
@@ -494,14 +490,14 @@ const createSupplier = (businessId, supplierData) => {
 const updateSupplier = (businessId, supplierId, supplierData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     UPDATE suppliers SET
-      name = ${escape(supplierData.name)},
-      contact_person = ${escape(supplierData.contactPerson)},
-      email = ${escape(supplierData.email)},
-      phone = ${escape(supplierData.phone)},
-      address = ${escape(supplierData.address)},
-      notes = ${escape(supplierData.notes)},
+      name = ${supplierData.name},
+      contact_person = ${supplierData.contactPerson},
+      email = ${supplierData.email},
+      phone = ${supplierData.phone},
+      address = ${supplierData.address},
+      notes = ${supplierData.notes},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${supplierId} AND business_id = ${businessId}
   `;
@@ -516,7 +512,7 @@ const updateSupplier = (businessId, supplierId, supplierData) => {
 const deleteSupplier = (businessId, supplierId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     DELETE FROM suppliers 
     WHERE id = ${supplierId} AND business_id = ${businessId}
   `;
@@ -532,7 +528,7 @@ const deleteSupplier = (businessId, supplierId) => {
 // Get item transaction history
 const getItemTransactions = (businessId, itemId, limit = 50) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       t.*,
       u.full_name as created_by_name
@@ -561,7 +557,7 @@ const getItemTransactions = (businessId, itemId, limit = 50) => {
 // Get all transactions
 const getAllTransactions = (businessId, limit = 100) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       t.*,
       i.name as item_name,

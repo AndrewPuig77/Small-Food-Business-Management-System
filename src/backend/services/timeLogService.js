@@ -1,10 +1,6 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // Get local datetime string in format: YYYY-MM-DD HH:MM:SS
 const getLocalDateTime = () => {
@@ -61,7 +57,7 @@ const clockIn = (employeeId, notes = null) => {
   const db = getDb();
   
   // Check if employee already has an active clock-in (no clock-out)
-  const activeQuery = `
+  const activeQuery = sql`
     SELECT id FROM time_logs 
     WHERE employee_id = ${employeeId} 
     AND clock_out IS NULL
@@ -76,9 +72,9 @@ const clockIn = (employeeId, notes = null) => {
   
   const clockInTime = getLocalDateTime();
   
-  const query = `
+  const query = sql`
     INSERT INTO time_logs (employee_id, clock_in, notes)
-    VALUES (${employeeId}, ${escape(clockInTime)}, ${escape(notes)})
+    VALUES (${employeeId}, ${clockInTime}, ${notes})
   `;
   
   db.run(query);
@@ -95,7 +91,7 @@ const clockOut = (employeeId, notes = null) => {
   const db = getDb();
   
   // Find active clock-in
-  const activeQuery = `
+  const activeQuery = sql`
     SELECT id, clock_in FROM time_logs 
     WHERE employee_id = ${employeeId} 
     AND clock_out IS NULL
@@ -113,12 +109,12 @@ const clockOut = (employeeId, notes = null) => {
   const clockOutTime = getLocalDateTime();
   const hoursWorked = calculateHours(clockInTime, clockOutTime);
   
-  const updateNotes = notes ? `, notes = ${escape(notes)}` : '';
+  const updateNotes = notes ? sql`, notes = ${notes}` : sql.empty;
   
   const safeHours = (typeof hoursWorked === 'number' && !isNaN(hoursWorked) && hoursWorked >= 0) ? hoursWorked : 0;
-  const query = `
+  const query = sql`
     UPDATE time_logs 
-    SET clock_out = ${escape(clockOutTime)}, 
+    SET clock_out = ${clockOutTime}, 
         hours_worked = ${safeHours}
         ${updateNotes}
     WHERE id = ${logId}
@@ -133,7 +129,7 @@ const clockOut = (employeeId, notes = null) => {
 // Get time log by ID
 const getTimeLogById = (logId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       tl.*,
       (e.first_name || ' ' || e.last_name) as employee_name,
@@ -162,12 +158,12 @@ const getTimeLogById = (logId) => {
 const getTimeLogs = (businessId, startDate = null, endDate = null) => {
   const db = getDb();
   
-  let dateFilter = '';
+  let dateFilter = sql.empty;
   if (startDate && endDate) {
-    dateFilter = `AND DATE(tl.clock_in, 'localtime') BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})`;
+    dateFilter = sql`AND DATE(tl.clock_in, 'localtime') BETWEEN DATE(${startDate}) AND DATE(${endDate})`;
   }
   
-  const query = `
+  const query = sql`
     SELECT 
       tl.*,
       (e.first_name || ' ' || e.last_name) as employee_name,
@@ -200,12 +196,12 @@ const getTimeLogs = (businessId, startDate = null, endDate = null) => {
 const getEmployeeTimeLogs = (employeeId, startDate = null, endDate = null) => {
   const db = getDb();
   
-  let dateFilter = '';
+  let dateFilter = sql.empty;
   if (startDate && endDate) {
-    dateFilter = `AND DATE(clock_in, 'localtime') BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})`;
+    dateFilter = sql`AND DATE(clock_in, 'localtime') BETWEEN DATE(${startDate}) AND DATE(${endDate})`;
   }
   
-  const query = `
+  const query = sql`
     SELECT * FROM time_logs 
     WHERE employee_id = ${employeeId}
     ${dateFilter}
@@ -230,7 +226,7 @@ const getEmployeeTimeLogs = (employeeId, startDate = null, endDate = null) => {
 // Check if employee is currently clocked in
 const isEmployeeClockedIn = (employeeId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT id FROM time_logs 
     WHERE employee_id = ${employeeId} 
     AND clock_out IS NULL
@@ -244,7 +240,7 @@ const isEmployeeClockedIn = (employeeId) => {
 // Get currently clocked in employees for a business
 const getClockedInEmployees = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       tl.id as log_id,
       tl.clock_in,
@@ -280,9 +276,9 @@ const updateTimeLog = (logId, updates) => {
   const db = getDb();
   
   const setStatements = [];
-  if (updates.clockIn) setStatements.push(`clock_in = ${escape(updates.clockIn)}`);
-  if (updates.clockOut) setStatements.push(`clock_out = ${escape(updates.clockOut)}`);
-  if (updates.notes !== undefined) setStatements.push(`notes = ${escape(updates.notes)}`);
+  if (updates.clockIn) setStatements.push(sql`clock_in = ${updates.clockIn}`);
+  if (updates.clockOut) setStatements.push(sql`clock_out = ${updates.clockOut}`);
+  if (updates.notes !== undefined) setStatements.push(sql`notes = ${updates.notes}`);
   
   // Recalculate hours if both times are provided
   if (updates.clockIn || updates.clockOut) {
@@ -292,15 +288,15 @@ const updateTimeLog = (logId, updates) => {
     if (clockIn && clockOut) {
       const hours = calculateHours(clockIn, clockOut);
       const safe = (typeof hours === 'number' && !isNaN(hours) && hours >= 0) ? hours : 0;
-      setStatements.push(`hours_worked = ${safe}`);
+      setStatements.push(sql`hours_worked = ${safe}`);
     }
   }
   
   if (setStatements.length === 0) return getTimeLogById(logId);
   
-  const query = `
+  const query = sql`
     UPDATE time_logs 
-    SET ${setStatements.join(', ')}
+    SET ${sql.join(setStatements)}
     WHERE id = ${logId}
   `;
   
@@ -313,7 +309,7 @@ const updateTimeLog = (logId, updates) => {
 // Delete time log
 const deleteTimeLog = (logId) => {
   const db = getDb();
-  const query = `DELETE FROM time_logs WHERE id = ${logId}`;
+  const query = sql`DELETE FROM time_logs WHERE id = ${logId}`;
   
   db.run(query);
   saveDatabase();
@@ -335,7 +331,7 @@ const getPayrollData = (businessId, startDate, endDate) => {
   console.log('Total completed time logs in database:', checkResult[0]?.values[0]?.[0] || 0);
   
   // Check time logs for this business with details
-  const businessCheckQuery = `
+  const businessCheckQuery = sql`
     SELECT 
       tl.id,
       tl.employee_id,
@@ -357,7 +353,7 @@ const getPayrollData = (businessId, startDate, endDate) => {
     console.log('No completed time logs found for this business');
   }
   
-  const query = `
+  const query = sql`
     SELECT 
       e.id as employee_id,
       (e.first_name || ' ' || e.last_name) as full_name,
@@ -368,7 +364,7 @@ const getPayrollData = (businessId, startDate, endDate) => {
       COALESCE(SUM(tl.hours_worked * e.hourly_rate), 0) as gross_pay
     FROM employees e
     LEFT JOIN time_logs tl ON e.id = tl.employee_id 
-      AND DATE(tl.clock_in) BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})
+      AND DATE(tl.clock_in) BETWEEN DATE(${startDate}) AND DATE(${endDate})
       AND tl.clock_out IS NOT NULL
     WHERE e.business_id = ${businessId}
     GROUP BY e.id, e.first_name, e.last_name, e.role, e.hourly_rate
@@ -454,7 +450,7 @@ const cleanupAndFixEmployees = (businessId, employees = []) => {
 
     for (const e of resolved) {
       if (!e.id && e.full_name) {
-        const q = `SELECT id, hourly_rate FROM employees WHERE business_id = ${businessId} AND (first_name || ' ' || last_name) = ${escape(e.full_name)}`;
+        const q = sql`SELECT id, hourly_rate FROM employees WHERE business_id = ${businessId} AND (first_name || ' ' || last_name) = ${e.full_name}`;
         const r = db.exec(q);
         if (r && r.length > 0 && r[0].values.length > 0) {
           e.id = r[0].values[0][0];
@@ -469,12 +465,12 @@ const cleanupAndFixEmployees = (businessId, employees = []) => {
 
       // If hourly_rate provided, update employee record
       if (e.hourly_rate !== undefined && e.hourly_rate !== null) {
-        const upd = `UPDATE employees SET hourly_rate = ${Number(e.hourly_rate)} WHERE id = ${e.id} AND business_id = ${businessId}`;
+        const upd = sql`UPDATE employees SET hourly_rate = ${Number(e.hourly_rate)} WHERE id = ${e.id} AND business_id = ${businessId}`;
         db.run(upd);
       }
 
       // Find time_logs with negative hours for this employee
-      const findLogsQ = `SELECT id, clock_in, clock_out, hours_worked FROM time_logs WHERE employee_id = ${e.id} AND (hours_worked IS NOT NULL AND hours_worked < 0)`;
+      const findLogsQ = sql`SELECT id, clock_in, clock_out, hours_worked FROM time_logs WHERE employee_id = ${e.id} AND (hours_worked IS NOT NULL AND hours_worked < 0)`;
       const found = db.exec(findLogsQ);
       if (!found || found.length === 0) continue;
 
@@ -497,7 +493,7 @@ const cleanupAndFixEmployees = (businessId, employees = []) => {
           newHours = 0;
         }
 
-        const updateQ = `UPDATE time_logs SET hours_worked = ${newHours} WHERE id = ${logId}`;
+        const updateQ = sql`UPDATE time_logs SET hours_worked = ${newHours} WHERE id = ${logId}`;
         db.run(updateQ);
         report.updatedLogs += 1;
       }

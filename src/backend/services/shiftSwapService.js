@@ -1,30 +1,26 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // Get all shift swap requests for a business
 const getAllShiftSwapRequests = (businessId, filters = {}) => {
   const db = getDb();
   
-  let whereClause = `WHERE s.business_id = ${businessId}`;
+  let whereClause = sql`WHERE s.business_id = ${businessId}`;
   
   if (filters.status) {
-    whereClause += ` AND ssr.status = ${escape(filters.status)}`;
+    whereClause = sql`${whereClause} AND ssr.status = ${filters.status}`;
   }
   
   if (filters.requestingEmployeeId) {
-    whereClause += ` AND ssr.requesting_employee_id = ${filters.requestingEmployeeId}`;
+    whereClause = sql`${whereClause} AND ssr.requesting_employee_id = ${filters.requestingEmployeeId}`;
   }
   
   if (filters.targetEmployeeId) {
-    whereClause += ` AND ssr.target_employee_id = ${filters.targetEmployeeId}`;
+    whereClause = sql`${whereClause} AND ssr.target_employee_id = ${filters.targetEmployeeId}`;
   }
   
-  const query = `
+  const query = sql`
     SELECT 
       ssr.*,
       s.shift_date,
@@ -65,7 +61,7 @@ const getAllShiftSwapRequests = (businessId, filters = {}) => {
 const getEmployeeShiftSwapRequests = (employeeId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     SELECT 
       ssr.*,
       s.shift_date,
@@ -106,7 +102,7 @@ const createShiftSwapRequest = (requestData) => {
   const db = getDb();
   
   // Verify the shift belongs to the requesting employee
-  const shiftCheck = db.exec(`
+  const shiftCheck = db.exec(sql`
     SELECT employee_id FROM shifts WHERE id = ${requestData.shiftId}
   `);
   
@@ -120,14 +116,14 @@ const createShiftSwapRequest = (requestData) => {
     throw new Error('You can only request swaps for your own shifts');
   }
   
-  const query = `
+  const query = sql`
     INSERT INTO shift_swap_requests (
       shift_id, requesting_employee_id, target_employee_id, reason, status
     ) VALUES (
       ${requestData.shiftId},
       ${requestData.requestingEmployeeId},
-      ${requestData.targetEmployeeId || 'NULL'},
-      ${escape(requestData.reason)},
+      ${requestData.targetEmployeeId || null},
+      ${requestData.reason},
       'pending'
     )
   `;
@@ -145,7 +141,7 @@ const createShiftSwapRequest = (requestData) => {
 const getShiftSwapRequestById = (requestId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     SELECT 
       ssr.*,
       s.shift_date,
@@ -192,7 +188,7 @@ const reviewShiftSwapRequest = (requestId, reviewData) => {
   
   // If approved, swap the shift
   if (reviewData.status === 'approved' && request.target_employee_id) {
-    db.run(`
+    db.run(sql`
       UPDATE shifts
       SET employee_id = ${request.target_employee_id},
           updated_at = CURRENT_TIMESTAMP
@@ -201,12 +197,12 @@ const reviewShiftSwapRequest = (requestId, reviewData) => {
   }
   
   // Update the swap request
-  const query = `
+  const query = sql`
     UPDATE shift_swap_requests
-    SET status = ${escape(reviewData.status)},
+    SET status = ${reviewData.status},
         reviewed_by = ${reviewData.reviewedBy},
         reviewed_at = CURRENT_TIMESTAMP,
-        review_notes = ${escape(reviewData.reviewNotes)},
+        review_notes = ${reviewData.reviewNotes},
         updated_at = CURRENT_TIMESTAMP
     WHERE id = ${requestId}
   `;
@@ -222,7 +218,7 @@ const cancelShiftSwapRequest = (requestId, employeeId) => {
   const db = getDb();
   
   // Verify the employee is the one who requested the swap
-  const checkQuery = `
+  const checkQuery = sql`
     SELECT requesting_employee_id FROM shift_swap_requests WHERE id = ${requestId}
   `;
   
@@ -238,7 +234,7 @@ const cancelShiftSwapRequest = (requestId, employeeId) => {
     throw new Error('You can only cancel your own swap requests');
   }
   
-  db.run(`
+  db.run(sql`
     UPDATE shift_swap_requests
     SET status = 'cancelled',
         updated_at = CURRENT_TIMESTAMP
@@ -254,7 +250,7 @@ const cancelShiftSwapRequest = (requestId, employeeId) => {
 const deleteShiftSwapRequest = (requestId) => {
   const db = getDb();
   
-  db.run(`DELETE FROM shift_swap_requests WHERE id = ${requestId}`);
+  db.run(sql`DELETE FROM shift_swap_requests WHERE id = ${requestId}`);
   saveDatabase();
   
   return { success: true };

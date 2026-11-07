@@ -1,23 +1,19 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // Get shifts for a date range
 const getShifts = (businessId, startDate, endDate) => {
   const db = getDb();
-  let query = `
+  let query = sql`
     SELECT * FROM shifts 
     WHERE business_id = ${businessId}
   `;
   
-  if (startDate) query += ` AND shift_date >= ${escape(startDate)}`;
-  if (endDate) query += ` AND shift_date <= ${escape(endDate)}`;
+  if (startDate) query = sql`${query} AND shift_date >= ${startDate}`;
+  if (endDate) query = sql`${query} AND shift_date <= ${endDate}`;
   
-  query += ' ORDER BY shift_date, start_time';
+  query = sql`${query} ORDER BY shift_date, start_time`;
   
   console.log('[ScheduleService] getShifts query:', query);
   const result = db.exec(query);
@@ -44,17 +40,17 @@ const createShift = (businessId, shiftData) => {
   const db = getDb();
   console.log('[ScheduleService] Creating shift:', { businessId, shiftData });
   
-  const query = `
+  const query = sql`
     INSERT INTO shifts (
       business_id, employee_id, shift_date, start_time, end_time, role, notes
     ) VALUES (
       ${businessId},
       ${shiftData.employeeId},
-      ${escape(shiftData.shiftDate)},
-      ${escape(shiftData.startTime)},
-      ${escape(shiftData.endTime)},
-      ${escape(shiftData.role)},
-      ${escape(shiftData.notes)}
+      ${shiftData.shiftDate},
+      ${shiftData.startTime},
+      ${shiftData.endTime},
+      ${shiftData.role},
+      ${shiftData.notes}
     )
   `;
   
@@ -72,7 +68,7 @@ const createShift = (businessId, shiftData) => {
 // Get shift by ID
 const getShiftById = (shiftId) => {
   const db = getDb();
-  const query = `SELECT * FROM shifts WHERE id = ${shiftId}`;
+  const query = sql`SELECT * FROM shifts WHERE id = ${shiftId}`;
   const result = db.exec(query);
   
   if (result.length === 0) return null;
@@ -92,14 +88,14 @@ const getShiftById = (shiftId) => {
 const updateShift = (businessId, shiftId, shiftData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     UPDATE shifts SET
       employee_id = ${shiftData.employeeId},
-      shift_date = ${escape(shiftData.shiftDate)},
-      start_time = ${escape(shiftData.startTime)},
-      end_time = ${escape(shiftData.endTime)},
-      role = ${escape(shiftData.role)},
-      notes = ${escape(shiftData.notes)},
+      shift_date = ${shiftData.shiftDate},
+      start_time = ${shiftData.startTime},
+      end_time = ${shiftData.endTime},
+      role = ${shiftData.role},
+      notes = ${shiftData.notes},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${shiftId} AND business_id = ${businessId}
   `;
@@ -114,7 +110,7 @@ const updateShift = (businessId, shiftId, shiftData) => {
 const deleteShift = (businessId, shiftId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     DELETE FROM shifts 
     WHERE id = ${shiftId} AND business_id = ${businessId}
   `;

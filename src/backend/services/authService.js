@@ -1,8 +1,33 @@
-const { getDb, saveDatabase } = require('../database/database');
+const { getDb, saveDatabase, getDbPath } = require('../database/database');
+const { sql } = require('../database/sql');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
-const JWT_SECRET = 'your-secret-key-change-in-production'; // TODO: Move to environment variable
+// Signing secret for session tokens. Each installation gets its own random
+// secret, created on first use and stored next to the database. Setting the
+// JWT_SECRET environment variable overrides it.
+let jwtSecret = null;
+const getJwtSecret = () => {
+  if (jwtSecret) return jwtSecret;
+  if (process.env.JWT_SECRET) {
+    jwtSecret = process.env.JWT_SECRET;
+    return jwtSecret;
+  }
+  const secretPath = path.join(path.dirname(getDbPath()), 'jwt-secret');
+  try {
+    jwtSecret = fs.readFileSync(secretPath, 'utf8').trim();
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (!jwtSecret) {
+    jwtSecret = crypto.randomBytes(64).toString('hex');
+    fs.writeFileSync(secretPath, jwtSecret, { mode: 0o600 });
+  }
+  return jwtSecret;
+};
 
 class AuthService {
   // Complete initial setup
@@ -14,14 +39,14 @@ class AuthService {
       const passwordHash = bcrypt.hashSync(setupData.owner.password, 10);
 
       // Insert business using exec (sql.js doesn't support parameterized run)
-      db.exec(`
+      db.exec(sql`
         INSERT INTO businesses (name, type, address, phone, tax_rate, owner_code)
-        VALUES ('${setupData.business.name.replace(/'/g, "''")}', 
-                '${setupData.business.type}', 
-                ${setupData.business.address ? `'${setupData.business.address.replace(/'/g, "''")}'` : 'NULL'}, 
-                ${setupData.business.phone ? `'${setupData.business.phone.replace(/'/g, "''")}'` : 'NULL'},
+        VALUES (${setupData.business.name}, 
+                ${setupData.business.type}, 
+                ${setupData.business.address ? setupData.business.address : null}, 
+                ${setupData.business.phone ? setupData.business.phone : null},
                 ${setupData.business.taxRate || 7.5},
-                '${setupData.owner.pin.replace(/'/g, "''")}')
+                ${setupData.owner.pin})
       `);
 
       // Get business ID
@@ -29,15 +54,15 @@ class AuthService {
       const businessId = businessResult[0].values[0][0];
 
       // Insert owner user
-      db.exec(`
+      db.exec(sql`
         INSERT INTO users (business_id, username, password_hash, full_name, email, role, pin)
         VALUES (${businessId}, 
-                '${setupData.owner.username.replace(/'/g, "''")}', 
-                '${passwordHash}', 
-                '${setupData.owner.fullName.replace(/'/g, "''")}', 
-                '${setupData.owner.email.replace(/'/g, "''")}', 
+                ${setupData.owner.username}, 
+                ${passwordHash}, 
+                ${setupData.owner.fullName}, 
+                ${setupData.owner.email}, 
                 'owner',
-                '${setupData.owner.pin.replace(/'/g, "''")}')
+                ${setupData.owner.pin})
       `);
 
       const userResult = db.exec('SELECT last_insert_rowid() as id');
@@ -64,13 +89,12 @@ class AuthService {
     try {
       const db = getDb();
       
-      // Find user by username (escape single quotes)
-      const escapedUsername = username.replace(/'/g, "''");
-      const result = db.exec(`
+      // Find user by username
+      const result = db.exec(sql`
         SELECT u.*, b.name as business_name
         FROM users u
         JOIN businesses b ON u.business_id = b.id
-        WHERE u.username = '${escapedUsername}' AND u.active = 1
+        WHERE u.username = ${username} AND u.active = 1
       `);
 
       if (!result.length || !result[0].values.length) {
@@ -106,15 +130,15 @@ class AuthService {
           role: user.role,
           businessId: user.business_id
         },
-        JWT_SECRET,
+        getJwtSecret(),
         { expiresIn: remember ? '30d' : '8h' }
       );
 
       // Store session - use SQLite datetime so comparisons with datetime('now') work reliably
-      const expiresClause = remember ? "datetime('now', '+30 days')" : "datetime('now', '+8 hours')";
-      db.exec(`
+      const expiresClause = remember ? sql`datetime('now', '+30 days')` : sql`datetime('now', '+8 hours')`;
+      db.exec(sql`
         INSERT INTO sessions (user_id, token, expires_at)
-        VALUES (${user.id}, '${token}', ${expiresClause})
+        VALUES (${user.id}, ${token}, ${expiresClause})
       `);
 
       saveDatabase();
@@ -146,14 +170,13 @@ class AuthService {
   // Verify JWT token
   static verifyToken(token) {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       const db = getDb();
       
-      // Check if session exists and is not expired (escape token)
-      const escapedToken = token.replace(/'/g, "''");
-      const result = db.exec(`
+      // Check if session exists and is not expired
+      const result = db.exec(sql`
         SELECT * FROM sessions
-        WHERE token = '${escapedToken}' AND expires_at > datetime('now')
+        WHERE token = ${token} AND expires_at > datetime('now')
       `);
 
       if (!result.length || !result[0].values.length) {
@@ -170,8 +193,7 @@ class AuthService {
   static logout(token) {
     try {
       const db = getDb();
-      const escapedToken = token.replace(/'/g, "''");
-      db.exec(`DELETE FROM sessions WHERE token = '${escapedToken}'`);
+      db.exec(sql`DELETE FROM sessions WHERE token = ${token}`);
       saveDatabase();
       return { success: true };
     } catch (error) {
@@ -198,11 +220,11 @@ class AuthService {
       const db = getDb();
       
       // Verify current PIN
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT id FROM users 
         WHERE id = ${userId} 
           AND business_id = ${businessId} 
-          AND pin = '${currentPin.replace(/'/g, "''")}'
+          AND pin = ${currentPin}
       `);
 
       if (!result.length || !result[0].values.length) {
@@ -213,9 +235,9 @@ class AuthService {
       }
 
       // Update PIN
-      db.exec(`
+      db.exec(sql`
         UPDATE users 
-        SET pin = '${newPin.replace(/'/g, "''")}' 
+        SET pin = ${newPin} 
         WHERE id = ${userId} AND business_id = ${businessId}
       `);
       
@@ -237,7 +259,7 @@ class AuthService {
       const db = getDb();
       
       // Get user and verify password
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT password_hash FROM users 
         WHERE id = ${userId} AND business_id = ${businessId}
       `);
@@ -260,9 +282,9 @@ class AuthService {
       }
 
       // Update PIN
-      db.exec(`
+      db.exec(sql`
         UPDATE users 
-        SET pin = '${newPin.replace(/'/g, "''")}' 
+        SET pin = ${newPin} 
         WHERE id = ${userId} AND business_id = ${businessId}
       `);
       
@@ -284,14 +306,11 @@ class AuthService {
       const db = getDb();
       
       // Find user by username and email
-      const escapedUsername = username.replace(/'/g, "''");
-      const escapedEmail = email.replace(/'/g, "''");
-      
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT id, business_id, full_name 
         FROM users 
-        WHERE username = '${escapedUsername}' 
-          AND email = '${escapedEmail}'
+        WHERE username = ${username} 
+          AND email = ${email}
           AND active = 1
       `);
 
@@ -328,14 +347,14 @@ class AuthService {
       const newPasswordHash = bcrypt.hashSync(newPassword, 10);
       
       // Update password
-      db.exec(`
+      db.exec(sql`
         UPDATE users 
-        SET password_hash = '${newPasswordHash}' 
+        SET password_hash = ${newPasswordHash} 
         WHERE id = ${userId} AND business_id = ${businessId}
       `);
       
       // Invalidate all existing sessions for this user
-      db.exec(`
+      db.exec(sql`
         DELETE FROM sessions WHERE user_id = ${userId}
       `);
       

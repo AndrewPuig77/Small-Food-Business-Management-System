@@ -2,6 +2,7 @@ const initSqlJs = require('sql.js');
 const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
+const { Sql } = require('./sql');
 
 // Get user data directory for storing database
 const getUserDataPath = () => {
@@ -35,17 +36,70 @@ const initDatabase = async () => {
   } else {
     db = new SQL.Database();
   }
-  
+  wrappedDb = wrapDb(db);
+
   createTables();
-  saveDatabase();
+  writeToDisk();
 };
 
-// Save database to file
-const saveDatabase = () => {
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(dbPath, buffer);
+// Saving: sql.js keeps the whole database in memory, and export() serializes
+// all of it. Instead of rewriting the file after every single change, writes
+// are batched: saveDatabase() schedules one write shortly afterwards, so a
+// burst of changes (e.g. a sale with many line items) costs one disk write.
+// flushDatabase() forces a pending write immediately and is called on quit.
+const SAVE_DELAY_MS = 500;
+let saveTimer = null;
+
+const writeToDisk = () => {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  if (!db) return;
+  const buffer = Buffer.from(db.export());
+  // Write to a temp file and rename, so a crash mid-write can't corrupt the
+  // existing database file.
+  const tmpPath = `${dbPath}.tmp`;
+  fs.writeFileSync(tmpPath, buffer);
+  fs.renameSync(tmpPath, dbPath);
 };
+
+const saveDatabase = () => {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    try {
+      writeToDisk();
+    } catch (error) {
+      console.error('Failed to save database:', error);
+    }
+  }, SAVE_DELAY_MS);
+};
+
+const flushDatabase = () => {
+  if (saveTimer) writeToDisk();
+};
+
+// Services get a thin wrapper around the sql.js database whose exec/run/
+// prepare also accept sql`...` objects, binding their values as parameters.
+const toArgs = (query, params) =>
+  query instanceof Sql ? [query.text, query.params] : [query, params];
+
+let wrappedDb = null;
+const wrapDb = (raw) =>
+  new Proxy(raw, {
+    get(target, prop) {
+      if (prop === 'exec' || prop === 'run' || prop === 'prepare') {
+        return (query, params) => {
+          const [text, args] = toArgs(query, params);
+          const result =
+            args && args.length ? target[prop](text, args) : target[prop](text);
+          return prop === 'run' ? wrappedDb : result;
+        };
+      }
+      const value = target[prop];
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+  });
 
 // Create tables
 const createTables = () => {
@@ -712,8 +766,9 @@ const runMigrations = () => {
 
 // Export database instance and helper methods
 module.exports = {
-  getDb: () => db,
+  getDb: () => wrappedDb,
   saveDatabase,
+  flushDatabase,
   
   // Check if setup is complete (any users exist)
   isSetupComplete() {

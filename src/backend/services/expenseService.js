@@ -1,4 +1,5 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
 // ==================== EXPENSES ====================
 
@@ -65,14 +66,14 @@ const getExpensesByDateRange = (businessId, startDate, endDate) => {
 // Get expenses by category
 const getExpensesByCategory = (businessId, startDate, endDate) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       category,
       SUM(amount) as total_amount,
       COUNT(*) as count
     FROM expenses
     WHERE business_id = ${businessId}
-      AND DATE(expense_date, 'localtime') BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})
+      AND DATE(expense_date, 'localtime') BETWEEN DATE(${startDate}) AND DATE(${endDate})
     GROUP BY category
     ORDER BY total_amount DESC
   `;
@@ -213,7 +214,7 @@ const createInventoryExpense = (businessId, inventoryTransaction, createdBy) => 
   console.log('Creating inventory expense with data:', inventoryTransaction);
   
   // Get inventory item details
-  const itemQuery = `SELECT name FROM inventory_items WHERE id = ${inventoryTransaction.item_id}`;
+  const itemQuery = sql`SELECT name FROM inventory_items WHERE id = ${inventoryTransaction.item_id}`;
   const itemResult = db.exec(itemQuery);
   
   if (!itemResult || itemResult.length === 0) {
@@ -232,19 +233,19 @@ const createInventoryExpense = (businessId, inventoryTransaction, createdBy) => 
   const amount = inventoryTransaction.total_cost || 0;
   const expenseDate = new Date().toISOString().split('T')[0];
   
-  const query = `
+  const query = sql`
     INSERT INTO expenses (
       business_id, category, vendor, amount, description, 
       expense_date, created_by, is_automatic, linked_inventory_id
     )
     VALUES (
       ${businessId},
-      ${escape(category)},
-      ${escape(vendor)},
+      ${category},
+      ${vendor},
       ${amount},
-      ${escape(description)},
-      ${escape(expenseDate)},
-      ${createdBy || 'NULL'},
+      ${description},
+      ${expenseDate},
+      ${createdBy || null},
       1,
       ${inventoryTransaction.item_id}
     )

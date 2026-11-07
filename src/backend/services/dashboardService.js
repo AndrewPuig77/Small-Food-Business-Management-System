@@ -1,14 +1,10 @@
 const db = require('../database/database');
+const { sql } = require('../database/sql');
 
 // Helper function to execute query and return first row
 const queryOne = (database, query, params = []) => {
-  // Replace ? placeholders with actual values for sql.js
-  let processedQuery = query;
-  params.forEach(param => {
-    processedQuery = processedQuery.replace('?', typeof param === 'string' ? `'${param}'` : param);
-  });
-  
-  const result = database.exec(processedQuery);
+  // Values are bound as parameters by sql.js, never pasted into the SQL text
+  const result = database.exec(query, params);
   if (result.length === 0 || result[0].values.length === 0) return null;
   
   const columns = result[0].columns;
@@ -22,13 +18,8 @@ const queryOne = (database, query, params = []) => {
 
 // Helper function to execute query and return all rows
 const queryAll = (database, query, params = []) => {
-  // Replace ? placeholders with actual values for sql.js
-  let processedQuery = query;
-  params.forEach(param => {
-    processedQuery = processedQuery.replace('?', typeof param === 'string' ? `'${param}'` : param);
-  });
-  
-  const result = database.exec(processedQuery);
+  // Values are bound as parameters by sql.js, never pasted into the SQL text
+  const result = database.exec(query, params);
   if (result.length === 0) return [];
   
   const columns = result[0].columns;
@@ -49,7 +40,7 @@ class DashboardService {
    */
   async getDashboardOverview(businessId) {
     try {
-      console.log('📊 Backend: getDashboardOverview called for businessId:', businessId);
+      console.log('Backend: getDashboardOverview called for businessId:', businessId);
       const database = db.getDb();
       const today = new Date();
       const todayStr = today.getFullYear() + '-' + 
@@ -70,7 +61,7 @@ class DashboardService {
         String(lastWeek.getMonth() + 1).padStart(2, '0') + '-' + 
         String(lastWeek.getDate()).padStart(2, '0');
       
-      console.log('📅 Querying sales for date:', todayStr);
+      console.log('Querying sales for date:', todayStr);
       
       // Today's sales
       const todayStart = todayStr + ' 00:00:00';
@@ -86,7 +77,7 @@ class DashboardService {
           AND created_at <= ?
       `, [businessId, todayStart, todayEnd]);
       
-      console.log('💰 Today\'s sales result:', todaySales);
+      console.log('Today\'s sales result:', todaySales);
       
       // Debug: Check what dates we have in transactions
       const recentDates = queryAll(database, `
@@ -97,7 +88,7 @@ class DashboardService {
         ORDER BY date DESC
         LIMIT 5
       `, [businessId]);
-      console.log('📊 Recent transaction dates:', recentDates);
+      console.log('Recent transaction dates:', recentDates);
       
       // Yesterday's sales
       const yesterdayStart = yesterdayStr + ' 00:00:00';
@@ -275,7 +266,7 @@ class DashboardService {
       
       const results = queryAll(database, query, [businessId, startDateStr]);
       
-      console.log('📈 Sales trend results:', results);
+      console.log('Sales trend results:', results);
       
       return results.map(row => ({
         date: row.date,
@@ -301,15 +292,15 @@ class DashboardService {
       
       let dateFilter;
       if (period === 'today') {
-        dateFilter = `DATE(t.created_at) = '${today}'`;
+        dateFilter = sql`DATE(t.created_at) = ${today}`;
       } else if (period === 'week') {
-        dateFilter = `DATE(t.created_at) >= DATE('now', '-7 days')`;
+        dateFilter = sql`DATE(t.created_at) >= DATE('now', '-7 days')`;
       } else if (period === 'month') {
-        dateFilter = `DATE(t.created_at) >= DATE('now', '-30 days')`;
+        dateFilter = sql`DATE(t.created_at) >= DATE('now', '-30 days')`;
       }
       
       // Top 5 selling items
-      const topItems = queryAll(database, `
+      const topItems = queryAll(database, sql`
         SELECT 
           mi.name as item_name,
           mc.name as category,
@@ -322,18 +313,18 @@ class DashboardService {
         JOIN transactions t ON ti.transaction_id = t.id
         JOIN menu_items mi ON ti.menu_item_id = mi.id
         LEFT JOIN menu_categories mc ON mi.category_id = mc.id
-        WHERE t.business_id = ? 
+        WHERE t.business_id = ${businessId} 
           AND t.status = 'completed'
           AND ${dateFilter}
         GROUP BY mi.id
         ORDER BY total_quantity DESC
         LIMIT 5
-      `, [businessId]);
+      `);
       
-      console.log('🏆 Top items query result:', topItems);
+      console.log('Top items query result:', topItems);
       
       // Top performing employees (by sales)
-      const topEmployees = queryAll(database, `
+      const topEmployees = queryAll(database, sql`
         SELECT 
           u.full_name,
           u.role,
@@ -341,13 +332,13 @@ class DashboardService {
           COALESCE(SUM(t.total), 0) as total_sales
         FROM transactions t
         JOIN users u ON t.cashier_id = u.id
-        WHERE t.business_id = ? 
+        WHERE t.business_id = ${businessId} 
           AND t.status = 'completed'
           AND ${dateFilter}
         GROUP BY u.id
         ORDER BY total_sales DESC
         LIMIT 5
-      `, [businessId]);
+      `);
       
       return {
         topItems: topItems.map(item => ({
@@ -555,7 +546,7 @@ class DashboardService {
       const database = db.getDb();
       
       // Get recent transactions
-      const recentTransactions = queryAll(database, `
+      const recentTransactions = queryAll(database, sql`
         SELECT 
           'transaction' as type,
           t.id,
@@ -565,13 +556,13 @@ class DashboardService {
           u.full_name as cashier_name
         FROM transactions t
         LEFT JOIN users u ON t.cashier_id = u.id
-        WHERE t.business_id = ?
+        WHERE t.business_id = ${businessId}
         ORDER BY t.created_at DESC
         LIMIT ${Math.floor(limit / 3)}
-      `, [businessId]);
+      `);
       
       // Get recent inventory adjustments
-      const recentInventory = queryAll(database, `
+      const recentInventory = queryAll(database, sql`
         SELECT 
           'inventory' as type,
           it.id,
@@ -583,13 +574,13 @@ class DashboardService {
         FROM inventory_transactions it
         JOIN inventory_items ii ON it.item_id = ii.id
         LEFT JOIN users u ON it.created_by = u.id
-        WHERE ii.business_id = ?
+        WHERE ii.business_id = ${businessId}
         ORDER BY it.created_at DESC
         LIMIT ${Math.floor(limit / 3)}
-      `, [businessId]);
+      `);
       
       // Get recent clock in/outs
-      const recentTimeLogs = queryAll(database, `
+      const recentTimeLogs = queryAll(database, sql`
         SELECT 
           'timelog' as type,
           tl.id,
@@ -600,10 +591,10 @@ class DashboardService {
         FROM time_logs tl
         JOIN employees e ON tl.employee_id = e.id
         JOIN users u ON e.user_id = u.id
-        WHERE e.business_id = ?
+        WHERE e.business_id = ${businessId}
         ORDER BY tl.clock_in DESC
         LIMIT ${Math.floor(limit / 3)}
-      `, [businessId]);
+      `);
       
       // Combine and sort all activities
       const allActivities = [

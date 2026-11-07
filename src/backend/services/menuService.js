@@ -1,11 +1,12 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
 class MenuService {
   // Get all menu items for a business
   static getAllItems(businessId) {
     try {
       const db = getDb();
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT 
           mi.*,
           mc.name as category_name
@@ -31,7 +32,7 @@ class MenuService {
   static getItemById(itemId) {
     try {
       const db = getDb();
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT 
           mi.*,
           mc.name as category_name
@@ -58,17 +59,17 @@ class MenuService {
       const db = getDb();
       const { name, description, categoryId, price, cost, imageUrl, available } = itemData;
 
-      db.exec(`
+      db.exec(sql`
         INSERT INTO menu_items 
         (business_id, category_id, name, description, price, cost, image_url, available)
         VALUES (
           ${businessId},
-          ${categoryId || 'NULL'},
-          '${this.escape(name)}',
-          ${description ? `'${this.escape(description)}'` : 'NULL'},
+          ${categoryId || null},
+          ${(name || '')},
+          ${description ? (description || '') : null},
           ${price},
-          ${cost || 'NULL'},
-          ${imageUrl ? `'${this.escape(imageUrl)}'` : 'NULL'},
+          ${cost || null},
+          ${imageUrl ? (imageUrl || '') : null},
           ${available !== undefined ? available : 1}
         )
       `);
@@ -91,15 +92,15 @@ class MenuService {
       const db = getDb();
       const { name, description, categoryId, price, cost, imageUrl, available } = itemData;
 
-      db.exec(`
+      db.exec(sql`
         UPDATE menu_items
         SET 
-          name = '${this.escape(name)}',
-          description = ${description ? `'${this.escape(description)}'` : 'NULL'},
-          category_id = ${categoryId || 'NULL'},
+          name = ${(name || '')},
+          description = ${description ? (description || '') : null},
+          category_id = ${categoryId || null},
           price = ${price},
-          cost = ${cost || 'NULL'},
-          image_url = ${imageUrl ? `'${this.escape(imageUrl)}'` : 'NULL'},
+          cost = ${cost || null},
+          image_url = ${imageUrl ? (imageUrl || '') : null},
           available = ${available !== undefined ? available : 1},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${itemId}
@@ -118,7 +119,7 @@ class MenuService {
   static deleteItem(itemId) {
     try {
       const db = getDb();
-      db.exec(`DELETE FROM menu_items WHERE id = ${itemId}`);
+      db.exec(sql`DELETE FROM menu_items WHERE id = ${itemId}`);
       saveDatabase();
 
       return { success: true };
@@ -132,7 +133,7 @@ class MenuService {
   static getCategories(businessId) {
     try {
       const db = getDb();
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT * FROM menu_categories
         WHERE business_id = ${businessId}
         ORDER BY display_order, name
@@ -156,11 +157,11 @@ class MenuService {
       const db = getDb();
       const { name, displayOrder } = categoryData;
 
-      db.exec(`
+      db.exec(sql`
         INSERT INTO menu_categories (business_id, name, display_order)
         VALUES (
           ${businessId},
-          '${this.escape(name)}',
+          ${(name || '')},
           ${displayOrder !== undefined ? displayOrder : 0}
         )
       `);
@@ -183,10 +184,10 @@ class MenuService {
       const db = getDb();
       const { name, displayOrder } = categoryData;
 
-      db.exec(`
+      db.exec(sql`
         UPDATE menu_categories
         SET 
-          name = '${this.escape(name)}',
+          name = ${(name || '')},
           display_order = ${displayOrder || 0}
         WHERE id = ${categoryId}
       `);
@@ -206,10 +207,10 @@ class MenuService {
       const db = getDb();
       
       // Set category_id to NULL for items in this category
-      db.exec(`UPDATE menu_items SET category_id = NULL WHERE category_id = ${categoryId}`);
+      db.exec(sql`UPDATE menu_items SET category_id = NULL WHERE category_id = ${categoryId}`);
       
       // Delete category
-      db.exec(`DELETE FROM menu_categories WHERE id = ${categoryId}`);
+      db.exec(sql`DELETE FROM menu_categories WHERE id = ${categoryId}`);
       
       saveDatabase();
 
@@ -231,11 +232,6 @@ class MenuService {
       items.push(item);
     });
     return items;
-  }
-
-  // Helper: Escape single quotes in SQL strings
-  static escape(str) {
-    return str ? str.replace(/'/g, "''") : '';
   }
 }
 

@@ -1,16 +1,12 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 const bcrypt = require('bcryptjs');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // Get all employees for a business
 const getAllEmployees = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT * FROM employees 
     WHERE business_id = ${businessId}
     ORDER BY hire_date DESC
@@ -34,7 +30,7 @@ const getAllEmployees = (businessId) => {
 // Get employee by ID
 const getEmployeeById = (businessId, employeeId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT * FROM employees 
     WHERE id = ${employeeId} AND business_id = ${businessId}
   `;
@@ -64,16 +60,16 @@ const createEmployee = async (businessId, employeeData) => {
     const passwordHash = await bcrypt.hash(employeeData.password, 10);
     
     // Create user account
-    const userQuery = `
+    const userQuery = sql`
       INSERT INTO users (
         business_id, username, password_hash, full_name, email, role, active
       ) VALUES (
         ${businessId},
-        ${escape(employeeData.username)},
-        ${escape(passwordHash)},
-        ${escape(`${employeeData.firstName} ${employeeData.lastName}`)},
-        ${escape(employeeData.email)},
-        ${escape(employeeData.role)},
+        ${employeeData.username},
+        ${passwordHash},
+        ${`${employeeData.firstName} ${employeeData.lastName}`},
+        ${employeeData.email},
+        ${employeeData.role},
         1
       )
     `;
@@ -91,23 +87,23 @@ const createEmployee = async (businessId, employeeData) => {
     ? parseFloat(employeeData.hourlyRate) 
     : 'NULL';
   
-  const permissionsJson = employeeData.permissions ? escape(JSON.stringify(employeeData.permissions)) : 'NULL';
+  const permissionsJson = employeeData.permissions ? JSON.stringify(employeeData.permissions) : null;
   
-  const query = `
+  const query = sql`
     INSERT INTO employees (
       business_id, user_id, first_name, last_name, email, phone, 
       role, hourly_rate, hire_date, status, permissions
     ) VALUES (
       ${businessId},
-      ${userId || 'NULL'},
-      ${escape(employeeData.firstName)},
-      ${escape(employeeData.lastName)},
-      ${escape(employeeData.email)},
-      ${escape(employeeData.phone)},
-      ${escape(employeeData.role)},
+      ${userId || null},
+      ${employeeData.firstName},
+      ${employeeData.lastName},
+      ${employeeData.email},
+      ${employeeData.phone},
+      ${employeeData.role},
       ${hourlyRateValue},
-      ${escape(employeeData.hireDate)},
-      ${escape(employeeData.status || 'active')},
+      ${employeeData.hireDate},
+      ${employeeData.status || 'active'},
       ${permissionsJson}
     )
   `;
@@ -129,18 +125,18 @@ const updateEmployee = async (businessId, employeeId, employeeData) => {
     ? parseFloat(employeeData.hourlyRate) 
     : 'NULL';
   
-  const permissionsJson = employeeData.permissions ? escape(JSON.stringify(employeeData.permissions)) : 'NULL';
+  const permissionsJson = employeeData.permissions ? JSON.stringify(employeeData.permissions) : null;
   
-  const query = `
+  const query = sql`
     UPDATE employees SET
-      first_name = ${escape(employeeData.firstName)},
-      last_name = ${escape(employeeData.lastName)},
-      email = ${escape(employeeData.email)},
-      phone = ${escape(employeeData.phone)},
-      role = ${escape(employeeData.role)},
+      first_name = ${employeeData.firstName},
+      last_name = ${employeeData.lastName},
+      email = ${employeeData.email},
+      phone = ${employeeData.phone},
+      role = ${employeeData.role},
       hourly_rate = ${hourlyRateValue},
-      hire_date = ${escape(employeeData.hireDate)},
-      status = ${escape(employeeData.status)},
+      hire_date = ${employeeData.hireDate},
+      status = ${employeeData.status},
       permissions = ${permissionsJson},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${employeeId} AND business_id = ${businessId}
@@ -153,10 +149,10 @@ const updateEmployee = async (businessId, employeeId, employeeData) => {
     const employee = getEmployeeById(businessId, employeeId);
     if (employee && employee.user_id) {
       const passwordHash = await bcrypt.hash(employeeData.password, 10);
-      db.run(`
+      db.run(sql`
         UPDATE users 
-        SET password_hash = ${escape(passwordHash)},
-            full_name = ${escape(`${employeeData.firstName} ${employeeData.lastName}`)}
+        SET password_hash = ${passwordHash},
+            full_name = ${`${employeeData.firstName} ${employeeData.lastName}`}
         WHERE id = ${employee.user_id} AND business_id = ${businessId}
       `);
     }
@@ -166,16 +162,16 @@ const updateEmployee = async (businessId, employeeId, employeeData) => {
   if (employeeData.createAccount && !employeeData.hasAccount && employeeData.username && employeeData.password) {
     const passwordHash = await bcrypt.hash(employeeData.password, 10);
     
-    const userQuery = `
+    const userQuery = sql`
       INSERT INTO users (
         business_id, username, password_hash, full_name, email, role, active
       ) VALUES (
         ${businessId},
-        ${escape(employeeData.username)},
-        ${escape(passwordHash)},
-        ${escape(`${employeeData.firstName} ${employeeData.lastName}`)},
-        ${escape(employeeData.email)},
-        ${escape(employeeData.role)},
+        ${employeeData.username},
+        ${passwordHash},
+        ${`${employeeData.firstName} ${employeeData.lastName}`},
+        ${employeeData.email},
+        ${employeeData.role},
         1
       )
     `;
@@ -185,7 +181,7 @@ const updateEmployee = async (businessId, employeeId, employeeData) => {
     const newUserId = userIdResult[0].values[0][0];
     
     // Link user to employee
-    db.run(`UPDATE employees SET user_id = ${newUserId} WHERE id = ${employeeId}`);
+    db.run(sql`UPDATE employees SET user_id = ${newUserId} WHERE id = ${employeeId}`);
   }
   
   saveDatabase();
@@ -197,7 +193,7 @@ const updateEmployee = async (businessId, employeeId, employeeData) => {
 const deleteEmployee = (businessId, employeeId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     DELETE FROM employees 
     WHERE id = ${employeeId} AND business_id = ${businessId}
   `;
@@ -213,7 +209,7 @@ const createUserAccountForEmployee = async (businessId, employeeId, accountData)
   const db = getDb();
 
   // Ensure employee exists and has no linked user
-  const empRes = db.exec(`SELECT first_name, last_name, email, role, user_id FROM employees WHERE id = ${employeeId} AND business_id = ${businessId}`);
+  const empRes = db.exec(sql`SELECT first_name, last_name, email, role, user_id FROM employees WHERE id = ${employeeId} AND business_id = ${businessId}`);
   if (empRes.length === 0 || empRes[0].values.length === 0) {
     return { success: false, error: 'Employee not found' };
   }
@@ -227,15 +223,15 @@ const createUserAccountForEmployee = async (businessId, employeeId, accountData)
 
   // Insert user
   const fullName = `${firstName} ${lastName}`;
-  const insertUserSql = `
+  const insertUserSql = sql`
     INSERT INTO users (business_id, username, password_hash, full_name, email, role, active)
     VALUES (
       ${businessId},
-      ${escape(accountData.username)},
-      ${escape(passwordHash)},
-      ${escape(fullName)},
-      ${escape(email)},
-      ${escape(role)},
+      ${accountData.username},
+      ${passwordHash},
+      ${fullName},
+      ${email},
+      ${role},
       1
     )
   `;
@@ -246,7 +242,7 @@ const createUserAccountForEmployee = async (businessId, employeeId, accountData)
   const newUserId = userIdResult[0].values[0][0];
 
   // Link employee
-  db.run(`UPDATE employees SET user_id = ${newUserId}, updated_at = CURRENT_TIMESTAMP WHERE id = ${employeeId} AND business_id = ${businessId}`);
+  db.run(sql`UPDATE employees SET user_id = ${newUserId}, updated_at = CURRENT_TIMESTAMP WHERE id = ${employeeId} AND business_id = ${businessId}`);
 
   saveDatabase();
   return { success: true, userId: newUserId };
@@ -256,9 +252,9 @@ const createUserAccountForEmployee = async (businessId, employeeId, accountData)
 const updateEmployeeStatus = (businessId, employeeId, status) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     UPDATE employees SET
-      status = ${escape(status)},
+      status = ${status},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${employeeId} AND business_id = ${businessId}
   `;
@@ -274,7 +270,7 @@ const updateEmployeeStatus = (businessId, employeeId, status) => {
 // Get employee schedules
 const getEmployeeSchedules = (employeeId) => {
   const db = getDb();
-  const query = `SELECT * FROM employee_schedules WHERE employee_id = ${employeeId} ORDER BY day_of_week`;
+  const query = sql`SELECT * FROM employee_schedules WHERE employee_id = ${employeeId} ORDER BY day_of_week`;
   const result = db.exec(query);
   
   if (result.length === 0) return [];
@@ -296,13 +292,13 @@ const saveEmployeeSchedule = (employeeId, scheduleData) => {
   const db = getDb();
   
   // Delete existing schedules for this employee
-  db.run(`DELETE FROM employee_schedules WHERE employee_id = ${employeeId}`);
+  db.run(sql`DELETE FROM employee_schedules WHERE employee_id = ${employeeId}`);
   
   // Insert new schedules
   scheduleData.forEach(schedule => {
-    const query = `
+    const query = sql`
       INSERT INTO employee_schedules (employee_id, day_of_week, start_time, end_time)
-      VALUES (${employeeId}, ${schedule.day}, ${escape(schedule.startTime)}, ${escape(schedule.endTime)})
+      VALUES (${employeeId}, ${schedule.day}, ${schedule.startTime}, ${schedule.endTime})
     `;
     db.run(query);
   });
@@ -316,7 +312,7 @@ const saveEmployeeSchedule = (employeeId, scheduleData) => {
 // Get employee notes
 const getEmployeeNotes = (employeeId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT en.*, u.full_name as created_by_name 
     FROM employee_notes en
     LEFT JOIN users u ON en.created_by = u.id
@@ -343,14 +339,14 @@ const getEmployeeNotes = (employeeId) => {
 const addEmployeeNote = (employeeId, noteData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO employee_notes (employee_id, created_by, note_type, note_text, rating)
     VALUES (
       ${employeeId},
       ${noteData.createdBy},
-      ${escape(noteData.noteType)},
-      ${escape(noteData.noteText)},
-      ${noteData.rating || 'NULL'}
+      ${noteData.noteType},
+      ${noteData.noteText},
+      ${noteData.rating || null}
     )
   `;
   
@@ -365,7 +361,7 @@ const addEmployeeNote = (employeeId, noteData) => {
 // Get emergency contacts
 const getEmergencyContacts = (employeeId) => {
   const db = getDb();
-  const query = `SELECT * FROM emergency_contacts WHERE employee_id = ${employeeId}`;
+  const query = sql`SELECT * FROM emergency_contacts WHERE employee_id = ${employeeId}`;
   const result = db.exec(query);
   
   if (result.length === 0) return [];
@@ -388,22 +384,22 @@ const saveEmergencyContact = (employeeId, contactData) => {
   
   if (contactData.id) {
     // Update existing
-    const query = `
+    const query = sql`
       UPDATE emergency_contacts SET
-        name = ${escape(contactData.name)},
-        relationship = ${escape(contactData.relationship)},
-        phone = ${escape(contactData.phone)},
-        email = ${escape(contactData.email)},
+        name = ${contactData.name},
+        relationship = ${contactData.relationship},
+        phone = ${contactData.phone},
+        email = ${contactData.email},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${contactData.id} AND employee_id = ${employeeId}
     `;
     db.run(query);
   } else {
     // Create new
-    const query = `
+    const query = sql`
       INSERT INTO emergency_contacts (employee_id, name, relationship, phone, email)
-      VALUES (${employeeId}, ${escape(contactData.name)}, ${escape(contactData.relationship)}, 
-              ${escape(contactData.phone)}, ${escape(contactData.email)})
+      VALUES (${employeeId}, ${contactData.name}, ${contactData.relationship}, 
+              ${contactData.phone}, ${contactData.email})
     `;
     db.run(query);
   }
@@ -415,7 +411,7 @@ const saveEmergencyContact = (employeeId, contactData) => {
 // Delete emergency contact
 const deleteEmergencyContact = (contactId) => {
   const db = getDb();
-  db.run(`DELETE FROM emergency_contacts WHERE id = ${contactId}`);
+  db.run(sql`DELETE FROM emergency_contacts WHERE id = ${contactId}`);
   saveDatabase();
   return { success: true };
 };
@@ -426,7 +422,7 @@ const deleteEmergencyContact = (contactId) => {
 const getEmployeeDocuments = (employeeId) => {
   const db = getDb();
   // Don't return file_data in list view for performance
-  const query = `
+  const query = sql`
     SELECT id, employee_id, document_name, document_type, uploaded_at 
     FROM employee_documents WHERE employee_id = ${employeeId}
     ORDER BY uploaded_at DESC
@@ -450,7 +446,7 @@ const getEmployeeDocuments = (employeeId) => {
 // Get single document with file data
 const getEmployeeDocument = (documentId) => {
   const db = getDb();
-  const query = `SELECT * FROM employee_documents WHERE id = ${documentId}`;
+  const query = sql`SELECT * FROM employee_documents WHERE id = ${documentId}`;
   const result = db.exec(query);
   
   if (result.length === 0) return null;
@@ -470,10 +466,10 @@ const getEmployeeDocument = (documentId) => {
 const uploadEmployeeDocument = (employeeId, documentData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO employee_documents (employee_id, document_name, document_type, file_data)
-    VALUES (${employeeId}, ${escape(documentData.name)}, ${escape(documentData.type)}, 
-            ${escape(documentData.fileData)})
+    VALUES (${employeeId}, ${documentData.name}, ${documentData.type}, 
+            ${documentData.fileData})
   `;
   
   db.run(query);
@@ -485,7 +481,7 @@ const uploadEmployeeDocument = (employeeId, documentData) => {
 // Delete document
 const deleteEmployeeDocument = (documentId) => {
   const db = getDb();
-  db.run(`DELETE FROM employee_documents WHERE id = ${documentId}`);
+  db.run(sql`DELETE FROM employee_documents WHERE id = ${documentId}`);
   saveDatabase();
   return { success: true };
 };
@@ -495,12 +491,12 @@ const deleteEmployeeDocument = (documentId) => {
 // Get time logs for employee
 const getTimeLogs = (employeeId, startDate = null, endDate = null) => {
   const db = getDb();
-  let query = `SELECT * FROM time_logs WHERE employee_id = ${employeeId}`;
+  let query = sql`SELECT * FROM time_logs WHERE employee_id = ${employeeId}`;
   
-  if (startDate) query += ` AND clock_in >= ${escape(startDate)}`;
-  if (endDate) query += ` AND clock_in <= ${escape(endDate)}`;
+  if (startDate) query = sql`${query} AND clock_in >= ${startDate}`;
+  if (endDate) query = sql`${query} AND clock_in <= ${endDate}`;
   
-  query += ` ORDER BY clock_in DESC`;
+  query = sql`${query} ORDER BY clock_in DESC`;
   
   const result = db.exec(query);
   
@@ -534,7 +530,7 @@ const calculatePayroll = (employeeId, startDate, endDate) => {
   const db = getDb();
   
   // Get employee hourly rate
-  const empQuery = `SELECT hourly_rate, first_name, last_name FROM employees WHERE id = ${employeeId}`;
+  const empQuery = sql`SELECT hourly_rate, first_name, last_name FROM employees WHERE id = ${employeeId}`;
   const empResult = db.exec(empQuery);
   
   if (empResult.length === 0) return null;

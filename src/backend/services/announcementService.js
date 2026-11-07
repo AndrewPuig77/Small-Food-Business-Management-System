@@ -1,31 +1,27 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // Get all announcements for a business
 const getAllAnnouncements = (businessId, filters = {}) => {
   const db = getDb();
   
-  let whereClause = `WHERE a.business_id = ${businessId}`;
+  let whereClause = sql`WHERE a.business_id = ${businessId}`;
   
   if (filters.isActive !== undefined) {
-    whereClause += ` AND a.is_active = ${filters.isActive ? 1 : 0}`;
+    whereClause = sql`${whereClause} AND a.is_active = ${filters.isActive ? 1 : 0}`;
   }
   
   if (filters.targetRole) {
-    whereClause += ` AND (a.target_roles IS NULL OR a.target_roles LIKE ${escape('%' + filters.targetRole + '%')})`;
+    whereClause = sql`${whereClause} AND (a.target_roles IS NULL OR a.target_roles LIKE ${'%' + filters.targetRole + '%'})`;
   }
   
   // Only show non-expired announcements by default
   if (filters.includeExpired !== true) {
-    whereClause += ` AND (a.expires_at IS NULL OR a.expires_at > datetime('now'))`;
+    whereClause = sql`${whereClause} AND (a.expires_at IS NULL OR a.expires_at > datetime('now'))`;
   }
   
-  const query = `
+  const query = sql`
     SELECT 
       a.*,
       u.full_name as created_by_name
@@ -78,19 +74,19 @@ const getAnnouncementsForRole = (businessId, role) => {
 const createAnnouncement = (announcementData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO announcements (
       business_id, created_by, title, message, priority,
       target_roles, is_active, expires_at
     ) VALUES (
       ${announcementData.businessId},
       ${announcementData.createdBy},
-      ${escape(announcementData.title)},
-      ${escape(announcementData.message)},
-      ${escape(announcementData.priority || 'normal')},
-      ${escape(announcementData.targetRoles)},
+      ${announcementData.title},
+      ${announcementData.message},
+      ${announcementData.priority || 'normal'},
+      ${announcementData.targetRoles},
       ${announcementData.isActive !== undefined ? (announcementData.isActive ? 1 : 0) : 1},
-      ${escape(announcementData.expiresAt)}
+      ${announcementData.expiresAt}
     )
   `;
   
@@ -107,7 +103,7 @@ const createAnnouncement = (announcementData) => {
 const getAnnouncementById = (announcementId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     SELECT 
       a.*,
       u.full_name as created_by_name
@@ -138,29 +134,29 @@ const updateAnnouncement = (announcementId, announcementData) => {
   const updates = [];
   
   if (announcementData.title !== undefined) {
-    updates.push(`title = ${escape(announcementData.title)}`);
+    updates.push(sql`title = ${announcementData.title}`);
   }
   if (announcementData.message !== undefined) {
-    updates.push(`message = ${escape(announcementData.message)}`);
+    updates.push(sql`message = ${announcementData.message}`);
   }
   if (announcementData.priority !== undefined) {
-    updates.push(`priority = ${escape(announcementData.priority)}`);
+    updates.push(sql`priority = ${announcementData.priority}`);
   }
   if (announcementData.targetRoles !== undefined) {
-    updates.push(`target_roles = ${escape(announcementData.targetRoles)}`);
+    updates.push(sql`target_roles = ${announcementData.targetRoles}`);
   }
   if (announcementData.isActive !== undefined) {
-    updates.push(`is_active = ${announcementData.isActive ? 1 : 0}`);
+    updates.push(sql`is_active = ${announcementData.isActive ? 1 : 0}`);
   }
   if (announcementData.expiresAt !== undefined) {
-    updates.push(`expires_at = ${escape(announcementData.expiresAt)}`);
+    updates.push(sql`expires_at = ${announcementData.expiresAt}`);
   }
   
-  updates.push('updated_at = CURRENT_TIMESTAMP');
+  updates.push(sql`updated_at = CURRENT_TIMESTAMP`);
   
-  const query = `
+  const query = sql`
     UPDATE announcements
-    SET ${updates.join(', ')}
+    SET ${sql.join(updates)}
     WHERE id = ${announcementId}
   `;
   
@@ -174,7 +170,7 @@ const updateAnnouncement = (announcementId, announcementData) => {
 const deleteAnnouncement = (announcementId) => {
   const db = getDb();
   
-  db.run(`DELETE FROM announcements WHERE id = ${announcementId}`);
+  db.run(sql`DELETE FROM announcements WHERE id = ${announcementId}`);
   saveDatabase();
   
   return { success: true };

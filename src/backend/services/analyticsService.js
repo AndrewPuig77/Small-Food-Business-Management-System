@@ -1,10 +1,6 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // ==================== SALES ANALYTICS ====================
 
@@ -16,7 +12,7 @@ const getSalesAnalytics = (businessId, startDate, endDate, groupBy = 'day') => {
   const startDateTime = `${startDate} 00:00:00`;
   const endDateTime = `${endDate} 23:59:59`;
   
-  const query = `
+  const query = sql`
     SELECT 
       DATE(t.created_at) as sale_date,
       strftime('%H', t.created_at) as hour_of_day,
@@ -36,7 +32,7 @@ const getSalesAnalytics = (businessId, startDate, endDate, groupBy = 'day') => {
     LEFT JOIN menu_categories mc ON mi.category_id = mc.id
     WHERE t.business_id = ${businessId}
       AND t.status = 'completed'
-      AND t.created_at >= ${escape(startDateTime)} AND t.created_at <= ${escape(endDateTime)}
+      AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}
     GROUP BY DATE(t.created_at), strftime('%H', t.created_at), 
              strftime('%w', t.created_at), mi.name, mc.name
     ORDER BY sale_date DESC, hour_of_day
@@ -55,7 +51,7 @@ const getSalesTrends = (businessId, currentStart, currentEnd, previousStart, pre
   const previousStartDateTime = `${previousStart} 00:00:00`;
   const previousEndDateTime = `${previousEnd} 23:59:59`;
   
-  const query = `
+  const query = sql`
     SELECT 
       'current' as period,
       COUNT(DISTINCT id) as transaction_count,
@@ -64,7 +60,7 @@ const getSalesTrends = (businessId, currentStart, currentEnd, previousStart, pre
     FROM transactions
     WHERE business_id = ${businessId}
       AND status = 'completed'
-      AND created_at >= ${escape(currentStartDateTime)} AND created_at <= ${escape(currentEndDateTime)}
+      AND created_at >= ${currentStartDateTime} AND created_at <= ${currentEndDateTime}
     
     UNION ALL
     
@@ -76,7 +72,7 @@ const getSalesTrends = (businessId, currentStart, currentEnd, previousStart, pre
     FROM transactions
     WHERE business_id = ${businessId}
       AND status = 'completed'
-      AND created_at >= ${escape(previousStartDateTime)} AND created_at <= ${escape(previousEndDateTime)}
+      AND created_at >= ${previousStartDateTime} AND created_at <= ${previousEndDateTime}
   `;
   
   const result = db.exec(query);
@@ -91,7 +87,7 @@ const getTopBottomPerformers = (businessId, startDate, endDate, limit = 10) => {
   const startDateTime = `${startDate} 00:00:00`;
   const endDateTime = `${endDate} 23:59:59`;
   
-  const query = `
+  const query = sql`
     SELECT 
       mi.name as item_name,
       SUM(ti.quantity) as quantity_sold,
@@ -108,7 +104,7 @@ const getTopBottomPerformers = (businessId, startDate, endDate, limit = 10) => {
     JOIN menu_items mi ON ti.menu_item_id = mi.id
     WHERE t.business_id = ${businessId}
       AND t.status = 'completed'
-      AND t.created_at >= ${escape(startDateTime)} AND t.created_at <= ${escape(endDateTime)}
+      AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}
     GROUP BY mi.name
     ORDER BY revenue DESC
   `;
@@ -127,7 +123,7 @@ const getInventoryAnalytics = (businessId) => {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10) + ' 00:00:00';
   
-  const query = `
+  const query = sql`
     SELECT 
       i.name as item_name,
       i.quantity,
@@ -142,7 +138,7 @@ const getInventoryAnalytics = (businessId) => {
              JOIN menu_items mi ON ti.menu_item_id = mi.id
              WHERE mi.name = i.name 
                AND t.business_id = ${businessId}
-               AND t.created_at >= ${escape(thirtyDaysAgoStr)}),
+               AND t.created_at >= ${thirtyDaysAgoStr}),
             0
           ) AS FLOAT) / i.quantity
         ELSE 0 
@@ -154,7 +150,7 @@ const getInventoryAnalytics = (businessId) => {
          JOIN menu_items mi ON ti.menu_item_id = mi.id
          WHERE mi.name = i.name 
            AND t.business_id = ${businessId}
-           AND t.created_at >= ${escape(thirtyDaysAgoStr)}),
+           AND t.created_at >= ${thirtyDaysAgoStr}),
         0
       ) as sold_last_30_days,
       CASE 
@@ -178,7 +174,7 @@ const getWasteAnalytics = (businessId, startDate, endDate) => {
   const startDateTime = `${startDate} 00:00:00`;
   const endDateTime = `${endDate} 23:59:59`;
   
-  const query = `
+  const query = sql`
     SELECT 
       DATE(created_at) as waste_date,
       item_name,
@@ -188,7 +184,7 @@ const getWasteAnalytics = (businessId, startDate, endDate) => {
       (quantity * cost_per_unit) as total_waste_value
     FROM inventory_waste
     WHERE business_id = ${businessId}
-      AND created_at >= ${escape(startDateTime)} AND created_at <= ${escape(endDateTime)}
+      AND created_at >= ${startDateTime} AND created_at <= ${endDateTime}
     ORDER BY waste_date DESC, total_waste_value DESC
   `;
   
@@ -205,7 +201,7 @@ const getCostAnalysis = (businessId, startDate, endDate) => {
   const endDateTime = `${endDate} 23:59:59`;
   
   // Food cost percentage
-  const foodCostQuery = `
+  const foodCostQuery = sql`
     SELECT 
       DATE(t.created_at) as date,
       SUM(t.total) as revenue,
@@ -220,13 +216,13 @@ const getCostAnalysis = (businessId, startDate, endDate) => {
     LEFT JOIN menu_items mi ON ti.menu_item_id = mi.id
     WHERE t.business_id = ${businessId}
       AND t.status = 'completed'
-      AND t.created_at >= ${escape(startDateTime)} AND t.created_at <= ${escape(endDateTime)}
+      AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}
     GROUP BY DATE(t.created_at)
     ORDER BY date
   `;
   
   // Labor cost percentage
-  const laborCostQuery = `
+  const laborCostQuery = sql`
     SELECT 
       DATE(tl.clock_in) as date,
       SUM(tl.hours_worked * e.hourly_rate) as labor_cost,
@@ -253,7 +249,7 @@ const getCostAnalysis = (businessId, startDate, endDate) => {
     JOIN employees e ON tl.employee_id = e.id
     WHERE e.business_id = ${businessId}
       AND tl.clock_out IS NOT NULL
-      AND tl.clock_in >= ${escape(startDateTime)} AND tl.clock_in <= ${escape(endDateTime)}
+      AND tl.clock_in >= ${startDateTime} AND tl.clock_in <= ${endDateTime}
     GROUP BY DATE(tl.clock_in)
     ORDER BY date
   `;
@@ -275,7 +271,7 @@ const getEmployeePerformance = (businessId, startDate, endDate) => {
   const startDateTime = `${startDate} 00:00:00`;
   const endDateTime = `${endDate} 23:59:59`;
   
-  const query = `
+  const query = sql`
     SELECT 
       e.id,
       e.first_name || ' ' || e.last_name as employee_name,
@@ -291,7 +287,7 @@ const getEmployeePerformance = (businessId, startDate, endDate) => {
          FROM transactions t 
          WHERE t.cashier_id = e.id 
            AND t.business_id = ${businessId}
-           AND t.created_at >= ${escape(startDateTime)} AND t.created_at <= ${escape(endDateTime)}),
+           AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}),
         0
       ) as total_sales,
       CASE 
@@ -301,7 +297,7 @@ const getEmployeePerformance = (businessId, startDate, endDate) => {
              FROM transactions t 
              WHERE t.cashier_id = e.id 
                AND t.business_id = ${businessId}
-               AND t.created_at >= ${escape(startDateTime)} AND t.created_at <= ${escape(endDateTime)}),
+               AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}),
             0
           ) / SUM(tl.hours_worked)
         ELSE 0 
@@ -309,7 +305,7 @@ const getEmployeePerformance = (businessId, startDate, endDate) => {
     FROM employees e
     LEFT JOIN time_logs tl ON e.id = tl.employee_id 
       AND tl.clock_out IS NOT NULL
-      AND tl.clock_in >= ${escape(startDateTime)} AND tl.clock_in <= ${escape(endDateTime)}
+      AND tl.clock_in >= ${startDateTime} AND tl.clock_in <= ${endDateTime}
     WHERE e.business_id = ${businessId}
     GROUP BY e.id, e.first_name, e.last_name, e.role, e.hourly_rate
     ORDER BY total_hours DESC
@@ -327,7 +323,7 @@ const getPeakHoursAnalysis = (businessId, startDate, endDate) => {
   const startDateTime = `${startDate} 00:00:00`;
   const endDateTime = `${endDate} 23:59:59`;
   
-  const query = `
+  const query = sql`
     SELECT 
       strftime('%w', created_at) as day_of_week,
       strftime('%H', created_at) as hour_of_day,
@@ -337,7 +333,7 @@ const getPeakHoursAnalysis = (businessId, startDate, endDate) => {
     FROM transactions
     WHERE business_id = ${businessId}
       AND status = 'completed'
-      AND created_at >= ${escape(startDateTime)} AND created_at <= ${escape(endDateTime)}
+      AND created_at >= ${startDateTime} AND created_at <= ${endDateTime}
     GROUP BY strftime('%w', created_at), strftime('%H', created_at)
     ORDER BY day_of_week, hour_of_day
   `;
@@ -354,7 +350,7 @@ const getCustomerInsights = (businessId, startDate, endDate) => {
   const startDateTime = `${startDate} 00:00:00`;
   const endDateTime = `${endDate} 23:59:59`;
   
-  const query = `
+  const query = sql`
     SELECT 
       COUNT(DISTINCT id) as total_transactions,
       AVG(total) as avg_transaction_value,
@@ -373,14 +369,14 @@ const getCustomerInsights = (businessId, startDate, endDate) => {
        JOIN transactions t ON ti.transaction_id = t.id
        JOIN menu_items mi ON ti.menu_item_id = mi.id
        WHERE t.business_id = ${businessId}
-         AND t.created_at >= ${escape(startDateTime)} AND t.created_at <= ${escape(endDateTime)}
+         AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}
        GROUP BY combo
        ORDER BY COUNT(*) DESC
        LIMIT 10) as popular_combos
     FROM transactions
     WHERE business_id = ${businessId}
       AND status = 'completed'
-      AND created_at >= ${escape(startDateTime)} AND created_at <= ${escape(endDateTime)}
+      AND created_at >= ${startDateTime} AND created_at <= ${endDateTime}
   `;
   
   const result = db.exec(query);
@@ -396,7 +392,7 @@ const getFinancialSummary = (businessId, startDate, endDate) => {
   const endDateTime = `${endDate} 23:59:59`;
   
   // Revenue
-  const revenueQuery = `
+  const revenueQuery = sql`
     SELECT 
       SUM(total) as total_revenue,
       SUM(tax) as total_tax,
@@ -405,22 +401,22 @@ const getFinancialSummary = (businessId, startDate, endDate) => {
     FROM transactions
     WHERE business_id = ${businessId}
       AND status = 'completed'
-      AND created_at >= ${escape(startDateTime)} AND created_at <= ${escape(endDateTime)}
+      AND created_at >= ${startDateTime} AND created_at <= ${endDateTime}
   `;
   
   // Expenses (labor + inventory purchases)
-  const expensesQuery = `
+  const expensesQuery = sql`
     SELECT 
       COALESCE(SUM(tl.hours_worked * e.hourly_rate), 0) as labor_cost,
       COALESCE((SELECT SUM(quantity * unit_cost) FROM inventory_transactions 
                 WHERE business_id = ${businessId} 
                   AND transaction_type = 'purchase'
-                  AND created_at >= ${escape(startDateTime)} AND created_at <= ${escape(endDateTime)}), 0) as inventory_purchases
+                  AND created_at >= ${startDateTime} AND created_at <= ${endDateTime}), 0) as inventory_purchases
     FROM time_logs tl
     JOIN employees e ON tl.employee_id = e.id
     WHERE e.business_id = ${businessId}
       AND tl.clock_out IS NOT NULL
-      AND tl.clock_in >= ${escape(startDateTime)} AND tl.clock_in <= ${escape(endDateTime)}
+      AND tl.clock_in >= ${startDateTime} AND tl.clock_in <= ${endDateTime}
   `;
   
   const revenueResult = db.exec(revenueQuery);
@@ -443,7 +439,7 @@ const getForecastData = (businessId) => {
   const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().slice(0, 10) + ' 00:00:00';
   
   // Get historical data for last 90 days
-  const query = `
+  const query = sql`
     SELECT 
       DATE(created_at) as date,
       strftime('%w', created_at) as day_of_week,
@@ -453,7 +449,7 @@ const getForecastData = (businessId) => {
     FROM transactions
     WHERE business_id = ${businessId}
       AND status = 'completed'
-      AND created_at >= ${escape(ninetyDaysAgoStr)}
+      AND created_at >= ${ninetyDaysAgoStr}
     GROUP BY DATE(created_at)
     ORDER BY date
   `;

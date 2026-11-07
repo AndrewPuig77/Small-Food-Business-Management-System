@@ -1,34 +1,30 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // Get all time off requests for a business
 const getAllTimeOffRequests = (businessId, filters = {}) => {
   const db = getDb();
   
-  let whereClause = `WHERE e.business_id = ${businessId}`;
+  let whereClause = sql`WHERE e.business_id = ${businessId}`;
   
   if (filters.employeeId) {
-    whereClause += ` AND tor.employee_id = ${filters.employeeId}`;
+    whereClause = sql`${whereClause} AND tor.employee_id = ${filters.employeeId}`;
   }
   
   if (filters.status) {
-    whereClause += ` AND tor.status = ${escape(filters.status)}`;
+    whereClause = sql`${whereClause} AND tor.status = ${filters.status}`;
   }
   
   if (filters.startDate) {
-    whereClause += ` AND tor.end_date >= ${escape(filters.startDate)}`;
+    whereClause = sql`${whereClause} AND tor.end_date >= ${filters.startDate}`;
   }
   
   if (filters.endDate) {
-    whereClause += ` AND tor.start_date <= ${escape(filters.endDate)}`;
+    whereClause = sql`${whereClause} AND tor.start_date <= ${filters.endDate}`;
   }
   
-  const query = `
+  const query = sql`
     SELECT 
       tor.*,
       (e.first_name || ' ' || e.last_name) as employee_name,
@@ -61,7 +57,7 @@ const getAllTimeOffRequests = (businessId, filters = {}) => {
 const getEmployeeTimeOffRequests = (employeeId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     SELECT 
       tor.*,
       u.full_name as reviewed_by_name
@@ -91,15 +87,15 @@ const getEmployeeTimeOffRequests = (employeeId) => {
 const createTimeOffRequest = (requestData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO time_off_requests (
       employee_id, start_date, end_date, request_type, reason, status
     ) VALUES (
       ${requestData.employeeId},
-      ${escape(requestData.startDate)},
-      ${escape(requestData.endDate)},
-      ${escape(requestData.requestType)},
-      ${escape(requestData.reason)},
+      ${requestData.startDate},
+      ${requestData.endDate},
+      ${requestData.requestType},
+      ${requestData.reason},
       'pending'
     )
   `;
@@ -117,7 +113,7 @@ const createTimeOffRequest = (requestData) => {
 const getTimeOffRequestById = (requestId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     SELECT 
       tor.*,
       (e.first_name || ' ' || e.last_name) as employee_name,
@@ -147,12 +143,12 @@ const getTimeOffRequestById = (requestId) => {
 const reviewTimeOffRequest = (requestId, reviewData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     UPDATE time_off_requests
-    SET status = ${escape(reviewData.status)},
+    SET status = ${reviewData.status},
         reviewed_by = ${reviewData.reviewedBy},
         reviewed_at = CURRENT_TIMESTAMP,
-        review_notes = ${escape(reviewData.reviewNotes)},
+        review_notes = ${reviewData.reviewNotes},
         updated_at = CURRENT_TIMESTAMP
     WHERE id = ${requestId}
   `;
@@ -167,7 +163,7 @@ const reviewTimeOffRequest = (requestId, reviewData) => {
 const deleteTimeOffRequest = (requestId) => {
   const db = getDb();
   
-  db.run(`DELETE FROM time_off_requests WHERE id = ${requestId}`);
+  db.run(sql`DELETE FROM time_off_requests WHERE id = ${requestId}`);
   saveDatabase();
   
   return { success: true };
@@ -177,7 +173,7 @@ const deleteTimeOffRequest = (requestId) => {
 const getEmployeeAvailability = (employeeId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     SELECT * FROM employee_availability
     WHERE employee_id = ${employeeId}
     ORDER BY day_of_week
@@ -204,20 +200,20 @@ const updateEmployeeAvailability = (employeeId, availabilityData) => {
   const db = getDb();
   
   // Delete existing availability for this employee
-  db.run(`DELETE FROM employee_availability WHERE employee_id = ${employeeId}`);
+  db.run(sql`DELETE FROM employee_availability WHERE employee_id = ${employeeId}`);
   
   // Insert new availability records
   availabilityData.forEach(day => {
-    const query = `
+    const query = sql`
       INSERT INTO employee_availability (
         employee_id, day_of_week, is_available, start_time, end_time, notes
       ) VALUES (
         ${employeeId},
         ${day.dayOfWeek},
         ${day.isAvailable ? 1 : 0},
-        ${escape(day.startTime)},
-        ${escape(day.endTime)},
-        ${escape(day.notes)}
+        ${day.startTime},
+        ${day.endTime},
+        ${day.notes}
       )
     `;
     db.run(query);

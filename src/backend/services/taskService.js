@@ -1,34 +1,30 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // Get all tasks for a business
 const getAllTasks = (businessId, filters = {}) => {
   const db = getDb();
   
-  let whereClause = `WHERE et.business_id = ${businessId}`;
+  let whereClause = sql`WHERE et.business_id = ${businessId}`;
   
   if (filters.assignedTo) {
-    whereClause += ` AND et.assigned_to = ${filters.assignedTo}`;
+    whereClause = sql`${whereClause} AND et.assigned_to = ${filters.assignedTo}`;
   }
   
   if (filters.status) {
-    whereClause += ` AND et.status = ${escape(filters.status)}`;
+    whereClause = sql`${whereClause} AND et.status = ${filters.status}`;
   }
   
   if (filters.taskType) {
-    whereClause += ` AND et.task_type = ${escape(filters.taskType)}`;
+    whereClause = sql`${whereClause} AND et.task_type = ${filters.taskType}`;
   }
   
   if (filters.dueDate) {
-    whereClause += ` AND et.due_date = ${escape(filters.dueDate)}`;
+    whereClause = sql`${whereClause} AND et.due_date = ${filters.dueDate}`;
   }
   
-  const query = `
+  const query = sql`
     SELECT 
       et.*,
       (e.first_name || ' ' || e.last_name) as assigned_to_name,
@@ -71,13 +67,13 @@ const getAllTasks = (businessId, filters = {}) => {
 const getEmployeeTasks = (employeeId, status = null) => {
   const db = getDb();
   
-  let whereClause = `WHERE et.assigned_to = ${employeeId}`;
+  let whereClause = sql`WHERE et.assigned_to = ${employeeId}`;
   
   if (status) {
-    whereClause += ` AND et.status = ${escape(status)}`;
+    whereClause = sql`${whereClause} AND et.status = ${status}`;
   }
   
-  const query = `
+  const query = sql`
     SELECT 
       et.*,
       u1.full_name as assigned_by_name,
@@ -117,19 +113,19 @@ const getEmployeeTasks = (employeeId, status = null) => {
 const createTask = (taskData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO employee_tasks (
       business_id, assigned_to, assigned_by, title, description,
       task_type, priority, due_date, status
     ) VALUES (
       ${taskData.businessId},
-      ${taskData.assignedTo || 'NULL'},
+      ${taskData.assignedTo || null},
       ${taskData.assignedBy},
-      ${escape(taskData.title)},
-      ${escape(taskData.description)},
-      ${escape(taskData.taskType)},
-      ${escape(taskData.priority || 'normal')},
-      ${escape(taskData.dueDate)},
+      ${taskData.title},
+      ${taskData.description},
+      ${taskData.taskType},
+      ${taskData.priority || 'normal'},
+      ${taskData.dueDate},
       'pending'
     )
   `;
@@ -147,7 +143,7 @@ const createTask = (taskData) => {
 const getTaskById = (taskId) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     SELECT 
       et.*,
       (e.first_name || ' ' || e.last_name) as assigned_to_name,
@@ -182,32 +178,32 @@ const updateTask = (taskId, taskData) => {
   const updates = [];
   
   if (taskData.title !== undefined) {
-    updates.push(`title = ${escape(taskData.title)}`);
+    updates.push(sql`title = ${taskData.title}`);
   }
   if (taskData.description !== undefined) {
-    updates.push(`description = ${escape(taskData.description)}`);
+    updates.push(sql`description = ${taskData.description}`);
   }
   if (taskData.assignedTo !== undefined) {
-    updates.push(`assigned_to = ${taskData.assignedTo || 'NULL'}`);
+    updates.push(sql`assigned_to = ${taskData.assignedTo || null}`);
   }
   if (taskData.taskType !== undefined) {
-    updates.push(`task_type = ${escape(taskData.taskType)}`);
+    updates.push(sql`task_type = ${taskData.taskType}`);
   }
   if (taskData.priority !== undefined) {
-    updates.push(`priority = ${escape(taskData.priority)}`);
+    updates.push(sql`priority = ${taskData.priority}`);
   }
   if (taskData.dueDate !== undefined) {
-    updates.push(`due_date = ${escape(taskData.dueDate)}`);
+    updates.push(sql`due_date = ${taskData.dueDate}`);
   }
   if (taskData.status !== undefined) {
-    updates.push(`status = ${escape(taskData.status)}`);
+    updates.push(sql`status = ${taskData.status}`);
   }
   
-  updates.push('updated_at = CURRENT_TIMESTAMP');
+  updates.push(sql`updated_at = CURRENT_TIMESTAMP`);
   
-  const query = `
+  const query = sql`
     UPDATE employee_tasks
-    SET ${updates.join(', ')}
+    SET ${sql.join(updates)}
     WHERE id = ${taskId}
   `;
   
@@ -221,7 +217,7 @@ const updateTask = (taskId, taskData) => {
 const completeTask = (taskId, completedBy) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     UPDATE employee_tasks
     SET status = 'completed',
         completed_at = CURRENT_TIMESTAMP,
@@ -240,7 +236,7 @@ const completeTask = (taskId, completedBy) => {
 const deleteTask = (taskId) => {
   const db = getDb();
   
-  db.run(`DELETE FROM employee_tasks WHERE id = ${taskId}`);
+  db.run(sql`DELETE FROM employee_tasks WHERE id = ${taskId}`);
   saveDatabase();
   
   return { success: true };

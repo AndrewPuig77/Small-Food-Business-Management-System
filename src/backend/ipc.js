@@ -1,5 +1,6 @@
 const { ipcMain } = require('electron');
 const { isSetupComplete, init } = require('./database/database');
+const { sql } = require('./database/sql');
 const AuthService = require('./services/authService');
 const MenuService = require('./services/menuService');
 const EmployeeService = require('./services/employeeService');
@@ -51,20 +52,13 @@ const setupIPC = async () => {
     try {
       const { getDb } = require('./database/database');
       const db = getDb();
-      console.log('[IPC] Verifying owner code for business:', businessId, 'with code:', code);
-      
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT owner_code FROM businesses WHERE id = ${businessId}
       `);
-      
-      console.log('[IPC] Query result:', result);
-      
+
       if (result.length > 0 && result[0].values.length > 0) {
         const ownerCode = result[0].values[0][0];
-        console.log('[IPC] Stored owner code:', ownerCode, 'Provided code:', code);
-        console.log('[IPC] Match:', ownerCode === code);
-        
-        if (ownerCode === code) {
+        if (ownerCode && ownerCode === code) {
           return { success: true };
         }
       }
@@ -80,7 +74,7 @@ const setupIPC = async () => {
     try {
       const { getDb } = require('./database/database');
       const db = getDb();
-      const result = db.exec(`SELECT * FROM businesses WHERE id = ${businessId}`);
+      const result = db.exec(sql`SELECT * FROM businesses WHERE id = ${businessId}`);
       if (result.length > 0 && result[0].values.length > 0) {
         const columns = result[0].columns;
         const values = result[0].values[0];
@@ -102,10 +96,9 @@ const setupIPC = async () => {
     try {
       const { getDb, saveDatabase } = require('./database/database');
       const db = getDb();
-      const escapedCode = ownerCode.replace(/'/g, "''");
-      db.run(`UPDATE businesses SET owner_code = '${escapedCode}' WHERE id = ${businessId}`);
+      db.run(sql`UPDATE businesses SET owner_code = ${ownerCode} WHERE id = ${businessId}`);
       saveDatabase();
-      console.log(`[IPC] Owner code updated to: ${ownerCode} for business ${businessId}`);
+      console.log(`[IPC] Owner code updated for business ${businessId}`);
       return { success: true };
     } catch (error) {
       console.error('Error updating owner code:', error);
@@ -118,7 +111,7 @@ const setupIPC = async () => {
     try {
       const { getDb } = require('./database/database');
       const db = getDb();
-      const result = db.exec(`
+      const result = db.exec(sql`
         SELECT id, username, full_name, email, role, active
         FROM users
         WHERE id = ${userId} AND business_id = ${businessId}
@@ -431,13 +424,13 @@ const setupIPC = async () => {
         return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
       };
 
-      const q = `
+      const q = sql`
         SELECT t.*, u.full_name as cashier_name, c.name as customer_name
         FROM transactions t
         LEFT JOIN users u ON t.cashier_id = u.id
         LEFT JOIN customers c ON t.customer_id = c.id
         WHERE t.business_id = ${businessId}
-          AND t.created_at BETWEEN ${JSON.stringify(fmt(minUtc))} AND ${JSON.stringify(fmt(maxUtc))}
+          AND t.created_at BETWEEN ${fmt(minUtc)} AND ${fmt(maxUtc)}
         ORDER BY t.created_at DESC
       `;
 

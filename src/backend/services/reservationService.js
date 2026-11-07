@@ -1,17 +1,13 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // ==================== RESERVATIONS ====================
 
 // Check if reservations are enabled for a business
 const isReservationEnabled = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT reservation_enabled FROM businesses WHERE id = ${businessId}
   `;
   
@@ -24,7 +20,7 @@ const isReservationEnabled = (businessId) => {
 // Enable/disable reservations for a business
 const setReservationEnabled = (businessId, enabled) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     UPDATE businesses 
     SET reservation_enabled = ${enabled ? 1 : 0}
     WHERE id = ${businessId}
@@ -39,7 +35,7 @@ const setReservationEnabled = (businessId, enabled) => {
 // Get reservation settings for a business
 const getReservationSettings = (businessId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       reservation_enabled,
       reservation_capacity,
@@ -82,7 +78,7 @@ const updateReservationSettings = (businessId, settings) => {
     }
     
     const db = getDb();
-    const query = `
+    const query = sql`
       UPDATE businesses 
       SET 
         reservation_enabled = ${settings.enabled ? 1 : 0},
@@ -116,12 +112,12 @@ const getAllReservations = (businessId, startDate = null, endDate = null) => {
   }
   const db = getDb();
   
-  let dateFilter = '';
+  let dateFilter = sql.empty;
   if (startDate && endDate) {
-    dateFilter = `AND DATE(reservation_date) BETWEEN DATE(${escape(startDate)}) AND DATE(${escape(endDate)})`;
+    dateFilter = sql`AND DATE(reservation_date) BETWEEN DATE(${startDate}) AND DATE(${endDate})`;
   }
   
-  const query = `
+  const query = sql`
     SELECT r.*, c.name as customer_name, c.phone as customer_phone
     FROM reservations r
     LEFT JOIN customers c ON r.customer_id = c.id
@@ -148,7 +144,7 @@ const getAllReservations = (businessId, startDate = null, endDate = null) => {
 // Get reservation by ID
 const getReservationById = (businessId, reservationId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT r.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email
     FROM reservations r
     LEFT JOIN customers c ON r.customer_id = c.id
@@ -200,23 +196,23 @@ const createReservation = (businessId, reservationData) => {
     status
   });
   
-  const query = `
+  const query = sql`
     INSERT INTO reservations (
       business_id, customer_id, guest_name, guest_phone, guest_email,
       reservation_date, reservation_time, party_size, table_number,
       special_requests, status
     ) VALUES (
       ${businessId},
-      ${customerId || 'NULL'},
-      ${escape(guestName || '')},
-      ${escape(guestPhone || '')},
-      ${escape(guestEmail || '')},
-      ${escape(reservationDate || '')},
-      ${escape(reservationTime || '')},
+      ${customerId || null},
+      ${guestName || ''},
+      ${guestPhone || ''},
+      ${guestEmail || ''},
+      ${reservationDate || ''},
+      ${reservationTime || ''},
       ${partySize || 0},
-      ${escape(tableNumber || '')},
-      ${escape(specialRequests || '')},
-      ${escape(status || 'pending')}
+      ${tableNumber || ''},
+      ${specialRequests || ''},
+      ${status || 'pending'}
     )
   `;
   
@@ -242,7 +238,7 @@ const createReservation = (businessId, reservationData) => {
   
   // Get the ID of the inserted reservation - sql.js doesn't update last_insert_rowid with db.run()
   // so we need to get the max ID from the table
-  const result = db.exec('SELECT MAX(id) as id FROM reservations WHERE business_id = ' + businessId);
+  const result = db.exec(sql`SELECT MAX(id) as id FROM reservations WHERE business_id = ${businessId}`);
   console.log('Max ID result:', JSON.stringify(result, null, 2));
   
   if (!result || result.length === 0 || !result[0].values || result[0].values.length === 0) {
@@ -274,17 +270,17 @@ const updateReservation = (businessId, reservationId, reservationData) => {
     status
   } = reservationData;
   
-  const query = `
+  const query = sql`
     UPDATE reservations SET
-      guest_name = ${escape(guestName)},
-      guest_phone = ${escape(guestPhone)},
-      guest_email = ${escape(guestEmail)},
-      reservation_date = ${escape(reservationDate)},
-      reservation_time = ${escape(reservationTime)},
+      guest_name = ${guestName},
+      guest_phone = ${guestPhone},
+      guest_email = ${guestEmail},
+      reservation_date = ${reservationDate},
+      reservation_time = ${reservationTime},
       party_size = ${partySize},
-      table_number = ${escape(tableNumber)},
-      special_requests = ${escape(specialRequests)},
-      status = ${escape(status)}
+      table_number = ${tableNumber},
+      special_requests = ${specialRequests},
+      status = ${status}
     WHERE id = ${reservationId} AND business_id = ${businessId}
   `;
   
@@ -299,11 +295,10 @@ const updateReservationStatus = (businessId, reservationId, status) => {
   const db = getDb();
   
   console.log('updateReservationStatus called:', { businessId, reservationId, status });
-  console.log('Escaped status:', escape(status));
   
-  const query = `
+  const query = sql`
     UPDATE reservations SET
-      status = ${escape(status)}
+      status = ${status}
     WHERE id = ${reservationId} AND business_id = ${businessId}
   `;
   
@@ -323,11 +318,11 @@ const deleteReservation = (businessId, reservationId) => {
   console.log('deleteReservation called:', { businessId, reservationId });
   
   // Check if reservation exists before delete
-  const checkQuery = `SELECT COUNT(*) as count FROM reservations WHERE id = ${reservationId} AND business_id = ${businessId}`;
+  const checkQuery = sql`SELECT COUNT(*) as count FROM reservations WHERE id = ${reservationId} AND business_id = ${businessId}`;
   const beforeCheck = db.exec(checkQuery);
   console.log('Reservation exists before delete:', beforeCheck);
   
-  const query = `
+  const query = sql`
     DELETE FROM reservations 
     WHERE id = ${reservationId} AND business_id = ${businessId}
   `;
@@ -342,7 +337,7 @@ const deleteReservation = (businessId, reservationId) => {
     console.log('Reservation exists after delete:', afterCheck);
     
     // Count total reservations
-    const totalQuery = `SELECT COUNT(*) as count FROM reservations WHERE business_id = ${businessId}`;
+    const totalQuery = sql`SELECT COUNT(*) as count FROM reservations WHERE business_id = ${businessId}`;
     const totalResult = db.exec(totalQuery);
     console.log('Total reservations after delete:', totalResult);
     
@@ -364,12 +359,12 @@ const getReservationsByDate = (businessId, date) => {
   
   console.log('getReservationsByDate called with businessId:', businessId, 'date:', date);
   
-  const query = `
+  const query = sql`
     SELECT r.*, c.name as customer_name, c.phone as customer_phone
     FROM reservations r
     LEFT JOIN customers c ON r.customer_id = c.id
     WHERE r.business_id = ${businessId}
-    AND DATE(r.reservation_date) = DATE(${escape(date)})
+    AND DATE(r.reservation_date) = DATE(${date})
     ORDER BY r.reservation_time
   `;
   

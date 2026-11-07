@@ -1,10 +1,6 @@
 const { getDb, saveDatabase } = require('../database/database');
+const { sql } = require('../database/sql');
 
-// Helper function to escape SQL strings
-const escape = (str) => {
-  if (str === null || str === undefined) return 'NULL';
-  return `'${String(str).replace(/'/g, "''")}'`;
-};
 
 // ==================== CUSTOMERS ====================
 
@@ -12,10 +8,10 @@ const escape = (str) => {
 const searchCustomers = (businessId, searchTerm) => {
   const db = getDb();
   const term = `%${searchTerm}%`;
-  const query = `
+  const query = sql`
     SELECT * FROM customers 
     WHERE business_id = ${businessId} 
-      AND (name LIKE ${escape(term)} OR phone LIKE ${escape(term)} OR email LIKE ${escape(term)})
+      AND (name LIKE ${term} OR phone LIKE ${term} OR email LIKE ${term})
     ORDER BY name
     LIMIT 20
   `;
@@ -38,7 +34,7 @@ const searchCustomers = (businessId, searchTerm) => {
 // Get customer by ID
 const getCustomerById = (businessId, customerId) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT * FROM customers 
     WHERE business_id = ${businessId} AND id = ${customerId}
   `;
@@ -61,13 +57,13 @@ const getCustomerById = (businessId, customerId) => {
 const createCustomer = (businessId, customerData) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     INSERT INTO customers (business_id, name, email, phone, loyalty_points)
     VALUES (
       ${businessId},
-      ${escape(customerData.name)},
-      ${escape(customerData.email)},
-      ${escape(customerData.phone)},
+      ${customerData.name},
+      ${customerData.email},
+      ${customerData.phone},
       ${customerData.loyaltyPoints || 0}
     )
   `;
@@ -85,7 +81,7 @@ const createCustomer = (businessId, customerData) => {
 const updateCustomerPoints = (businessId, customerId, pointsChange, totalSpent) => {
   const db = getDb();
   
-  const query = `
+  const query = sql`
     UPDATE customers 
     SET loyalty_points = loyalty_points + ${pointsChange},
         total_spent = total_spent + ${totalSpent || 0},
@@ -127,7 +123,7 @@ const createTransaction = (businessId, transactionData) => {
     const todayStr = now.getFullYear() + '-' + 
       String(now.getMonth() + 1).padStart(2, '0') + '-' + 
       String(now.getDate()).padStart(2, '0');
-    const maxRes = db.exec(`SELECT COALESCE(MAX(daily_order_number), 0) as maxnum FROM transactions WHERE business_id = ${businessId} AND DATE(created_at) = '${todayStr}'`);
+    const maxRes = db.exec(sql`SELECT COALESCE(MAX(daily_order_number), 0) as maxnum FROM transactions WHERE business_id = ${businessId} AND DATE(created_at) = ${todayStr}`);
     if (maxRes.length && maxRes[0].values && maxRes[0].values.length) {
       const maxnum = maxRes[0].values[0][0];
       nextDailyOrderNumber = (Number(maxnum) || 0) + 1;
@@ -136,14 +132,14 @@ const createTransaction = (businessId, transactionData) => {
     // ignore, default to 1
   }
 
-  const query = `
+  const query = sql`
     INSERT INTO transactions (
       business_id, cashier_id, customer_id, subtotal, tax, discount, tip_amount, total, 
       points_earned, points_redeemed, status, notes, kitchen_status, daily_order_number, created_at
     ) VALUES (
       ${businessId},
       ${transactionData.cashierId},
-      ${transactionData.customerId || 'NULL'},
+      ${transactionData.customerId || null},
       ${transactionData.subtotal},
       ${transactionData.tax || 0},
       ${transactionData.discount || 0},
@@ -151,11 +147,11 @@ const createTransaction = (businessId, transactionData) => {
       ${transactionData.total},
       ${pointsEarned},
       ${pointsRedeemed},
-      ${escape(transactionData.status || 'completed')},
-      ${escape(transactionData.notes)},
-      ${escape(transactionData.kitchenStatus || 'pending')},
+      ${transactionData.status || 'completed'},
+      ${transactionData.notes},
+      ${transactionData.kitchenStatus || 'pending'},
       ${nextDailyOrderNumber},
-      '${localDateTime}'
+      ${localDateTime}
     )
   `;
   
@@ -177,7 +173,7 @@ const createTransaction = (businessId, transactionData) => {
   // Fallback if last_insert_rowid failed or returned 0
   if (!transactionId) {
     try {
-      const fallback = db.exec(`SELECT id FROM transactions WHERE business_id = ${businessId} ORDER BY id DESC LIMIT 1`);
+      const fallback = db.exec(sql`SELECT id FROM transactions WHERE business_id = ${businessId} ORDER BY id DESC LIMIT 1`);
       if (fallback && fallback.length && fallback[0].values && fallback[0].values[0]) {
         transactionId = fallback[0].values[0][0];
         try { console.warn('[POS] last_insert_rowid returned 0 — using fallback id=' + transactionId); } catch(e) {}
@@ -200,23 +196,23 @@ const createTransaction = (businessId, transactionData) => {
         try { console.warn('[POS] createTransaction - missing menuItemId for item', JSON.stringify(item)); } catch (e) {}
       }
       const modifiersJson = item.modifiers ? JSON.stringify(item.modifiers) : null;
-      db.run(`
+      db.run(sql`
         INSERT INTO transaction_items (
           transaction_id, menu_item_id, quantity, unit_price, total_price, notes, modifiers
         ) VALUES (
           ${transactionId},
-          ${item.menuItemId || item.menu_item_id || 'NULL'},
+          ${item.menuItemId || item.menu_item_id || null},
           ${item.quantity || 1},
           ${item.unitPrice || item.unit_price || 0},
           ${item.totalPrice || item.total_price || 0},
-          ${escape(item.notes)},
-          ${escape(modifiersJson)}
+          ${item.notes},
+          ${modifiersJson}
         )
       `);
     });
     saveDatabase();
     try {
-      const verify = db.exec(`SELECT * FROM transaction_items WHERE transaction_id = ${transactionId}`);
+      const verify = db.exec(sql`SELECT * FROM transaction_items WHERE transaction_id = ${transactionId}`);
       const count = verify.length && verify[0].values ? verify[0].values.length : 0;
       console.log('[POS] createTransaction items persisted for transactionId=' + transactionId + ', rows=' + count);
       if (count > 0) {
@@ -230,14 +226,14 @@ const createTransaction = (businessId, transactionData) => {
   // Add payment methods
   if (transactionData.payments && transactionData.payments.length > 0) {
     transactionData.payments.forEach(payment => {
-      db.run(`
+      db.run(sql`
         INSERT INTO payment_methods (
           transaction_id, method_type, amount, reference_number
         ) VALUES (
           ${transactionId},
-          ${escape(payment.methodType)},
+          ${payment.methodType},
           ${payment.amount},
-          ${escape(payment.referenceNumber)}
+          ${payment.referenceNumber}
         )
       `);
     });
@@ -258,7 +254,7 @@ const getTransactionById = (businessId, transactionId) => {
   const db = getDb();
   
   // Get transaction
-  const transQuery = `
+  const transQuery = sql`
     SELECT 
       t.*,
       u.full_name as cashier_name,
@@ -281,7 +277,7 @@ const getTransactionById = (businessId, transactionId) => {
   });
   
   // Get transaction items
-  const itemsQuery = `
+  const itemsQuery = sql`
     SELECT 
       ti.*,
       m.name as item_name
@@ -307,7 +303,7 @@ const getTransactionById = (businessId, transactionId) => {
   }
   
   // Get payment methods
-  const paymentQuery = `
+  const paymentQuery = sql`
     SELECT * FROM payment_methods 
     WHERE transaction_id = ${transactionId}
   `;
@@ -334,7 +330,7 @@ const getTransactionById = (businessId, transactionId) => {
 // Get recent transactions
 const getRecentTransactions = (businessId, limit = 50) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       t.*,
       u.full_name as cashier_name,
@@ -370,7 +366,7 @@ const getTransactionsByDateRange = (businessId, startDate, endDate) => {
 
     const startDateTime = `${startDate} 00:00:00`;
     const endDateTime = `${endDate} 23:59:59`;
-    const query = `
+    const query = sql`
       SELECT 
         t.*,
         u.full_name as cashier_name,
@@ -379,8 +375,8 @@ const getTransactionsByDateRange = (businessId, startDate, endDate) => {
       LEFT JOIN users u ON t.cashier_id = u.id
       LEFT JOIN customers c ON t.customer_id = c.id
       WHERE t.business_id = ${businessId}
-        AND t.created_at >= ${escape(startDateTime)}
-        AND t.created_at <= ${escape(endDateTime)}
+        AND t.created_at >= ${startDateTime}
+        AND t.created_at <= ${endDateTime}
       ORDER BY t.created_at DESC
     `;
 
@@ -408,7 +404,7 @@ const getTransactionsByDateRange = (businessId, startDate, endDate) => {
 // Get daily sales summary
 const getDailySalesSummary = (businessId, date) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT 
       COUNT(*) as transaction_count,
       SUM(subtotal) as total_subtotal,
@@ -417,7 +413,7 @@ const getDailySalesSummary = (businessId, date) => {
       SUM(total) as total_sales
     FROM transactions
     WHERE business_id = ${businessId}
-      AND DATE(created_at, 'localtime') = ${escape(date)}
+      AND DATE(created_at, 'localtime') = ${date}
       AND status = 'completed'
   `;
   
@@ -450,9 +446,9 @@ const voidTransaction = (businessId, transactionId, voidReason, voidedBy) => {
   }
   
   // Update transaction status
-  db.run(`
+  db.run(sql`
     UPDATE transactions 
-    SET status = 'voided', void_reason = ${escape(voidReason)}
+    SET status = 'voided', void_reason = ${voidReason}
     WHERE id = ${transactionId} AND business_id = ${businessId}
   `);
   saveDatabase();
@@ -470,11 +466,11 @@ const voidTransaction = (businessId, transactionId, voidReason, voidedBy) => {
 // Validate manager PIN
 const validateManagerPin = (businessId, userId, pin) => {
   const db = getDb();
-  const query = `
+  const query = sql`
     SELECT id, role FROM users 
     WHERE business_id = ${businessId} 
       AND id = ${userId} 
-      AND pin = ${escape(pin)}
+      AND pin = ${pin}
       AND role IN ('owner', 'manager')
   `;
   
@@ -486,11 +482,11 @@ const validateManagerPin = (businessId, userId, pin) => {
 const updateCustomer = (businessId, customerId, customerData) => {
   const db = getDb();
   
-  db.run(`
+  db.run(sql`
     UPDATE customers 
-    SET name = ${escape(customerData.name)},
-        email = ${escape(customerData.email)},
-        phone = ${escape(customerData.phone)},
+    SET name = ${customerData.name},
+        email = ${customerData.email},
+        phone = ${customerData.phone},
         updated_at = CURRENT_TIMESTAMP
     WHERE business_id = ${businessId} AND id = ${customerId}
   `);
@@ -503,7 +499,7 @@ const updateCustomer = (businessId, customerId, customerData) => {
 const deleteCustomer = (businessId, customerId) => {
   const db = getDb();
   
-  db.run(`
+  db.run(sql`
     DELETE FROM customers 
     WHERE business_id = ${businessId} AND id = ${customerId}
   `);
@@ -555,7 +551,7 @@ const getOrders = (businessId) => {
   const db = getDb();
   ensureKitchenColumns(db);
   
-  const query = `
+  const query = sql`
     SELECT * FROM transactions 
     WHERE business_id = ${businessId}
       AND kitchen_status IS NOT NULL
@@ -580,7 +576,7 @@ const getOrders = (businessId) => {
     });
     
     // Get items for this order
-    const itemsQuery = `
+    const itemsQuery = sql`
       SELECT 
         ti.*,
         m.name as name,
@@ -651,8 +647,8 @@ const updateOrderKitchenStatus = (businessId, orderId, kitchenStatus) => {
   }
 
   const setClause = hasUpdatedAt
-    ? `kitchen_status = ${escape(kitchenStatus)}, updated_at = CURRENT_TIMESTAMP`
-    : `kitchen_status = ${escape(kitchenStatus)}`;
+    ? sql`kitchen_status = ${kitchenStatus}, updated_at = CURRENT_TIMESTAMP`
+    : sql`kitchen_status = ${kitchenStatus}`;
 
   // Handle kitchen_started_at and kitchen_completed_at when available
   try {
@@ -664,7 +660,7 @@ const updateOrderKitchenStatus = (businessId, orderId, kitchenStatus) => {
     if (kitchenStatus === 'preparing' && hasStarted) {
       // Set kitchen_started_at only if not already set
       try {
-        db.run(`UPDATE transactions SET kitchen_status = ${escape(kitchenStatus)}, kitchen_started_at = COALESCE(kitchen_started_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ${orderId} AND business_id = ${businessId}`);
+        db.run(sql`UPDATE transactions SET kitchen_status = ${kitchenStatus}, kitchen_started_at = COALESCE(kitchen_started_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ${orderId} AND business_id = ${businessId}`);
         saveDatabase();
         return { success: true, orderId, kitchenStatus };
       } catch (e) {
@@ -675,7 +671,7 @@ const updateOrderKitchenStatus = (businessId, orderId, kitchenStatus) => {
     // Treat both 'ready' and 'completed' as completion events for timing purposes
     if ((kitchenStatus === 'completed' || kitchenStatus === 'ready') && hasCompleted) {
       try {
-        db.run(`UPDATE transactions SET kitchen_status = ${escape(kitchenStatus)}, kitchen_completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ${orderId} AND business_id = ${businessId}`);
+        db.run(sql`UPDATE transactions SET kitchen_status = ${kitchenStatus}, kitchen_completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ${orderId} AND business_id = ${businessId}`);
         saveDatabase();
         return { success: true, orderId, kitchenStatus };
       } catch (e) {
@@ -686,14 +682,14 @@ const updateOrderKitchenStatus = (businessId, orderId, kitchenStatus) => {
     // ignore and proceed with default update
   }
 
-  let query = `UPDATE transactions SET ${setClause} WHERE id = ${orderId} AND business_id = ${businessId}`;
+  let query = sql`UPDATE transactions SET ${setClause} WHERE id = ${orderId} AND business_id = ${businessId}`;
   try {
     db.run(query);
   } catch (e) {
     // Fallback without updated_at if still failing
     if (hasUpdatedAt) {
       try {
-        query = `UPDATE transactions SET kitchen_status = ${escape(kitchenStatus)} WHERE id = ${orderId} AND business_id = ${businessId}`;
+        query = sql`UPDATE transactions SET kitchen_status = ${kitchenStatus} WHERE id = ${orderId} AND business_id = ${businessId}`;
         db.run(query);
       } catch (err2) {
         console.error('[POS] updateOrderKitchenStatus failed:', err2);
@@ -715,7 +711,7 @@ const updateOrderKitchenStatus = (businessId, orderId, kitchenStatus) => {
     const hasCompleted2 = cols2.includes('kitchen_completed_at');
     if (hasCompleted2 && (kitchenStatus === 'ready' || kitchenStatus === 'completed')) {
       try {
-        db.run(`UPDATE transactions SET kitchen_completed_at = COALESCE(kitchen_completed_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ${orderId} AND business_id = ${businessId}`);
+        db.run(sql`UPDATE transactions SET kitchen_completed_at = COALESCE(kitchen_completed_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ${orderId} AND business_id = ${businessId}`);
         saveDatabase();
         try { console.log('[POS] updateOrderKitchenStatus - ensured kitchen_completed_at for orderId=' + orderId); } catch(e) {}
       } catch (e) {
@@ -732,7 +728,7 @@ const updateOrderKitchenStatus = (businessId, orderId, kitchenStatus) => {
 // Delete a transaction (used by Kitchen Display to remove erroneous orders)
 const deleteTransaction = (businessId, transactionId) => {
   const db = getDb();
-  db.run(`DELETE FROM transactions WHERE id = ${transactionId} AND business_id = ${businessId}`);
+  db.run(sql`DELETE FROM transactions WHERE id = ${transactionId} AND business_id = ${businessId}`);
   saveDatabase();
   return { success: true, transactionId };
 };
@@ -741,7 +737,7 @@ const deleteTransaction = (businessId, transactionId) => {
 const resetOrderSequence = (businessId) => {
   const db = getDb();
   try {
-    const countResult = db.exec(`SELECT COUNT(*) as cnt FROM transactions WHERE business_id = ${businessId}`);
+    const countResult = db.exec(sql`SELECT COUNT(*) as cnt FROM transactions WHERE business_id = ${businessId}`);
     const existingCount = countResult.length ? countResult[0].values[0][0] : 0;
     if (existingCount > 0) {
       return { success: false, error: 'Cannot reset while transactions exist. Delete them first.' };
@@ -760,14 +756,14 @@ const purgeTransactionsForBusiness = (businessId) => {
   const db = getDb();
   try {
     // Find all transaction IDs for business
-    const res = db.exec(`SELECT id FROM transactions WHERE business_id = ${businessId}`);
+    const res = db.exec(sql`SELECT id FROM transactions WHERE business_id = ${businessId}`);
     const ids = res.length ? res[0].values.map(r => r[0]) : [];
     ids.forEach(id => {
-      try { db.run(`DELETE FROM transaction_items WHERE transaction_id = ${id}`); } catch(e) {}
-      try { db.run(`DELETE FROM payment_methods WHERE transaction_id = ${id}`); } catch(e) {}
+      try { db.run(sql`DELETE FROM transaction_items WHERE transaction_id = ${id}`); } catch(e) {}
+      try { db.run(sql`DELETE FROM payment_methods WHERE transaction_id = ${id}`); } catch(e) {}
     });
     // Delete transactions
-    db.run(`DELETE FROM transactions WHERE business_id = ${businessId}`);
+    db.run(sql`DELETE FROM transactions WHERE business_id = ${businessId}`);
     // Reset sequence
     try { db.run(`DELETE FROM sqlite_sequence WHERE name='transactions'`); } catch(e) {}
     saveDatabase();
