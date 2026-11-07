@@ -593,7 +593,7 @@ import { useToast } from '../composables/useToast';
 import { useDebounce } from '../composables/useDebounce';
 import { useAutoRefresh } from '../composables/useAutoRefresh';
 
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 const { showSuccess, showError } = useToast();
 
 const items = ref([]);

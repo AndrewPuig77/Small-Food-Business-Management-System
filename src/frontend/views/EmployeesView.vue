@@ -680,7 +680,7 @@ const loadEmployees = async () => {
     if (!stored) return;
     currentUser.value = stored;
 
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const result = await ipcRenderer.invoke('employee:get-all', stored.businessId);
     console.log('Loaded employees:', result);
     employees.value = result;
@@ -703,7 +703,7 @@ const loadAnnouncements = async () => {
     const stored = JSON.parse(localStorage.getItem('currentUser'));
     if (!stored) return;
 
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const result = await ipcRenderer.invoke('announcements:get-all', {
       businessId: stored.businessId,
       includeExpired: true
@@ -743,7 +743,7 @@ const isExpired = (expiresAt) => {
 
 const toggleAnnouncementStatus = async (announcement) => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     await ipcRenderer.invoke('announcements:update', {
       announcementId: announcement.id,
       announcementData: { isActive: !announcement.is_active }
@@ -759,7 +759,7 @@ const deleteAnnouncement = async (announcement) => {
   if (!confirm(`Are you sure you want to delete the announcement "${announcement.title}"?`)) return;
   
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     await ipcRenderer.invoke('announcements:delete', announcement.id);
     await loadAnnouncements();
   } catch (error) {
@@ -878,7 +878,7 @@ const openEmployeeModal = async (employee = null) => {
     
     if (employee.user_id) {
       try {
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         console.log('Fetching user account for user_id:', employee.user_id);
         const result = await ipcRenderer.invoke('user:get-by-id', {
@@ -967,7 +967,7 @@ const saveEmployee = async () => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     if (!currentUser) return;
 
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     
     // For editing, include permissions if account exists OR being created
     const includePermissions = editingEmployee.value 
@@ -1024,7 +1024,7 @@ const confirmDelete = async (employee) => {
   if (confirm(`Are you sure you want to delete ${employee.first_name} ${employee.last_name}?`)) {
     try {
       const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-      const { ipcRenderer } = window.require('electron');
+      const { ipcRenderer } = window.electron;
       await ipcRenderer.invoke('employee:delete', {
         businessId: currentUser.businessId,
         employeeId: employee.id
@@ -1090,7 +1090,7 @@ const performResetPassword = async () => {
   }
 
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const res = await ipcRenderer.invoke('auth:reset-password', {
       userId: resetTarget.value.user_id,
       businessId: currentUser.value.businessId,
@@ -1137,7 +1137,7 @@ const performCreateAccount = async () => {
   }
 
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const res = await ipcRenderer.invoke('employee:create-account', {
       businessId: currentUser.value.businessId,
       employeeId: createAccountTarget.value.id,
@@ -1178,7 +1178,7 @@ const performCreateAccount = async () => {
 
 const saveAnnouncement = async () => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     
     if (!announcementForm.value.title || !announcementForm.value.message) {
       alert('Please enter both title and message');

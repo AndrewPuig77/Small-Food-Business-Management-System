@@ -23,7 +23,7 @@ export function useOwnerVerification() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     
     try {
-      const { ipcRenderer } = window.require('electron');
+      const { ipcRenderer } = window.electron;
       const result = await ipcRenderer.invoke('auth:verify-owner-code', {
         businessId: currentUser.businessId,
         code: code

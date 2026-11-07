@@ -656,7 +656,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const employee = ref(null);
 const loading = ref(true);

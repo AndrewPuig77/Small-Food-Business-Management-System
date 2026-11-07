@@ -100,7 +100,7 @@
 import { ref, onMounted } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const currentUser = ref(null);
 

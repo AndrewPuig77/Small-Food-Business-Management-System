@@ -265,7 +265,7 @@ import Sidebar from '../components/Sidebar.vue';
 import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const router = useRouter();
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const currentUser = ref(null);
 const employeeData = ref(null);

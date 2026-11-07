@@ -153,7 +153,7 @@ onMounted(async () => {
     // If staff, load employee data with permissions
     if (currentUser.value.role === 'staff' && currentUser.value.userId) {
       try {
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         const employees = await ipcRenderer.invoke('employee:get-all', currentUser.value.businessId);
         employeeData.value = employees.find(emp => emp.user_id === currentUser.value.userId);
       } catch (error) {

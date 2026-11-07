@@ -218,7 +218,7 @@ import OutOfStockModal from '../components/dashboard/OutOfStockModal.vue';
 import { useAutoRefresh } from '../composables/useAutoRefresh';
 
 const router = useRouter();
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const businessName = ref('');
 const currentUser = ref(null);
@@ -476,7 +476,7 @@ const showScheduleManager = () => {
 
 const handleLogout = async () => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const token = localStorage.getItem('authToken');
     
     await ipcRenderer.invoke('logout', token);

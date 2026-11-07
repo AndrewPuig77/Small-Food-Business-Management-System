@@ -178,7 +178,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 import { useModals } from '../composables/useModals.js';
 
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 // Modal utilities
 const { showConfirm, showError, showSuccess } = useModals();

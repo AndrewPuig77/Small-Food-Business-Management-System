@@ -800,7 +800,7 @@ import * as XLSX from 'xlsx';
 
 Chart.register(...registerables);
 
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const selectedReportType = ref('sales');
 const showExportMenu = ref(false);

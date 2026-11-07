@@ -123,7 +123,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const step = ref(1);
 const username = ref('');

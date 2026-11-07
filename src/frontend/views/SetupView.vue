@@ -363,7 +363,7 @@ const previousStep = () => {
 
 const completeSetup = async () => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     
     // Convert reactive objects to plain objects for IPC
     const setupData = {

@@ -264,7 +264,7 @@ const filteredItems = computed(() => {
 const loadMenuData = async () => {
   loading.value = true;
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const user = JSON.parse(localStorage.getItem('currentUser'));
     
     const [itemsResult, categoriesResult] = await Promise.all([
@@ -328,7 +328,7 @@ const saveItem = async () => {
 
 const performSaveItem = async () => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const user = JSON.parse(localStorage.getItem('currentUser'));
     
     // Convert reactive object to plain object for IPC
@@ -387,7 +387,7 @@ const confirmDelete = async (item) => {
 
 const performDeleteItem = async (item) => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const result = await ipcRenderer.invoke('menu:delete-item', item.id);
 
     if (result.success) {
@@ -403,7 +403,7 @@ const performDeleteItem = async (item) => {
 
 const saveCategory = async () => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const user = JSON.parse(localStorage.getItem('currentUser'));
     
     // Convert reactive object to plain object for IPC
@@ -457,7 +457,7 @@ const submitOwnerCode = async () => {
   }
   
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const user = JSON.parse(localStorage.getItem('currentUser'));
     
     const verifyResult = await ipcRenderer.invoke('auth:verify-owner-code', {

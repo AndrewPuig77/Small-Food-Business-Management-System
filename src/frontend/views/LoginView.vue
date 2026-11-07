@@ -76,7 +76,7 @@ const errorMessage = ref('');
 
 onMounted(async () => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     const savedRemember = localStorage.getItem('rememberMe');
     remember.value = savedRemember === 'true';
 
@@ -111,7 +111,7 @@ const handleLogin = async () => {
   errorMessage.value = '';
 
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     
     // Trim whitespace from inputs to prevent issues
     const cleanUsername = username.value.trim();

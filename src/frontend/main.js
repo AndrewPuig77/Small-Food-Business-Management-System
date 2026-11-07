@@ -23,4 +23,4 @@ window.addEventListener('unhandledrejection', (ev) => {
 app.mount('#app');
 
 console.log('Food Business Management System - Vue App Initialized');
-console.log('Environment:', process.env.NODE_ENV);
+console.log('Environment:', import.meta.env.MODE);

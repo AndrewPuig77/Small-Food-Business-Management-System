@@ -77,7 +77,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'success']);
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const inventoryItems = ref([]);
 const selectedItem = ref('');

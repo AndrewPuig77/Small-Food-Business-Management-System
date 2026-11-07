@@ -124,6 +124,8 @@ const routes = [
   }
 ];
 
+const ADMIN_ROLES = ['owner', 'manager', 'admin'];
+
 const router = createRouter({
   history: createWebHashHistory(),
   routes
@@ -132,7 +134,7 @@ const router = createRouter({
 // Navigation guards for setup and authentication
 router.beforeEach(async (to, from, next) => {
   try {
-    const { ipcRenderer } = window.require('electron');
+    const { ipcRenderer } = window.electron;
     
     // Check database for setup completion
     const isSetupComplete = await ipcRenderer.invoke('check-setup');
@@ -176,18 +178,21 @@ router.beforeEach(async (to, from, next) => {
         return;
       }
       
-      // Role-based routing: redirect staff to employee account view
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      const userRole = currentUser.role?.toLowerCase();
-      
-      // If user is staff and trying to access management views, redirect to employee account
-      if (userRole === 'staff' && to.meta.requiresRole && !to.meta.requiresRole.includes(userRole)) {
+      // Role-based routing. The role comes from the verified token, not from
+      // localStorage, so editing localStorage can't grant admin views.
+      // Admins (owner/manager/admin) use the main dashboard; every other role
+      // (chef, server, cashier, driver, staff, ...) uses the employee portal.
+      const userRole = result.user?.role?.toLowerCase();
+      const isAdmin = ADMIN_ROLES.includes(userRole);
+
+      // Non-admins trying to open a role-restricted view go to the employee portal
+      if (!isAdmin && to.meta.requiresRole && !to.meta.requiresRole.includes(userRole)) {
         next({ name: 'EmployeeAccount' });
         return;
       }
-      
-      // If non-staff user tries to access employee account view, redirect to dashboard
-      if (to.name === 'EmployeeAccount' && userRole !== 'staff' && userRole !== 'employee') {
+
+      // Admins opening the employee portal go to the dashboard
+      if (to.name === 'EmployeeAccount' && isAdmin) {
         next({ name: 'Dashboard' });
         return;
       }
@@ -196,7 +201,12 @@ router.beforeEach(async (to, from, next) => {
     next();
   } catch (error) {
     console.error('Navigation guard error:', error);
-    next();
+    // Fail closed: if auth can't be checked, don't open protected pages
+    if (to.meta.requiresAuth) {
+      next({ name: 'Login' });
+    } else {
+      next();
+    }
   }
 });
 

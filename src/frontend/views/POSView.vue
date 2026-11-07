@@ -606,7 +606,7 @@ import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
 import { useDebounce } from '../composables/useDebounce';
 import { useAutoRefresh } from '../composables/useAutoRefresh';
 
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 const { showSuccess, showError, showWarning } = useToast();
 
 // Common modifiers for customization

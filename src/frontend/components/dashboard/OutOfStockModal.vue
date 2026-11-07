@@ -50,7 +50,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'success']);
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 const menuItems = ref([]);
 const selectedItems = ref([]);

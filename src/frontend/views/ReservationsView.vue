@@ -308,7 +308,7 @@ export default {
   methods: {
     async loadSettings() {
       try {
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         const result = await ipcRenderer.invoke('reservation:get-settings', this.businessId);
         console.log('loadSettings result:', result);
         if (result && result.success && result.settings) {
@@ -322,7 +322,7 @@ export default {
     async saveSettings() {
       try {
         console.log('saveSettings called');
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         // Convert to plain object to avoid cloning issues
         const settingsData = {
           enabled: this.settingsForm.enabled,
@@ -368,7 +368,7 @@ export default {
       if (!this.settings.enabled) return;
       
       try {
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         console.log('Loading reservations for date:', this.selectedDate);
         const result = await ipcRenderer.invoke('reservation:get-by-date', {
           businessId: this.businessId,
@@ -390,7 +390,7 @@ export default {
       if (!this.settings.enabled) return;
       
       try {
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         const result = await ipcRenderer.invoke('reservation:get-available-slots', {
           businessId: this.businessId,
           date: this.selectedDate,
@@ -442,7 +442,7 @@ export default {
       }
 
       try {
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         
         // Convert to plain object to avoid cloning issues
         const reservationData = {
@@ -487,7 +487,7 @@ export default {
     },
     async updateStatus(reservationId, status) {
       try {
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         const result = await ipcRenderer.invoke('reservation:update-status', {
           businessId: this.businessId,
           reservationId,
@@ -509,7 +509,7 @@ export default {
 
       try {
         console.log('Deleting reservation:', reservationId);
-        const { ipcRenderer } = window.require('electron');
+        const { ipcRenderer } = window.electron;
         const result = await ipcRenderer.invoke('reservation:delete', {
           businessId: this.businessId,
           reservationId

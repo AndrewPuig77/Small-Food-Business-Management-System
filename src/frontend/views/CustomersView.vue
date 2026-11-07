@@ -307,7 +307,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
 import { useAutoRefresh } from '../composables/useAutoRefresh';
 
-const { ipcRenderer } = window.require('electron');
+const { ipcRenderer } = window.electron;
 
 // State
 const customers = ref([]);
