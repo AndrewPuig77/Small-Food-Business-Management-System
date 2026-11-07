@@ -121,7 +121,11 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 </table>
 
 ### Security
-Multi-user authentication · bcrypt password hashing · role-based permissions · owner-code verification for sensitive actions · session management
+- bcrypt password hashing and signed session tokens (JWT), with a random signing secret generated per installation
+- Role-based access, checked against the verified session rather than client-side state
+- All database queries use bound parameters, never string-built SQL
+- The UI runs with Node.js disabled and context isolation on, and reaches the backend only through a minimal preload bridge
+- Owner-code verification for sensitive actions
 
 ---
 
@@ -162,7 +166,7 @@ For detailed setup and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)
 
 | Layer | Technology |
 | --- | --- |
-| **Desktop shell** | Electron |
+| **Desktop shell** | Electron (context-isolated renderer + preload bridge) |
 | **UI** | Vue 3 (Composition API), Vue Router, Vuex |
 | **Styling** | Tailwind CSS |
 | **Build** | Vite + `vite-plugin-electron` |
@@ -177,7 +181,7 @@ For detailed setup and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)
 ```mermaid
 flowchart LR
     UI["Vue 3 Frontend<br/>views · components · router"]
-    IPC["Electron IPC"]
+    IPC["Electron IPC<br/>preload bridge"]
     SVC["Service Layer<br/>auth · pos · inventory · analytics …"]
     DB[("SQLite<br/>sql.js")]
     UI <--> IPC <--> SVC <--> DB
@@ -219,7 +223,9 @@ flowchart LR
 src/
 ├── backend/
 │   ├── database/
-│   │   └── database.js            # SQLite init and migrations
+│   │   ├── database.js            # SQLite init, migrations, batched saves
+│   │   └── sql.js                 # sql`` tag for parameterized queries
+│   ├── database/
 │   ├── services/                  # Business logic layer
 │   │   ├── analyticsService.js
 │   │   ├── announcementService.js
@@ -249,7 +255,8 @@ src/
 │   ├── views/                     # Dashboard, POS, Menu, Inventory, Employees, Reports, …
 │   └── App.vue
 └── main/
-    └── main.js                    # Electron main process
+    ├── main.js                    # Electron main process
+    └── preload.js                 # Exposes the IPC bridge to the UI
 
 config/                            # Vite and build config
 docs/                              # Requirements, design, and specifications
