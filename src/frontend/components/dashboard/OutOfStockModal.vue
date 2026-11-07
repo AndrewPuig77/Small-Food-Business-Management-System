@@ -106,7 +106,7 @@ const handleMarkOutOfStock = async () => {
 }
 
 .modal-content {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1rem;
   width: 90%;
@@ -127,7 +127,7 @@ const handleMarkOutOfStock = async () => {
 .modal-header h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -136,7 +136,7 @@ const handleMarkOutOfStock = async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #e5e7eb;
+  color: #e5e5e5;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -159,7 +159,7 @@ const handleMarkOutOfStock = async () => {
 
 .instruction {
   font-size: 0.9375rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .items-grid {
@@ -193,13 +193,13 @@ const handleMarkOutOfStock = async () => {
 .item-name {
   font-size: 1rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin-bottom: 0.25rem;
 }
 
 .item-category {
   font-size: 0.8125rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .check-icon {

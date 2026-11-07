@@ -508,8 +508,8 @@ onMounted(async () => {
 .menu-page {
   display: flex;
   min-height: 100vh;
-  background-color: #0f1419;
-  color: #f3f4f6;
+  background-color: #0a0a0a;
+  color: #f5f5f5;
 }
 
 .menu-page * {
@@ -534,13 +534,11 @@ onMounted(async () => {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
 }
 
 .page-subtitle {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
@@ -549,7 +547,7 @@ onMounted(async () => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   color: white !important;
   border: none;
   border-radius: 0.5rem;
@@ -560,7 +558,7 @@ onMounted(async () => {
 
 .btn-add:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3);
 }
 
 .category-filter {
@@ -575,7 +573,7 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.875rem;
@@ -587,9 +585,9 @@ onMounted(async () => {
 }
 
 .category-chip.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: #3b82f6;
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #f97316;
+  color: #fb923c;
 }
 
 .category-chip.add-category {
@@ -602,27 +600,27 @@ onMounted(async () => {
 .loading {
   text-align: center;
   padding: 4rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .empty-state {
   text-align: center;
   padding: 4rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .empty-icon {
   width: 64px;
   height: 64px;
   margin: 0 auto 1rem;
-  color: #4b5563;
+  color: #3a3a3a;
 }
 
 .btn-secondary {
   margin-top: 1rem;
   padding: 0.75rem 1.5rem;
   background: rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0.5rem;
   cursor: pointer;
@@ -640,7 +638,7 @@ onMounted(async () => {
 }
 
 .menu-card {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   padding: 1.5rem;
@@ -695,15 +693,15 @@ onMounted(async () => {
 .menu-item-name {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .menu-item-category {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
   border-radius: 1rem;
   font-size: 0.75rem;
   font-weight: 500;
@@ -723,14 +721,14 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-icon-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .action-icon-btn.delete:hover {
@@ -745,7 +743,7 @@ onMounted(async () => {
 }
 
 .menu-item-description {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
   margin-bottom: 1rem;
   line-height: 1.5;
@@ -795,7 +793,7 @@ onMounted(async () => {
 }
 
 .modal {
-  background: #1a1f2e;
+  background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   max-width: 600px;
@@ -822,13 +820,13 @@ onMounted(async () => {
 .modal-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   transition: color 0.2s;
 }
 
 .modal-close:hover {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-body {
@@ -841,20 +839,20 @@ onMounted(async () => {
 
 .form-group label {
   display: block;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
 
 .input-field,
 .input-field:focus {
-  background-color: #1f2937 !important;
-  color: #f3f4f6 !important;
-  border-color: #374151 !important;
+  background-color: #171717 !important;
+  color: #f5f5f5 !important;
+  border-color: #262626 !important;
 }
 
 .input-field::placeholder {
-  color: #6b7280;
+  color: #737373;
 }
 
 .file-input {
@@ -908,7 +906,7 @@ onMounted(async () => {
 
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   color: white !important;
   border: none;
   border-radius: 0.5rem;
@@ -919,6 +917,6 @@ onMounted(async () => {
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
 }
 </style>

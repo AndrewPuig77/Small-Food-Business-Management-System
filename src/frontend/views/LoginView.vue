@@ -1,26 +1,32 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
-    <div class="card max-w-md w-full">
+  <div class="login-root h-screen w-full overflow-y-auto">
+    <div class="min-h-full flex items-center justify-center p-6">
+    <div class="login-card w-full max-w-[420px]">
       <!-- Logo and Title -->
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-100 mb-2">Food Business Manager</h1>
-        <p class="text-gray-400">Sign in to your account</p>
+      <div class="mb-8">
+        <div class="brand-mark mb-6">
+          <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 11h18M5 11a7 7 0 0 1 14 0M12 4V3M4 15h16l-1 3a2 2 0 0 1-2 1.5H7A2 2 0 0 1 5 18z" />
+          </svg>
+        </div>
+        <h1 class="text-2xl font-semibold text-neutral-50 tracking-tight mb-1">Welcome back</h1>
+        <p class="text-neutral-400">Sign in to Food Business Manager</p>
       </div>
 
       <!-- Error Message -->
-      <div v-if="errorMessage" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+      <div v-if="errorMessage" class="error-banner mb-5" role="alert">
         {{ errorMessage }}
       </div>
 
       <!-- Login Form -->
       <form @submit.prevent="handleLogin" autocomplete="on">
-        <div class="mb-4">
-          <label for="username" class="block text-gray-300 font-semibold mb-2">Username</label>
+        <div class="mb-5">
+          <label for="username" class="field-label">Username</label>
           <input
             id="username"
             v-model.trim="username"
             type="text"
-            class="input-field"
+            class="field"
             placeholder="Enter your username"
             autocomplete="username"
             autocapitalize="off"
@@ -31,34 +37,35 @@
           />
         </div>
 
-        <div class="mb-6">
-          <label for="password" class="block text-gray-300 font-semibold mb-2">Password</label>
+        <div class="mb-5">
+          <label for="password" class="field-label">Password</label>
           <input
             id="password"
             v-model.trim="password"
             type="password"
-            class="input-field"
+            class="field"
             placeholder="Enter your password"
             autocomplete="current-password"
             required
           />
         </div>
 
-        <div class="flex items-center justify-between mb-6">
-          <label class="flex items-center">
-            <input type="checkbox" v-model="remember" class="mr-2 bg-gray-800 border-gray-700" />
-            <span class="text-sm text-gray-400">Remember me</span>
+        <div class="flex items-center justify-between mb-7">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="remember" class="check" />
+            <span class="text-sm text-neutral-400">Remember me</span>
           </label>
-          <router-link to="/forgot-password" class="text-sm text-blue-400 hover:text-blue-300">
+          <router-link to="/forgot-password" class="link">
             Forgot password?
           </router-link>
         </div>
 
-        <button type="submit" class="btn-primary w-full" :disabled="loading">
+        <button type="submit" class="btn-accent w-full" :disabled="loading">
           <span v-if="loading">Signing in...</span>
-          <span v-else>Sign In</span>
+          <span v-else>Sign in</span>
         </button>
       </form>
+    </div>
     </div>
   </div>
 </template>
@@ -158,3 +165,111 @@ const handleLogin = async () => {
   }
 };
 </script>
+
+<style scoped>
+/* Same palette as the setup wizard (SetupView.vue) */
+.login-root {
+  --bg: #0a0a0a;
+  --surface: #171717;
+  --border: #262626;
+  --border-strong: #3a3a3a;
+  --text: #fafafa;
+  --text-faint: #737373;
+  --accent: #f97316;
+  --accent-hover: #fb8a3c;
+  --accent-soft: rgba(249, 115, 22, 0.12);
+
+  color: var(--text);
+  background:
+    radial-gradient(700px 400px at 50% -10%, rgba(249, 115, 22, 0.08), transparent 70%),
+    var(--bg);
+}
+.login-card {
+  padding: 40px;
+  background: #111111;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+}
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.field {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.field::placeholder {
+  color: #525252;
+}
+.field:hover {
+  border-color: var(--border-strong);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+.btn-accent {
+  height: 46px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 10px;
+  transition: background-color 150ms, opacity 150ms;
+}
+.btn-accent:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-accent:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-accent:focus-visible,
+.link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.error-banner {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 10px;
+}
+</style>

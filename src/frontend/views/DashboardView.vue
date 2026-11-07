@@ -198,7 +198,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '../components/Sidebar.vue';
 import SalesMetricCard from '../components/dashboard/SalesMetricCard.vue';
@@ -220,8 +220,19 @@ import { useAutoRefresh } from '../composables/useAutoRefresh';
 const router = useRouter();
 const { ipcRenderer } = window.electron;
 
-const businessName = ref('');
-const currentUser = ref(null);
+// Read the logged-in user now, not in onMounted: useAutoRefresh (below)
+// registers its own onMounted first and runs the initial load immediately,
+// which would otherwise find no user and leave the dashboard empty until
+// the next 15-second refresh.
+const readStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('currentUser') || 'null');
+  } catch {
+    return null;
+  }
+};
+const currentUser = ref(readStoredUser());
+const businessName = ref(currentUser.value?.businessName || 'My Business');
 const dashboardData = ref({
   overview: null,
   salesTrend: [],
@@ -261,12 +272,12 @@ const lowStockCount = ref(0);
 const loadDashboardData = async () => {
   // Don't load if user data isn't available yet
   if (!currentUser.value) {
-    console.log('⏸️ Skipping dashboard load - user not loaded yet');
+    console.log('Skipping dashboard load - user not loaded yet');
     return;
   }
   
   try {
-    console.log('🔄 Loading dashboard data...');
+    console.log('Loading dashboard data...');
     const businessId = currentUser.value.businessId;
     const userRole = currentUser.value.role;
     
@@ -276,7 +287,7 @@ const loadDashboardData = async () => {
       userRole
     });
     
-    console.log('📊 Dashboard data received:', {
+    console.log('Dashboard data received:', {
       todaySales: data.overview?.todaySales,
       ordersCompleted: data.overview?.ordersCompleted,
       rawData: data
@@ -344,9 +355,9 @@ const loadDashboardStats = async () => {
 };
 
 const refreshDashboard = async () => {
-  console.log('🔄 Refresh button clicked');
+  console.log('Refresh button clicked');
   await loadDashboardData();
-  console.log('✅ Dashboard refresh complete');
+  console.log('Dashboard refresh complete');
 };
 
 const getCurrentGreeting = () => {
@@ -567,14 +578,6 @@ const handleViewUpcoming = (type) => {
 // Auto-refresh dashboard every 15 seconds for real-time updates
 const { isRefreshing, manualRefresh } = useAutoRefresh(loadDashboardData, 15000);
 
-onMounted(async () => {
-  const userDataStr = localStorage.getItem('currentUser');
-  if (userDataStr) {
-    currentUser.value = JSON.parse(userDataStr);
-    businessName.value = currentUser.value.businessName || 'My Business';
-  }
-});
-
 onUnmounted(() => {
   // Cleanup handled by useAutoRefresh
 });
@@ -583,8 +586,8 @@ onUnmounted(() => {
 <style scoped>
 .dashboard {
   min-height: 100vh;
-  background-color: #0f1419;
-  color: #f3f4f6;
+  background-color: #0a0a0a;
+  color: #f5f5f5;
 }
 
 .dashboard * {
@@ -596,7 +599,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
@@ -610,9 +613,7 @@ onUnmounted(() => {
 .business-title {
   font-size: 1.5rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent);
 }
 
 .user-menu {
@@ -674,9 +675,9 @@ onUnmounted(() => {
 
 .refresh-btn {
   padding: 0.5rem 1rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fb923c;
   border-radius: 0.5rem;
   font-weight: 500;
   cursor: pointer;
@@ -687,8 +688,8 @@ onUnmounted(() => {
 }
 
 .refresh-btn:hover {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .refresh-btn svg {
@@ -747,14 +748,14 @@ onUnmounted(() => {
 
 /* Quick Actions Widget */
 .quick-actions-widget {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   padding: 1.5rem;
 }
 
 .widget-title {
-  color: #f9fafb;
+  color: #fafafa;
   font-size: 1.25rem;
   font-weight: 700;
   margin-bottom: 1rem;
@@ -767,7 +768,7 @@ onUnmounted(() => {
 }
 
 .action-btn {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #171717 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
   padding: 1rem;
@@ -775,28 +776,28 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background: linear-gradient(135deg, #2a3548 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #2a3548 0%, #171717 100%);
   transform: translateY(-2px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-  border-color: rgba(59, 130, 246, 0.5);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .action-btn span {
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
 .action-icon {
   width: 24px;
   height: 24px;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .stats-grid {
@@ -807,7 +808,7 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   padding: 1.5rem;
@@ -842,13 +843,13 @@ onUnmounted(() => {
 }
 
 .stat-label {
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
 }
 
 .stat-value {
-  color: #f9fafb;
+  color: #fafafa;
   font-size: 1.875rem;
   font-weight: 700;
 }
@@ -864,7 +865,7 @@ onUnmounted(() => {
 }
 
 .action-btn {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   padding: 1.5rem;
@@ -872,14 +873,14 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  color: #f3f4f6 !important;
+  color: #f5f5f5 !important;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-btn span {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .action-btn:hover {
@@ -891,11 +892,11 @@ onUnmounted(() => {
 .action-icon {
   width: 32px;
   height: 32px;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .recent-activity {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   padding: 1.5rem;
@@ -913,6 +914,6 @@ onUnmounted(() => {
 .empty-icon {
   width: 64px;
   height: 64px;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 </style>

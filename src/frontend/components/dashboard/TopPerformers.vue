@@ -60,7 +60,7 @@ defineProps({
 .widget-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -80,7 +80,7 @@ defineProps({
 .section-title {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #d1d5db;
+  color: #d4d4d4;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -88,7 +88,7 @@ defineProps({
 .empty-message {
   padding: 2rem;
   text-align: center;
-  color: #6b7280;
+  color: #737373;
   font-size: 0.875rem;
 }
 
@@ -120,7 +120,7 @@ defineProps({
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: #f97316;
   color: #fff;
   font-size: 0.875rem;
   font-weight: 700;
@@ -136,7 +136,7 @@ defineProps({
 .item-name {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin-bottom: 0.25rem;
   white-space: nowrap;
   overflow: hidden;
@@ -145,7 +145,7 @@ defineProps({
 
 .item-category {
   font-size: 0.8125rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .item-stats {
@@ -167,7 +167,7 @@ defineProps({
 
 .stat-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   text-transform: uppercase;
 }
 </style>

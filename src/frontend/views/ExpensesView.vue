@@ -9,7 +9,7 @@
             Process Recurring
           </button>
           <button @click="showRecurringModal = true" class="btn btn-secondary">
-            📅 Recurring Expenses
+            Recurring Expenses
           </button>
           <button @click="showExpenseModal = true" class="btn btn-primary">
             <span class="icon">+</span>
@@ -96,11 +96,11 @@
                 <td class="amount-cell">${{ formatNumber(expense.amount) }}</td>
                 <td>{{ expense.created_by_name || 'System' }}</td>
                 <td class="actions-cell">
-                  <button @click="editExpense(expense)" class="btn-icon" title="Edit">
-                    ✏️
+                  <button @click="editExpense(expense)" class="btn-icon" title="Edit" aria-label="Edit">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>
                   </button>
-                  <button @click="deleteExpenseConfirm(expense)" class="btn-icon delete" title="Delete">
-                    🗑️
+                  <button @click="deleteExpenseConfirm(expense)" class="btn-icon delete" title="Delete" aria-label="Delete">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
                   </button>
                 </td>
               </tr>
@@ -272,8 +272,8 @@
                       <td>{{ recurring.frequency }}</td>
                       <td>{{ formatDate(recurring.next_due_date) }}</td>
                       <td class="actions-cell">
-                        <button @click="deleteRecurringConfirm(recurring)" class="btn-icon delete" title="Delete">
-                          🗑️
+                        <button @click="deleteRecurringConfirm(recurring)" class="btn-icon delete" title="Delete" aria-label="Delete">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
                         </button>
                       </td>
                     </tr>
@@ -611,12 +611,12 @@ onMounted(() => {
 .expenses-view {
   display: flex;
   min-height: 100vh;
-  background: #0f172a;
+  background: #0a0a0a;
 }
 
 .main-content {
   flex: 1;
-  margin-left: 250px;
+  min-width: 0;
   padding: 2rem;
   height: 100vh;
   overflow-y: auto;
@@ -630,7 +630,7 @@ onMounted(() => {
 }
 
 .header h1 {
-  color: #f1f5f9;
+  color: #f5f5f5;
   font-size: 2rem;
   font-weight: 700;
 }
@@ -649,20 +649,20 @@ onMounted(() => {
 }
 
 .metric-card {
-  background: #1e293b;
+  background: #171717;
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid #334155;
+  border: 1px solid #262626;
 }
 
 .metric-label {
-  color: #94a3b8;
+  color: #a3a3a3;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
 }
 
 .metric-value {
-  color: #f1f5f9;
+  color: #f5f5f5;
   font-size: 1.75rem;
   font-weight: 700;
 }
@@ -673,15 +673,15 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
-  background: #1e293b;
+  background: #171717;
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid #334155;
+  border: 1px solid #262626;
 }
 
 .filter-group label {
   display: block;
-  color: #94a3b8;
+  color: #a3a3a3;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
 }
@@ -689,19 +689,19 @@ onMounted(() => {
 .filter-group select,
 .filter-group input {
   width: 100%;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: #0a0a0a;
+  border: 1px solid #262626;
   border-radius: 8px;
   padding: 0.5rem;
-  color: #f1f5f9;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
 /* Card & Table */
 .card {
-  background: #1e293b;
+  background: #171717;
   border-radius: 12px;
-  border: 1px solid #334155;
+  border: 1px solid #262626;
   overflow: hidden;
 }
 
@@ -715,23 +715,23 @@ table {
 }
 
 thead {
-  background: #0f172a;
+  background: #0a0a0a;
 }
 
 th {
   padding: 1rem;
   text-align: left;
-  color: #94a3b8;
+  color: #a3a3a3;
   font-weight: 600;
   font-size: 0.875rem;
   text-transform: uppercase;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #262626;
 }
 
 td {
   padding: 1rem;
-  color: #e2e8f0;
-  border-bottom: 1px solid #334155;
+  color: #e5e5e5;
+  border-bottom: 1px solid #262626;
 }
 
 tbody tr:hover {
@@ -767,11 +767,11 @@ tbody tr:hover {
 .category-food { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 .category-labor { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
 .category-rent { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
-.category-utilities { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+.category-utilities { background: rgba(249, 115, 22, 0.2); color: #fdba74; }
 .category-supplies { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
 .category-marketing { background: rgba(236, 72, 153, 0.2); color: #f9a8d4; }
 .category-maintenance { background: rgba(251, 191, 36, 0.2); color: #fde68a; }
-.category-other { background: rgba(107, 114, 128, 0.2); color: #d1d5db; }
+.category-other { background: rgba(115, 115, 115, 0.2); color: #d4d4d4; }
 
 /* Modal */
 .modal-overlay {
@@ -788,11 +788,11 @@ tbody tr:hover {
 }
 
 .modal-content {
-  background: #1e293b;
+  background: #171717;
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
-  border: 1px solid #334155;
+  border: 1px solid #262626;
 }
 
 .modal-large {
@@ -804,11 +804,11 @@ tbody tr:hover {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #262626;
 }
 
 .modal-header h2 {
-  color: #f1f5f9;
+  color: #f5f5f5;
   font-size: 1.25rem;
   font-weight: 700;
 }
@@ -816,14 +816,14 @@ tbody tr:hover {
 .btn-close {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: #a3a3a3;
   font-size: 2rem;
   cursor: pointer;
   line-height: 1;
 }
 
 .btn-close:hover {
-  color: #f1f5f9;
+  color: #f5f5f5;
 }
 
 .modal-body {
@@ -836,7 +836,7 @@ tbody tr:hover {
 
 .form-group label {
   display: block;
-  color: #94a3b8;
+  color: #a3a3a3;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
 }
@@ -845,11 +845,11 @@ tbody tr:hover {
 .form-group select,
 .form-group textarea {
   width: 100%;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: #0a0a0a;
+  border: 1px solid #262626;
   border-radius: 8px;
   padding: 0.75rem;
-  color: #f1f5f9;
+  color: #f5f5f5;
   font-size: 1rem;
 }
 
@@ -893,17 +893,17 @@ tbody tr:hover {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   color: white;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
 }
 
 .btn-secondary {
-  background: #334155;
-  color: #f1f5f9;
+  background: #262626;
+  color: #f5f5f5;
 }
 
 .btn-secondary:hover {

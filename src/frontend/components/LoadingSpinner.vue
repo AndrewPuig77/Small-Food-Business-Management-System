@@ -54,8 +54,8 @@ defineProps({
 .spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid rgba(59, 130, 246, 0.2);
-  border-top-color: #3b82f6;
+  border: 4px solid rgba(249, 115, 22, 0.2);
+  border-top-color: #f97316;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -67,7 +67,7 @@ defineProps({
 }
 
 .spinner-message {
-  color: #f9fafb;
+  color: #fafafa;
   font-size: 1rem;
   font-weight: 500;
 }

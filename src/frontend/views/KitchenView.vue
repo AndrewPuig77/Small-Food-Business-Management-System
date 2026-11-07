@@ -490,12 +490,12 @@ onUnmounted(() => {
 .app-container {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(to bottom right, #111827, #1f2937, #000000);
+  background: #0a0a0a;
 }
 
 .kitchen-view {
   flex: 1;
-  margin-left: 250px;
+  min-width: 0;
   padding: 2rem;
   height: 100vh;
   overflow-y: auto;
@@ -508,7 +508,7 @@ onUnmounted(() => {
 .kitchen-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 1.5rem;
 }
 
@@ -533,7 +533,7 @@ onUnmounted(() => {
   padding: 0.625rem 1.25rem;
   background: transparent;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-weight: 500;
   border-radius: 0.375rem;
   cursor: pointer;
@@ -542,11 +542,11 @@ onUnmounted(() => {
 
 .tab-btn:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .tab-btn.active {
-  background: #3b82f6;
+  background: #f97316;
   color: white;
 }
 
@@ -555,10 +555,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.625rem 1.25rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-radius: 0.5rem;
-  color: #60a5fa;
+  color: #fb923c;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -567,8 +567,8 @@ onUnmounted(() => {
 /* Reset button removed — daily numbering used instead */
 
 .btn-refresh:hover {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .btn-refresh svg {
@@ -582,7 +582,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 4rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .empty-state svg {
@@ -617,8 +617,8 @@ onUnmounted(() => {
 }
 
 .order-card.status-preparing {
-  border-color: rgba(59, 130, 246, 0.3);
-  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(249, 115, 22, 0.3);
+  background: rgba(249, 115, 22, 0.05);
 }
 
 .order-card.status-ready {
@@ -641,7 +641,7 @@ onUnmounted(() => {
 
 .order-number .label {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -649,7 +649,7 @@ onUnmounted(() => {
 .order-number .number {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .order-time {
@@ -671,12 +671,12 @@ onUnmounted(() => {
 }
 .order-time .placed {
   font-size: 0.85rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-weight: 600;
 }
 .order-time .cooking {
   font-size: 0.85rem;
-  color: #60a5fa;
+  color: #fb923c;
   font-weight: 700;
 }
 .order-time .elapsed {
@@ -709,7 +709,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-weight: 500;
 }
 
@@ -720,10 +720,10 @@ onUnmounted(() => {
 
 .table-number {
   padding: 0.375rem 0.75rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
   border-radius: 0.375rem;
-  color: #93c5fd;
+  color: #fdba74;
   font-weight: 600;
   font-size: 0.875rem;
 }
@@ -746,7 +746,7 @@ onUnmounted(() => {
 .item-quantity {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #60a5fa;
+  color: #fb923c;
   min-width: 40px;
 }
 
@@ -756,7 +756,7 @@ onUnmounted(() => {
 
 .item-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 1.0rem;
   margin-bottom: 0.25rem;
 }
@@ -823,14 +823,14 @@ onUnmounted(() => {
 }
 
 .btn-start {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fb923c;
 }
 
 .btn-start:hover {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .btn-ready {

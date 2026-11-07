@@ -167,8 +167,8 @@ onMounted(async () => {
 <style scoped>
 .sidebar {
   width: 250px;
-  background: linear-gradient(180deg, #1a1f2e 0%, #0f1419 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: #111111;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0;
@@ -185,8 +185,8 @@ onMounted(async () => {
   position: absolute;
   top: 1rem;
   right: -12px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border: 2px solid #1a1f2e;
+  background: #f97316;
+  border: 2px solid #111111;
   border-radius: 50%;
   width: 24px;
   height: 24px;
@@ -237,11 +237,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1.5rem;
-  color: white;
+  margin: 2px 0.75rem;
+  padding: 0.7rem 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
   text-decoration: none;
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
+  border-radius: 10px;
+  transition: background-color 150ms, color 150ms;
   cursor: pointer;
   position: relative;
   white-space: nowrap;
@@ -256,7 +258,7 @@ onMounted(async () => {
 .sidebar.collapsed .nav-item span {
   position: absolute;
   left: 70px;
-  background: #1a1f2e;
+  background: #111111;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
   opacity: 0;
@@ -272,15 +274,23 @@ onMounted(async () => {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border-left-color: white;
+  background: var(--surface);
+  color: var(--text);
 }
 
+/* Active page: same treatment as the current step in the setup wizard */
 .nav-item.router-link-active {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border-left-color: white;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.nav-item.router-link-active .nav-icon {
+  color: var(--accent);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .nav-icon {

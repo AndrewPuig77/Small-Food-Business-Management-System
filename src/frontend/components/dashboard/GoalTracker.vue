@@ -81,7 +81,7 @@ defineProps({
 .widget-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -107,7 +107,7 @@ defineProps({
 .goal-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #e5e5e5;
   margin: 0;
 }
 
@@ -126,8 +126,8 @@ defineProps({
 }
 
 .goal-status.status-on-track {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+  background: rgba(249, 115, 22, 0.2);
+  color: #fdba74;
 }
 
 .goal-status.status-behind {
@@ -159,7 +159,7 @@ defineProps({
 }
 
 .progress-fill.status-on-track {
-  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+  background: linear-gradient(90deg, #f97316 0%, #fb923c 100%);
 }
 
 .progress-fill.status-behind {
@@ -176,15 +176,15 @@ defineProps({
 .current {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .separator {
-  color: #6b7280;
+  color: #737373;
 }
 
 .target {
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .progress-percent {

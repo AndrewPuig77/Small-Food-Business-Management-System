@@ -42,10 +42,10 @@
               </button>
               <div v-if="showExportMenu" class="export-menu">
                 <button @click="exportToPDF" class="export-option">
-                  <span>📄 Export as PDF</span>
+                  <span>Export as PDF</span>
                 </button>
                 <button @click="exportToExcel" class="export-option">
-                  <span>📊 Export as Excel</span>
+                  <span>Export as Excel</span>
                 </button>
               </div>
             </div>
@@ -670,10 +670,10 @@
           </div>
 
           <div v-if="costsData.primeCostPercentage > 65" class="alert alert-danger mb-6">
-            ⚠️ Warning: Prime Cost is above 65%. Consider reviewing menu pricing, portion sizes, or labor scheduling.
+            Warning: Prime Cost is above 65%. Consider reviewing menu pricing, portion sizes, or labor scheduling.
           </div>
           <div v-else-if="costsData.primeCostPercentage > 60" class="alert alert-warning mb-6">
-            ⚠️ Caution: Prime Cost is approaching the upper threshold. Monitor costs closely.
+            Caution: Prime Cost is approaching the upper threshold. Monitor costs closely.
           </div>
         </div>
 
@@ -776,7 +776,7 @@
                     <td colspan="7" class="text-center text-gray-500">
                       <div style="padding: 2rem;">
                         <p style="margin-bottom: 0.5rem;">No completed shifts found for this date range.</p>
-                        <p style="font-size: 0.875rem; color: #6b7280;">Employees must clock in and clock out to appear in payroll reports.</p>
+                        <p style="font-size: 0.875rem; color: #737373;">Employees must clock in and clock out to appear in payroll reports.</p>
                       </div>
                     </td>
                   </tr>
@@ -2053,8 +2053,8 @@ const renderCharts = async (transactions, businessId, dateRange) => {
       datasets: [{
         label: chartLabel,
         data: chartData,
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249, 115, 22, 0.1)',
         tension: 0.4,
         fill: true
       }]
@@ -2075,13 +2075,13 @@ const renderCharts = async (transactions, businessId, dateRange) => {
           beginAtZero: true,
           ticks: {
             callback: (value) => `$${value}`,
-            color: '#9ca3af'
+            color: '#a3a3a3'
           },
-          grid: { color: 'rgba(75, 85, 99, 0.2)' }
+          grid: { color: 'rgba(82, 82, 82, 0.2)' }
         },
         x: {
-          ticks: { color: '#9ca3af' },
-          grid: { color: 'rgba(75, 85, 99, 0.2)' }
+          ticks: { color: '#a3a3a3' },
+          grid: { color: 'rgba(82, 82, 82, 0.2)' }
         }
       }
     }
@@ -2180,7 +2180,7 @@ const renderCharts = async (transactions, businessId, dateRange) => {
       plugins: {
         legend: {
           position: 'bottom',
-          labels: { color: '#9ca3af', padding: 15 }
+          labels: { color: '#a3a3a3', padding: 15 }
         },
         tooltip: {
           callbacks: {
@@ -2211,11 +2211,11 @@ const renderCharts = async (transactions, businessId, dateRange) => {
         data: [laborPercentage, 30],
         backgroundColor: [
           'rgba(245, 158, 11, 0.8)', // Always use amber/yellow color to match cost breakdown
-          'rgba(59, 130, 246, 0.4)'
+          'rgba(249, 115, 22, 0.4)'
         ],
         borderColor: [
           '#f59e0b', // Amber border
-          '#3b82f6'
+          '#f97316'
         ],
         borderWidth: 2
       }]
@@ -2237,12 +2237,12 @@ const renderCharts = async (transactions, businessId, dateRange) => {
           max: 50,
           ticks: {
             callback: (value) => `${value}%`,
-            color: '#9ca3af'
+            color: '#a3a3a3'
           },
-          grid: { color: 'rgba(75, 85, 99, 0.2)' }
+          grid: { color: 'rgba(82, 82, 82, 0.2)' }
         },
         x: {
-          ticks: { color: '#9ca3af' },
+          ticks: { color: '#a3a3a3' },
           grid: { display: false }
         }
       }
@@ -2420,12 +2420,12 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 .app-container {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(to bottom right, #111827, #1f2937, #000000);
+  background: #0a0a0a;
 }
 
 .main-content {
   flex: 1;
-  margin-left: 250px;
+  min-width: 0;
   padding: 2rem;
   overflow-y: auto;
   max-height: 100vh;
@@ -2448,7 +2448,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 .report-tabs {
   display: flex;
   gap: 0.5rem;
-  background: rgba(17, 24, 39, 0.5);
+  background: rgba(17, 17, 17, 0.5);
   padding: 0.25rem;
   border-radius: 0.75rem;
 }
@@ -2456,7 +2456,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 .tab-btn {
   padding: 0.5rem 1.5rem;
   background: transparent;
-  color: #9ca3af;
+  color: #a3a3a3;
   border: none;
   border-radius: 0.5rem;
   font-size: 0.875rem;
@@ -2466,23 +2466,20 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .tab-btn.active {
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  background: #f97316;
   color: white;
   font-weight: 600;
 }
 
 .tab-btn:hover:not(.active) {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
 }
 
 .page-title {
   font-size: 2rem;
   font-weight: bold;
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
 }
 
 .btn-export {
@@ -2514,9 +2511,9 @@ watch(() => inventoryFilters.value.stockStatus, () => {
   top: 100%;
   right: 0;
   margin-top: 0.5rem;
-  background: rgba(31, 41, 55, 0.95);
+  background: rgba(23, 23, 23, 0.95);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(75, 85, 99, 0.5);
+  border: 1px solid rgba(82, 82, 82, 0.5);
   border-radius: 0.5rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   overflow: hidden;
@@ -2529,7 +2526,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
   padding: 0.75rem 1rem;
   background: transparent;
   border: none;
-  color: #f3f4f6;
+  color: #f5f5f5;
   text-align: left;
   cursor: pointer;
   transition: background 0.2s;
@@ -2540,7 +2537,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .export-option:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
 }
 
 .export-icon {
@@ -2556,10 +2553,10 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .period-select {
   padding: 0.5rem 1rem;
-  background: rgba(31, 41, 55, 0.8);
-  border: 1px solid rgba(75, 85, 99, 0.5);
+  background: rgba(23, 23, 23, 0.8);
+  border: 1px solid rgba(82, 82, 82, 0.5);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
@@ -2571,16 +2568,16 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .date-input {
   padding: 0.5rem;
-  background: rgba(31, 41, 55, 0.8);
-  border: 1px solid rgba(75, 85, 99, 0.5);
+  background: rgba(23, 23, 23, 0.8);
+  border: 1px solid rgba(82, 82, 82, 0.5);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
 .btn-primary-sm {
   padding: 0.5rem 1rem;
-  background: linear-gradient(to right, #3b82f6, #2563eb);
+  background: #f97316;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -2601,9 +2598,9 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .metric-card {
-  background: rgba(31, 41, 55, 0.5);
+  background: rgba(23, 23, 23, 0.5);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  border: 1px solid rgba(82, 82, 82, 0.3);
   border-radius: 1rem;
   padding: 1.5rem;
   display: flex;
@@ -2631,7 +2628,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .metric-icon.transactions {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: linear-gradient(135deg, #f97316, #ea580c);
   color: white;
 }
 
@@ -2650,13 +2647,13 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .metric-label {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
 }
 
 .metric-value {
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 1.875rem;
   font-weight: bold;
   margin-bottom: 0.25rem;
@@ -2675,9 +2672,9 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .card {
-  background: rgba(31, 41, 55, 0.5);
+  background: rgba(23, 23, 23, 0.5);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  border: 1px solid rgba(82, 82, 82, 0.3);
   border-radius: 1rem;
   padding: 1.5rem;
 }
@@ -2685,7 +2682,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 .card-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 1.5rem;
 }
 
@@ -2706,21 +2703,21 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 .data-table th {
   text-align: left;
   padding: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
   font-weight: 600;
-  border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+  border-bottom: 1px solid rgba(82, 82, 82, 0.3);
 }
 
 .data-table td {
   padding: 0.75rem;
-  color: #e5e7eb;
+  color: #e5e5e5;
   font-size: 0.875rem;
-  border-bottom: 1px solid rgba(75, 85, 99, 0.2);
+  border-bottom: 1px solid rgba(82, 82, 82, 0.2);
 }
 
 .data-table tbody tr:hover {
-  background: rgba(75, 85, 99, 0.1);
+  background: rgba(82, 82, 82, 0.1);
 }
 
 .status-badge {
@@ -2773,14 +2770,14 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .stat-label {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .stat-value {
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 1.25rem;
   font-weight: bold;
 }
@@ -2803,7 +2800,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .filter-label {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -2811,15 +2808,15 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 .filter-select,
 .filter-input {
   padding: 0.5rem;
-  background: rgba(17, 24, 39, 0.5);
-  border: 1px solid rgba(75, 85, 99, 0.5);
+  background: rgba(17, 17, 17, 0.5);
+  border: 1px solid rgba(82, 82, 82, 0.5);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
 .filter-input::placeholder {
-  color: #6b7280;
+  color: #737373;
 }
 
 .filter-actions {
@@ -2829,7 +2826,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .btn-generate {
   padding: 0.5rem 1rem;
-  background: linear-gradient(to right, #3b82f6, #2563eb);
+  background: #f97316;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -2844,14 +2841,14 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .btn-generate:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
 }
 
 .btn-print {
   padding: 0.5rem 1rem;
-  background: rgba(107, 114, 128, 0.2);
-  color: #9ca3af;
-  border: 1px solid rgba(107, 114, 128, 0.5);
+  background: rgba(115, 115, 115, 0.2);
+  color: #a3a3a3;
+  border: 1px solid rgba(115, 115, 115, 0.5);
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
@@ -2863,8 +2860,8 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .btn-print:hover {
-  background: rgba(107, 114, 128, 0.3);
-  color: #d1d5db;
+  background: rgba(115, 115, 115, 0.3);
+  color: #d4d4d4;
   transform: translateY(-1px);
 }
 
@@ -2881,9 +2878,9 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .payment-method-card {
   padding: 1rem;
-  background: rgba(17, 24, 39, 0.5);
+  background: rgba(17, 17, 17, 0.5);
   border-radius: 0.75rem;
-  border: 1px solid rgba(75, 85, 99, 0.2);
+  border: 1px solid rgba(82, 82, 82, 0.2);
 }
 
 .payment-method-header {
@@ -2894,19 +2891,19 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .payment-method-name {
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-weight: 600;
 }
 
 .payment-method-amount {
-  color: #3b82f6;
+  color: #f97316;
   font-weight: bold;
   font-size: 1.125rem;
 }
 
 .payment-method-bar {
   height: 0.5rem;
-  background: rgba(75, 85, 99, 0.3);
+  background: rgba(82, 82, 82, 0.3);
   border-radius: 9999px;
   overflow: hidden;
   margin-bottom: 0.5rem;
@@ -2914,7 +2911,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .payment-method-fill {
   height: 100%;
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  background: #f97316;
   transition: width 0.3s;
 }
 
@@ -2940,7 +2937,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 .chart-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 1rem;
 }
 
@@ -2994,7 +2991,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .metric-subtext {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-top: 0.25rem;
 }
 
@@ -3023,12 +3020,12 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .efficiency-badge.medium {
-  background-color: #3b82f6;
+  background-color: #f97316;
   color: white;
 }
 
 .efficiency-badge.low {
-  background-color: #6b7280;
+  background-color: #737373;
   color: white;
 }
 
@@ -3039,7 +3036,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .heatmap-info {
   margin-bottom: 1rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
@@ -3054,51 +3051,51 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 }
 
 .heatmap-table th {
-  background-color: #1f2937;
-  color: #f3f4f6;
+  background-color: #171717;
+  color: #f5f5f5;
   padding: 0.5rem;
   text-align: center;
   font-size: 0.75rem;
   font-weight: 600;
-  border: 1px solid #374151;
+  border: 1px solid #262626;
 }
 
 .heatmap-table td {
   text-align: center;
   padding: 0.5rem;
   font-size: 0.75rem;
-  border: 1px solid #374151;
+  border: 1px solid #262626;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .heatmap-cell {
-  background-color: #1f2937;
-  color: #9ca3af;
+  background-color: #171717;
+  color: #a3a3a3;
 }
 
 .heatmap-cell.empty {
-  background-color: #111827;
-  color: #4b5563;
+  background-color: #111111;
+  color: #3a3a3a;
 }
 
 .heatmap-cell.light {
-  background-color: #3b82f6;
+  background-color: #f97316;
   color: white;
 }
 
 .heatmap-cell.moderate {
-  background-color: #2563eb;
+  background-color: #ea580c;
   color: white;
 }
 
 .heatmap-cell.busy {
-  background-color: #1d4ed8;
+  background-color: #c2410c;
   color: white;
 }
 
 .heatmap-cell.very-busy {
-  background-color: #1e40af;
+  background-color: #9a3412;
   color: white;
 }
 
@@ -3117,12 +3114,12 @@ watch(() => inventoryFilters.value.stockStatus, () => {
   display: flex;
   justify-content: space-between;
   padding: 1rem;
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid #262626;
 }
 
 .financial-row.separator {
-  border-top: 2px solid #374151;
-  border-bottom: 2px solid #374151;
+  border-top: 2px solid #262626;
+  border-bottom: 2px solid #262626;
   margin-top: 0.5rem;
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
@@ -3130,7 +3127,7 @@ watch(() => inventoryFilters.value.stockStatus, () => {
 
 .financial-label {
   font-size: 1rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .financial-value {

@@ -84,7 +84,7 @@ const formatTime = (timestamp) => {
 .widget-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -95,7 +95,7 @@ const formatTime = (timestamp) => {
   padding: 0.5rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
+  color: #e5e5e5;
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -115,7 +115,7 @@ const formatTime = (timestamp) => {
 .empty-state {
   padding: 3rem 1rem;
   text-align: center;
-  color: #6b7280;
+  color: #737373;
 }
 
 .activity-item {
@@ -143,7 +143,7 @@ const formatTime = (timestamp) => {
 }
 
 .activity-item.type-timelog {
-  border-left-color: #3b82f6;
+  border-left-color: #f97316;
 }
 
 .activity-icon {
@@ -160,7 +160,7 @@ const formatTime = (timestamp) => {
 .activity-icon svg {
   width: 20px;
   height: 20px;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .activity-content {
@@ -169,12 +169,12 @@ const formatTime = (timestamp) => {
 
 .activity-description {
   font-size: 0.875rem;
-  color: #e5e7eb;
+  color: #e5e5e5;
   margin-bottom: 0.25rem;
 }
 
 .activity-time {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 </style>

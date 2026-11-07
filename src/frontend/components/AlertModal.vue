@@ -86,7 +86,7 @@ onMounted(() => {
 }
 
 .alert-modal {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: #171717;
   border-radius: 1rem;
   padding: 1.5rem;
   max-width: 400px;
@@ -123,7 +123,7 @@ onMounted(() => {
 }
 
 .alert-modal.info {
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 .alert-icon {
@@ -152,8 +152,8 @@ onMounted(() => {
 }
 
 .alert-modal.info .alert-icon {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
 }
 
 .alert-icon svg {
@@ -169,13 +169,13 @@ onMounted(() => {
 .alert-title {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
   margin-bottom: 0.5rem;
 }
 
 .alert-message {
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   line-height: 1.5;
 }
 
@@ -188,7 +188,7 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.05);
   border: none;
   border-radius: 0.375rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -198,7 +198,7 @@ onMounted(() => {
 
 .alert-close:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .alert-close svg {

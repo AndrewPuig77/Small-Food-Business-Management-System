@@ -4,7 +4,7 @@
       <div class="modal-container" @click.stop>
         <div class="modal-header">
           <h3>{{ title }}</h3>
-          <button @click="handleCancel" class="close-btn">✕</button>
+          <button @click="handleCancel" class="close-btn" aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
         
         <div class="modal-body">
@@ -178,7 +178,7 @@ defineExpose({ setError });
 }
 
 .modal-container {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: #171717;
   border-radius: 12px;
   width: 90%;
   max-width: 450px;
@@ -196,7 +196,7 @@ defineExpose({ setError });
 
 .modal-header h3 {
   margin: 0;
-  color: #f9fafb;
+  color: #fafafa;
   font-size: 20px;
   font-weight: 600;
 }
@@ -204,7 +204,7 @@ defineExpose({ setError });
 .close-btn {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 24px;
   cursor: pointer;
   padding: 0;
@@ -219,7 +219,7 @@ defineExpose({ setError });
 
 .close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .modal-body {
@@ -228,7 +228,7 @@ defineExpose({ setError });
 
 .modal-message {
   margin: 0 0 24px 0;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 14px;
   text-align: center;
 }
@@ -247,17 +247,17 @@ defineExpose({ setError });
   font-weight: bold;
   text-align: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(59, 130, 246, 0.3);
+  border: 2px solid rgba(249, 115, 22, 0.3);
   border-radius: 8px;
-  color: #f9fafb;
+  color: #fafafa;
   transition: all 0.2s;
 }
 
 .pin-digit:focus {
   outline: none;
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.1);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
 
 .pin-digit.error {
@@ -292,12 +292,12 @@ defineExpose({ setError });
 }
 
 .btn-primary {
-  background: #3b82f6;
+  background: #f97316;
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #2563eb;
+  background: #ea580c;
 }
 
 .btn-primary:disabled {
@@ -307,13 +307,13 @@ defineExpose({ setError });
 
 .btn-secondary {
   background: rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.15);
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .modal-enter-active,

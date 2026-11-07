@@ -1362,8 +1362,8 @@ useKeyboardShortcuts({
 .pos-page {
   display: flex;
   height: 100vh;
-  background: #0f1419;
-  color: #d1d5db;
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .main-content {
@@ -1376,7 +1376,7 @@ useKeyboardShortcuts({
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #0f1419;
+  background: #0a0a0a;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
@@ -1389,7 +1389,7 @@ useKeyboardShortcuts({
 .panel-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 1rem;
 }
 
@@ -1404,7 +1404,7 @@ useKeyboardShortcuts({
   transform: translateY(-50%);
   width: 20px;
   height: 20px;
-  color: #6b7280;
+  color: #737373;
 }
 
 .search-input {
@@ -1413,7 +1413,7 @@ useKeyboardShortcuts({
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
@@ -1430,7 +1430,7 @@ useKeyboardShortcuts({
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 0.875rem;
   cursor: pointer;
   white-space: nowrap;
@@ -1442,8 +1442,8 @@ useKeyboardShortcuts({
 }
 
 .filter-btn.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #f97316;
+  border-color: #f97316;
   color: white;
 }
 
@@ -1474,7 +1474,7 @@ useKeyboardShortcuts({
 
 .menu-item-card:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: #3b82f6;
+  border-color: #f97316;
   transform: translateY(-2px);
 }
 
@@ -1501,7 +1501,7 @@ useKeyboardShortcuts({
 .menu-item-image svg {
   width: 40px;
   height: 40px;
-  color: #6b7280;
+  color: #737373;
 }
 
 .menu-item-info {
@@ -1513,7 +1513,7 @@ useKeyboardShortcuts({
 
 .menu-item-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
   line-height: 1.2;
   overflow: hidden;
@@ -1524,7 +1524,7 @@ useKeyboardShortcuts({
 }
 
 .menu-item-price {
-  color: #60a5fa;
+  color: #fb923c;
   font-weight: 700;
   font-size: 1.125rem;
 }
@@ -1533,7 +1533,7 @@ useKeyboardShortcuts({
   width: 400px;
   display: flex;
   flex-direction: column;
-  background: #1a1f2e;
+  background: #111111;
 }
 
 .customer-section {
@@ -1551,7 +1551,7 @@ useKeyboardShortcuts({
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
@@ -1561,7 +1561,7 @@ useKeyboardShortcuts({
   top: 50%;
   transform: translateY(-50%);
   padding: 0.375rem;
-  background: #3b82f6;
+  background: #f97316;
   border: none;
   border-radius: 0.375rem;
   color: white;
@@ -1580,7 +1580,7 @@ useKeyboardShortcuts({
   left: 0;
   right: 0;
   margin-top: 0.5rem;
-  background: #1a1f2e;
+  background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
   max-height: 200px;
@@ -1603,17 +1603,17 @@ useKeyboardShortcuts({
 
 .customer-result-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .customer-result-phone {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .customer-result-points {
   font-size: 0.875rem;
-  color: #60a5fa;
+  color: #fb923c;
   font-weight: 600;
 }
 
@@ -1622,19 +1622,19 @@ useKeyboardShortcuts({
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-radius: 0.5rem;
 }
 
 .selected-customer-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .selected-customer-points {
   font-size: 0.75rem;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .btn-clear-customer {
@@ -1663,7 +1663,7 @@ useKeyboardShortcuts({
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #6b7280;
+  color: #737373;
 }
 
 .cart-empty svg {
@@ -1688,13 +1688,13 @@ useKeyboardShortcuts({
 
 .cart-item-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .cart-item-price {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .cart-item-notes {
@@ -1703,11 +1703,11 @@ useKeyboardShortcuts({
   gap: 0.25rem;
   margin-top: 0.5rem;
   padding: 0.375rem 0.5rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
   border-radius: 0.25rem;
   font-size: 0.75rem;
-  color: #93c5fd;
+  color: #fdba74;
 }
 
 .cart-item-notes .note-icon {
@@ -1725,10 +1725,10 @@ useKeyboardShortcuts({
 .btn-notes {
   width: 28px;
   height: 28px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-radius: 0.25rem;
-  color: #60a5fa;
+  color: #fb923c;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1738,8 +1738,8 @@ useKeyboardShortcuts({
 }
 
 .btn-notes:hover {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .btn-notes svg {
@@ -1750,10 +1750,10 @@ useKeyboardShortcuts({
 .btn-qty {
   width: 28px;
   height: 28px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-radius: 0.25rem;
-  color: #60a5fa;
+  color: #fb923c;
   cursor: pointer;
   font-weight: 600;
 }
@@ -1761,7 +1761,7 @@ useKeyboardShortcuts({
 .cart-item-qty {
   min-width: 24px;
   text-align: center;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-weight: 600;
 }
 
@@ -1794,7 +1794,7 @@ useKeyboardShortcuts({
   display: flex;
   justify-content: space-between;
   padding: 0.5rem 0;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .summary-row.discount {
@@ -1804,7 +1804,7 @@ useKeyboardShortcuts({
 .summary-row.total {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -1839,7 +1839,7 @@ useKeyboardShortcuts({
 .btn-checkout {
   flex: 2;
   padding: 0.875rem;
-  background: #3b82f6;
+  background: #f97316;
   border: none;
   border-radius: 0.5rem;
   color: white;
@@ -1849,7 +1849,7 @@ useKeyboardShortcuts({
 }
 
 .btn-checkout:hover:not(:disabled) {
-  background: #2563eb;
+  background: #ea580c;
 }
 
 .btn-checkout:disabled {
@@ -1873,7 +1873,7 @@ useKeyboardShortcuts({
 }
 
 .modal {
-  background: #1a1f2e;
+  background: #111111;
   border-radius: 0.75rem;
   max-width: 500px;
   width: 100%;
@@ -1897,7 +1897,7 @@ useKeyboardShortcuts({
 .modal-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-close {
@@ -1906,7 +1906,7 @@ useKeyboardShortcuts({
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 1.5rem;
   cursor: pointer;
   display: flex;
@@ -1925,7 +1925,7 @@ useKeyboardShortcuts({
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -1936,7 +1936,7 @@ useKeyboardShortcuts({
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
@@ -1952,14 +1952,14 @@ useKeyboardShortcuts({
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-weight: 600;
   cursor: pointer;
 }
 
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
+  background: #f97316;
   border: none;
   border-radius: 0.5rem;
   color: white;
@@ -1984,7 +1984,7 @@ useKeyboardShortcuts({
 .checkout-summary h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.75rem;
 }
 
@@ -1999,7 +1999,7 @@ useKeyboardShortcuts({
   display: flex;
   justify-content: space-between;
   padding: 0.5rem 0;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .checkout-total {
@@ -2007,14 +2007,14 @@ useKeyboardShortcuts({
   justify-content: space-between;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
   padding: 0.75rem 0;
 }
 
 .payment-section h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.75rem;
 }
 
@@ -2030,7 +2030,7 @@ useKeyboardShortcuts({
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -2041,8 +2041,8 @@ useKeyboardShortcuts({
 }
 
 .payment-method-btn.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #f97316;
+  border-color: #f97316;
   color: white;
 }
 
@@ -2063,8 +2063,8 @@ useKeyboardShortcuts({
 
 .loyalty-section {
   padding: 1rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
   border-radius: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -2073,7 +2073,7 @@ useKeyboardShortcuts({
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #60a5fa;
+  color: #fb923c;
   font-weight: 500;
   cursor: pointer;
 }
@@ -2090,7 +2090,7 @@ useKeyboardShortcuts({
 .receipt-header {
   text-align: center;
   padding-bottom: 1rem;
-  border-bottom: 2px dashed #e5e7eb;
+  border-bottom: 2px dashed #e5e5e5;
   margin-bottom: 1rem;
 }
 
@@ -2101,14 +2101,14 @@ useKeyboardShortcuts({
 }
 
 .receipt-header p {
-  color: #6b7280;
+  color: #737373;
   font-size: 0.875rem;
   margin: 0.25rem 0;
 }
 
 .receipt-items {
   padding-bottom: 1rem;
-  border-bottom: 2px dashed #e5e7eb;
+  border-bottom: 2px dashed #e5e5e5;
   margin-bottom: 1rem;
 }
 
@@ -2120,7 +2120,7 @@ useKeyboardShortcuts({
 
 .receipt-totals {
   padding-bottom: 1rem;
-  border-bottom: 2px dashed #e5e7eb;
+  border-bottom: 2px dashed #e5e5e5;
   margin-bottom: 1rem;
 }
 
@@ -2135,24 +2135,24 @@ useKeyboardShortcuts({
   font-weight: 700;
   padding-top: 0.75rem;
   margin-top: 0.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e5e5;
 }
 
 .receipt-customer {
   padding-bottom: 1rem;
-  border-bottom: 2px dashed #e5e7eb;
+  border-bottom: 2px dashed #e5e5e5;
   margin-bottom: 1rem;
 }
 
 .receipt-customer p {
   margin: 0.25rem 0;
-  color: #6b7280;
+  color: #737373;
   font-size: 0.875rem;
 }
 
 .receipt-footer {
   text-align: center;
-  color: #6b7280;
+  color: #737373;
   font-size: 0.875rem;
 }
 
@@ -2163,18 +2163,18 @@ useKeyboardShortcuts({
   display: flex;
   gap: 0.5rem;
   padding: 1rem;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(249, 115, 22, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .control-btn {
   padding: 0.5rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .control-btn svg {
@@ -2183,19 +2183,19 @@ useKeyboardShortcuts({
 }
 
 .control-btn:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
 }
 
 /* Daily Summary */
 .daily-summary {
   padding: 1rem;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .daily-summary h3 {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin: 0 0 0.5rem 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2213,14 +2213,14 @@ useKeyboardShortcuts({
 
 .stat-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   margin-bottom: 0.25rem;
 }
 
 .stat-value {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #3b82f6;
+  color: #f97316;
 }
 
 /* Quick Actions */
@@ -2235,9 +2235,9 @@ useKeyboardShortcuts({
 .btn-quick-action {
   flex: 1;
   padding: 0.625rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fb923c;
   font-size: 0.875rem;
   display: flex;
   align-items: center;
@@ -2254,7 +2254,7 @@ useKeyboardShortcuts({
 }
 
 .btn-quick-action:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
 }
 
 .btn-quick-action:disabled {
@@ -2284,7 +2284,7 @@ useKeyboardShortcuts({
 
 .tip-section h3 {
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin: 0 0 0.75rem 0;
 }
 
@@ -2299,16 +2299,16 @@ useKeyboardShortcuts({
   padding: 0.625rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .tip-btn.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: #3b82f6;
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #f97316;
+  color: #fb923c;
 }
 
 .tip-btn:hover {
@@ -2325,7 +2325,7 @@ useKeyboardShortcuts({
 
 .split-payments h4 {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin: 0 0 0.5rem 0;
 }
 
@@ -2364,7 +2364,7 @@ useKeyboardShortcuts({
   margin-top: 0.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   font-weight: 600;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .btn-add-payment {
@@ -2394,13 +2394,13 @@ useKeyboardShortcuts({
   display: flex;
   justify-content: space-between;
   padding: 0.375rem 0;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .checkout-row.total {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #d1d5db;
+  color: #d4d4d4;
   padding-top: 0.75rem;
   margin-top: 0.5rem;
   border-top: 2px solid rgba(255, 255, 255, 0.1);
@@ -2408,13 +2408,13 @@ useKeyboardShortcuts({
 
 .item-modifiers {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   margin-top: 0.25rem;
 }
 
 .item-notes {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-style: italic;
   margin-top: 0.25rem;
 }
@@ -2422,7 +2422,7 @@ useKeyboardShortcuts({
 /* Modifier Modal */
 .modifiers-section h3 {
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin: 0 0 0.75rem 0;
 }
 
@@ -2445,7 +2445,7 @@ useKeyboardShortcuts({
 
 .modifier-option:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(59, 130, 246, 0.5);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .modifier-option input {
@@ -2457,7 +2457,7 @@ useKeyboardShortcuts({
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border-radius: 0.375rem;
   font-family: inherit;
   resize: vertical;
@@ -2465,7 +2465,7 @@ useKeyboardShortcuts({
 
 .form-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -2474,7 +2474,7 @@ useKeyboardShortcuts({
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border-radius: 0.375rem;
   font-family: inherit;
   resize: vertical;
@@ -2483,7 +2483,7 @@ useKeyboardShortcuts({
 
 .notes-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -2520,14 +2520,14 @@ useKeyboardShortcuts({
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border-radius: 0.375rem;
   cursor: pointer;
 }
 
 .form-select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 /* Order History */
@@ -2553,12 +2553,12 @@ useKeyboardShortcuts({
 
 .history-id {
   font-weight: 600;
-  color: #3b82f6;
+  color: #f97316;
 }
 
 .history-date {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .history-total {
@@ -2570,7 +2570,7 @@ useKeyboardShortcuts({
   display: flex;
   gap: 1rem;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.75rem;
 }
 

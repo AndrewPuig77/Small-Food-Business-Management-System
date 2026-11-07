@@ -126,7 +126,7 @@ const handleAdjustment = async () => {
 }
 
 .modal-content {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1rem;
   width: 90%;
@@ -147,7 +147,7 @@ const handleAdjustment = async () => {
 .modal-header h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -156,7 +156,7 @@ const handleAdjustment = async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #e5e7eb;
+  color: #e5e5e5;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -186,7 +186,7 @@ const handleAdjustment = async () => {
 .form-group label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #e5e5e5;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -196,13 +196,13 @@ const handleAdjustment = async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f9fafb;
+  color: #fafafa;
   font-size: 0.9375rem;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .button-group {
@@ -215,7 +215,7 @@ const handleAdjustment = async () => {
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
   font-weight: 600;
   border-radius: 0.5rem;
@@ -228,14 +228,14 @@ const handleAdjustment = async () => {
 }
 
 .btn-type.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #93c5fd;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #fdba74;
 }
 
 .btn-submit {
   padding: 0.875rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: #f97316;
   border: none;
   color: #fff;
   font-size: 1rem;
@@ -247,7 +247,7 @@ const handleAdjustment = async () => {
 
 .btn-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.4);
 }
 
 .btn-submit:disabled {

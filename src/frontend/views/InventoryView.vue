@@ -1082,8 +1082,8 @@ onMounted(() => {
 .inventory-page {
   display: flex;
   height: 100vh;
-  background: #0f1419;
-  color: #d1d5db;
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .main-content {
@@ -1109,13 +1109,11 @@ onMounted(() => {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
 }
 
 .page-subtitle {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
@@ -1132,7 +1130,7 @@ onMounted(() => {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   color: white;
 }
 
@@ -1143,7 +1141,7 @@ onMounted(() => {
 .btn-secondary {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .btn-secondary:hover {
@@ -1167,7 +1165,7 @@ onMounted(() => {
   align-items: center;
   gap: 1rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
 }
@@ -1187,8 +1185,8 @@ onMounted(() => {
 }
 
 .stat-icon.blue {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
 }
 
 .stat-icon.red {
@@ -1212,14 +1210,14 @@ onMounted(() => {
 
 .stat-label {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.25rem;
 }
 
 .stat-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .filter-bar {
@@ -1242,22 +1240,22 @@ onMounted(() => {
   transform: translateY(-50%);
   width: 20px;
   height: 20px;
-  color: #6b7280;
+  color: #737373;
 }
 
 .search-input {
   width: 100%;
   padding: 0.75rem 1rem 0.75rem 3rem;
-  background: #1f2937;
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 .filter-chips {
@@ -1271,7 +1269,7 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.875rem;
@@ -1282,15 +1280,15 @@ onMounted(() => {
 }
 
 .filter-chip.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: #3b82f6;
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #f97316;
+  color: #fb923c;
 }
 
 .loading, .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .empty-icon {
@@ -1301,7 +1299,7 @@ onMounted(() => {
 }
 
 .table-container {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   overflow-x: auto;
@@ -1320,7 +1318,7 @@ onMounted(() => {
   padding: 1rem;
   text-align: left;
   font-weight: 600;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.75rem;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1330,7 +1328,7 @@ onMounted(() => {
 .inventory-table td {
   padding: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .inventory-table tbody tr:hover {
@@ -1343,27 +1341,27 @@ onMounted(() => {
 
 .item-name {
   font-weight: 500;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .item-desc {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   margin-top: 0.25rem;
 }
 
 .category-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
   border-radius: 1rem;
   font-size: 0.75rem;
   font-weight: 500;
 }
 
 .text-muted {
-  color: #6b7280;
+  color: #737373;
 }
 
 .low-stock-text {
@@ -1420,14 +1418,14 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-icon-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .action-icon-btn.delete:hover {
@@ -1453,7 +1451,7 @@ onMounted(() => {
 }
 
 .modal {
-  background: #1a1f2e;
+  background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   max-width: 500px;
@@ -1477,13 +1475,13 @@ onMounted(() => {
 .modal-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   font-size: 2rem;
   line-height: 1;
@@ -1493,7 +1491,7 @@ onMounted(() => {
 }
 
 .modal-close:hover {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-content {
@@ -1514,24 +1512,24 @@ onMounted(() => {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin-bottom: 0.5rem;
 }
 
 .form-input, .form-textarea {
   width: 100%;
   padding: 0.75rem;
-  background: #1f2937;
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
   transition: border-color 0.2s;
 }
 
 .form-input:focus, .form-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 .form-textarea {
@@ -1559,19 +1557,19 @@ onMounted(() => {
 }
 
 .stock-label {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
 .stock-value {
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 1.25rem;
   font-weight: 700;
 }
 
 .field-hint {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   margin-top: 0.25rem;
 }
 
@@ -1617,13 +1615,13 @@ onMounted(() => {
 
 .category-name, .supplier-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .category-desc, .supplier-detail {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .supplier-info {
@@ -1660,12 +1658,12 @@ onMounted(() => {
 .batch-import-instructions h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.75rem;
 }
 
 .batch-import-instructions p {
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.75rem;
 }
 
@@ -1683,11 +1681,11 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 0.375rem;
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .batch-columns-list strong {
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .file-upload-section {
@@ -1700,28 +1698,28 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 3rem 2rem;
-  border: 2px dashed rgba(96, 165, 250, 0.3);
+  border: 2px dashed rgba(251, 146, 60, 0.3);
   border-radius: 0.5rem;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(249, 115, 22, 0.05);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .file-upload-label:hover {
-  border-color: rgba(96, 165, 250, 0.5);
-  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(249, 115, 22, 0.08);
 }
 
 .file-upload-icon {
   width: 48px;
   height: 48px;
-  color: #60a5fa;
+  color: #fb923c;
   margin-bottom: 1rem;
 }
 
 .file-upload-label span {
   font-size: 1rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .batch-preview {
@@ -1731,7 +1729,7 @@ onMounted(() => {
 .batch-preview h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 1rem;
 }
 
@@ -1751,7 +1749,7 @@ onMounted(() => {
 .batch-preview-table thead {
   position: sticky;
   top: 0;
-  background: #1a1f2e;
+  background: #111111;
   z-index: 1;
 }
 
@@ -1759,7 +1757,7 @@ onMounted(() => {
   padding: 0.75rem;
   text-align: left;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 0.875rem;
 }
@@ -1767,7 +1765,7 @@ onMounted(() => {
 .batch-preview-table td {
   padding: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 0.875rem;
 }
 
@@ -1849,7 +1847,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
-  color: #e2e8f0;
+  color: #e5e5e5;
   font-weight: 500;
 }
 
@@ -1857,7 +1855,7 @@ onMounted(() => {
   width: 1.25rem;
   height: 1.25rem;
   cursor: pointer;
-  accent-color: #3b82f6;
+  accent-color: #f97316;
 }
 
 .error-list li {

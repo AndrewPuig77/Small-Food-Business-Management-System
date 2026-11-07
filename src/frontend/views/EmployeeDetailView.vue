@@ -185,7 +185,7 @@
                 <div v-for="note in notes" :key="note.id" class="note-item">
                   <div class="note-header">
                     <span :class="['note-type', note.note_type]">{{ note.note_type }}</span>
-                    <span v-if="note.rating" class="rating">★ {{ note.rating }}/5</span>
+                    <span v-if="note.rating" class="rating"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true" style="display:inline;vertical-align:-1px"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></svg> {{ note.rating }}/5</span>
                     <span class="note-date">{{ formatDateTime(note.created_at) }}</span>
                   </div>
                   <p class="note-text">{{ note.note_text }}</p>
@@ -275,7 +275,7 @@
               
               <div v-else class="documents-list">
                 <div v-for="doc in documents" :key="doc.id" class="document-item">
-                  <div class="document-icon">📄</div>
+                  <div class="document-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div>
                   <div class="document-info">
                     <div class="document-name">{{ doc.document_name }}</div>
                     <div class="document-meta">{{ doc.document_type }} • {{ formatDate(doc.uploaded_at) }}</div>
@@ -1249,13 +1249,13 @@ const performResetPassword = async () => {
 .employee-detail-page {
   display: flex;
   height: 100vh;
-  background: #0f1419;
-  color: #d1d5db;
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .sidebar {
   width: 250px;
-  background: linear-gradient(180deg, #1a1f2e 0%, #0f1419 100%);
+  background: #111111;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
@@ -1270,10 +1270,7 @@ const performResetPassword = async () => {
 .logo {
   font-size: 1.75rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
 }
 
 .nav-menu {
@@ -1286,7 +1283,7 @@ const performResetPassword = async () => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1.5rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-decoration: none;
   transition: all 0.2s;
   border-left: 3px solid transparent;
@@ -1294,13 +1291,13 @@ const performResetPassword = async () => {
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .nav-item.active {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
-  border-left-color: #3b82f6;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
+  border-left-color: #f97316;
 }
 
 .nav-icon {
@@ -1318,7 +1315,7 @@ const performResetPassword = async () => {
 .loading, .error {
   text-align: center;
   padding: 4rem 2rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .detail-header {
@@ -1331,7 +1328,7 @@ const performResetPassword = async () => {
   gap: 0.5rem;
   background: none;
   border: none;
-  color: #60a5fa;
+  color: #fb923c;
   cursor: pointer;
   font-size: 0.875rem;
   padding: 0.5rem 0;
@@ -1344,7 +1341,7 @@ const performResetPassword = async () => {
 }
 
 .back-btn:hover {
-  color: #3b82f6;
+  color: #f97316;
 }
 
 .employee-header-info {
@@ -1352,7 +1349,7 @@ const performResetPassword = async () => {
   align-items: center;
   gap: 1.5rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
 }
@@ -1361,7 +1358,7 @@ const performResetPassword = async () => {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1373,7 +1370,7 @@ const performResetPassword = async () => {
 .employee-name {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.5rem;
 }
 
@@ -1386,8 +1383,8 @@ const performResetPassword = async () => {
 .role-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
   border-radius: 1rem;
   font-size: 0.75rem;
   font-weight: 500;
@@ -1417,11 +1414,11 @@ const performResetPassword = async () => {
   display: flex;
   gap: 1rem;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .tabs-container {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   overflow: hidden;
@@ -1437,7 +1434,7 @@ const performResetPassword = async () => {
   padding: 1rem 1.5rem;
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
@@ -1447,13 +1444,13 @@ const performResetPassword = async () => {
 }
 
 .tab:hover {
-  color: #f3f4f6;
+  color: #f5f5f5;
   background: rgba(255, 255, 255, 0.03);
 }
 
 .tab.active {
-  color: #60a5fa;
-  border-bottom-color: #3b82f6;
+  color: #fb923c;
+  border-bottom-color: #f97316;
 }
 
 .tab-content {
@@ -1479,7 +1476,7 @@ const performResetPassword = async () => {
 .panel-header h2 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .btn-primary, .btn-secondary, .btn-success, .btn-warning {
@@ -1493,7 +1490,7 @@ const performResetPassword = async () => {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   color: white;
 }
 
@@ -1504,7 +1501,7 @@ const performResetPassword = async () => {
 .btn-secondary {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .btn-secondary:hover {
@@ -1539,7 +1536,7 @@ const performResetPassword = async () => {
 .empty-state {
   text-align: center;
   padding: 3rem 2rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .schedule-grid {
@@ -1557,13 +1554,13 @@ const performResetPassword = async () => {
 
 .schedule-day {
   font-weight: 600;
-  color: #60a5fa;
+  color: #fb923c;
   margin-bottom: 0.5rem;
 }
 
 .schedule-time {
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .notes-list {
@@ -1595,8 +1592,8 @@ const performResetPassword = async () => {
 }
 
 .note-type.performance {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
 }
 
 .note-type.disciplinary {
@@ -1611,7 +1608,7 @@ const performResetPassword = async () => {
 
 .note-type.general {
   background: rgba(156, 163, 175, 0.1);
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .rating {
@@ -1620,19 +1617,19 @@ const performResetPassword = async () => {
 }
 
 .note-date {
-  color: #6b7280;
+  color: #737373;
   margin-left: auto;
 }
 
 .note-text {
-  color: #d1d5db;
+  color: #d4d4d4;
   line-height: 1.6;
 }
 
 .note-author {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-style: italic;
 }
 
@@ -1659,7 +1656,7 @@ const performResetPassword = async () => {
 .contact-header h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .btn-icon-delete {
@@ -1683,14 +1680,14 @@ const performResetPassword = async () => {
 }
 
 .contact-relationship {
-  color: #60a5fa;
+  color: #fb923c;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
 }
 
 .contact-info {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.25rem;
 }
 
@@ -1720,13 +1717,13 @@ const performResetPassword = async () => {
 
 .document-name {
   font-weight: 500;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .document-meta {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .document-actions {
@@ -1735,9 +1732,9 @@ const performResetPassword = async () => {
 }
 
 .btn-icon-action {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  color: #fb923c;
   padding: 0.375rem;
   border-radius: 0.375rem;
   cursor: pointer;
@@ -1745,7 +1742,7 @@ const performResetPassword = async () => {
 }
 
 .btn-icon-action:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
 }
 
 .btn-icon-action svg {
@@ -1770,7 +1767,7 @@ const performResetPassword = async () => {
   padding: 0.75rem;
   text-align: left;
   font-weight: 600;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.75rem;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1779,7 +1776,7 @@ const performResetPassword = async () => {
 .time-table td {
   padding: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .payroll-summary {
@@ -1804,14 +1801,14 @@ const performResetPassword = async () => {
 
 .payroll-label {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.5rem;
 }
 
 .payroll-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .payroll-card.highlight .payroll-value {
@@ -1830,7 +1827,7 @@ const performResetPassword = async () => {
 }
 
 .modal {
-  background: #1a1f2e;
+  background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   max-width: 500px;
@@ -1854,13 +1851,13 @@ const performResetPassword = async () => {
 .modal-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   font-size: 2rem;
   line-height: 1;
@@ -1870,7 +1867,7 @@ const performResetPassword = async () => {
 }
 
 .modal-close:hover {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-content {
@@ -1885,24 +1882,24 @@ const performResetPassword = async () => {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin-bottom: 0.5rem;
 }
 
 .form-input, .form-textarea {
   width: 100%;
   padding: 0.75rem;
-  background: #1f2937;
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
   transition: border-color 0.2s;
 }
 
 .form-input:focus, .form-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 .form-textarea {
@@ -1950,7 +1947,7 @@ const performResetPassword = async () => {
 
 .day-label {
   font-weight: 500;
-  color: #f3f4f6;
+  color: #f5f5f5;
   cursor: pointer;
   user-select: none;
 }
@@ -1968,13 +1965,13 @@ const performResetPassword = async () => {
 }
 
 .time-separator {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
 /* Time Off & Availability Styles */
 .timeoff-section {
-  background: #1f2937;
+  background: #171717;
   border-radius: 0.75rem;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -1985,10 +1982,10 @@ const performResetPassword = async () => {
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  background: #111827;
+  background: #111111;
   border-radius: 0.5rem;
   margin-bottom: 0.75rem;
-  border: 1px solid #374151;
+  border: 1px solid #262626;
 }
 
 .timeoff-info {
@@ -1997,13 +1994,13 @@ const performResetPassword = async () => {
 
 .timeoff-dates {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-top: 0.25rem;
 }
 
 .timeoff-type {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -2078,9 +2075,9 @@ const performResetPassword = async () => {
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  background: #111827;
+  background: #111111;
   border-radius: 0.5rem;
-  border: 1px solid #374151;
+  border: 1px solid #262626;
 }
 
 .day-name {
@@ -2110,7 +2107,7 @@ const performResetPassword = async () => {
 }
 
 .availability-time {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
@@ -2125,9 +2122,9 @@ const performResetPassword = async () => {
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: #111827;
+  background: #111111;
   border-radius: 0.5rem;
-  border: 1px solid #374151;
+  border: 1px solid #262626;
 }
 
 .day-checkbox {
@@ -2157,20 +2154,20 @@ const performResetPassword = async () => {
 
 .task-item {
   padding: 1rem;
-  background: #111827;
+  background: #111111;
   border-radius: 0.5rem;
-  border: 1px solid #374151;
+  border: 1px solid #262626;
   transition: all 0.2s;
 }
 
 .task-item.completed {
   opacity: 0.7;
-  background: #0f1419;
+  background: #0a0a0a;
 }
 
 .task-item.completed .task-title {
   text-decoration: line-through;
-  color: #6b7280;
+  color: #737373;
 }
 
 .task-header {
@@ -2200,13 +2197,13 @@ const performResetPassword = async () => {
 .task-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .task-description {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin: 0;
 }
 
@@ -2238,17 +2235,17 @@ const performResetPassword = async () => {
 
 .priority-badge.normal {
   background: #dbeafe;
-  color: #1e40af;
+  color: #9a3412;
 }
 
 .priority-badge.low {
-  background: #e5e7eb;
-  color: #374151;
+  background: #e5e5e5;
+  color: #262626;
 }
 
 .due-date {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .due-date.overdue {
@@ -2259,7 +2256,7 @@ const performResetPassword = async () => {
 .task-footer {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #374151;
+  border-top: 1px solid #262626;
 }
 
 .completion-info {
@@ -2271,13 +2268,13 @@ const performResetPassword = async () => {
 .time-placeholder {
   flex: 1;
   padding: 0.5rem;
-  color: #6b7280;
+  color: #737373;
   font-style: italic;
 }
 
 .review-info {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   margin-top: 0.5rem;
 }
 </style>

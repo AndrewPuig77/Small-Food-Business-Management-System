@@ -118,7 +118,7 @@ const changePeriod = (period) => {
 .widget-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -131,7 +131,7 @@ const changePeriod = (period) => {
   padding: 0.375rem 0.875rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.8125rem;
   font-weight: 500;
   border-radius: 0.375rem;
@@ -141,13 +141,13 @@ const changePeriod = (period) => {
 
 .period-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
+  color: #e5e5e5;
 }
 
 .period-btn.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #93c5fd;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #fdba74;
 }
 
 .financial-content {
@@ -157,7 +157,7 @@ const changePeriod = (period) => {
 .period-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
@@ -186,8 +186,8 @@ const changePeriod = (period) => {
 }
 
 .financial-card.highlight {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.3);
 }
 
 .card-icon {
@@ -196,7 +196,7 @@ const changePeriod = (period) => {
   padding: 0.5rem;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   flex-shrink: 0;
 }
 
@@ -206,7 +206,7 @@ const changePeriod = (period) => {
 
 .card-label {
   font-size: 0.8125rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.25rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -215,7 +215,7 @@ const changePeriod = (period) => {
 .card-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #e5e7eb;
+  color: #e5e5e5;
 }
 
 .card-value.positive {

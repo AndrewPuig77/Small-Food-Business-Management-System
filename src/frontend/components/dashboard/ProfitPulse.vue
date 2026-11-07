@@ -191,13 +191,13 @@ defineProps({
 .pulse-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
   margin-bottom: 0.5rem;
 }
 
 .pulse-message {
   font-size: 1rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin-bottom: 1rem;
 }
 
@@ -214,7 +214,7 @@ defineProps({
 
 .stat-label {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -222,7 +222,7 @@ defineProps({
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .stat-value.positive {

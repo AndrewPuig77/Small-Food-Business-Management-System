@@ -277,12 +277,12 @@ const resetPin = async () => {
 .app-container {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(to bottom right, #111827, #1f2937, #000000);
+  background: #0a0a0a;
 }
 
 .main-content {
   flex: 1;
-  margin-left: 250px;
+  min-width: 0;
   padding: 2rem;
   overflow-y: auto;
   max-height: 100vh;
@@ -295,10 +295,7 @@ const resetPin = async () => {
 .page-title {
   font-size: 2rem;
   font-weight: bold;
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
 }
 
 .content-body {
@@ -307,9 +304,9 @@ const resetPin = async () => {
 }
 
 .card {
-  background: rgba(31, 41, 55, 0.5);
+  background: rgba(23, 23, 23, 0.5);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  border: 1px solid rgba(82, 82, 82, 0.3);
   border-radius: 1rem;
   padding: 1.5rem;
 }
@@ -317,23 +314,23 @@ const resetPin = async () => {
 .form-input {
   width: 100%;
   padding: 0.75rem;
-  background: rgba(17, 24, 39, 0.8);
-  border: 1px solid rgba(75, 85, 99, 0.5);
+  background: rgba(17, 17, 17, 0.8);
+  border: 1px solid rgba(82, 82, 82, 0.5);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 1rem;
   transition: all 0.2s;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(to right, #3b82f6, #2563eb);
+  background: #f97316;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -344,12 +341,12 @@ const resetPin = async () => {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
 }
 
 .btn-secondary {
   padding: 0.75rem 1.5rem;
-  background: rgba(75, 85, 99, 0.5);
+  background: rgba(82, 82, 82, 0.5);
   color: white;
   border: 1px solid rgba(156, 163, 175, 0.3);
   border-radius: 0.5rem;
@@ -359,7 +356,7 @@ const resetPin = async () => {
 }
 
 .btn-secondary:hover {
-  background: rgba(75, 85, 99, 0.8);
+  background: rgba(82, 82, 82, 0.8);
   transform: translateY(-2px);
 }
 

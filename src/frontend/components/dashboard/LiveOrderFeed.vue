@@ -105,7 +105,7 @@ const getTimerClass = (timestamp) => {
 .widget-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -113,8 +113,8 @@ const getTimerClass = (timestamp) => {
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.75rem;
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+  background: rgba(249, 115, 22, 0.2);
+  color: #fdba74;
   font-size: 0.8125rem;
   font-weight: 600;
   border-radius: 1rem;
@@ -132,7 +132,7 @@ const getTimerClass = (timestamp) => {
   align-items: center;
   justify-content: center;
   padding: 3rem 1rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .empty-icon {
@@ -163,7 +163,7 @@ const getTimerClass = (timestamp) => {
 }
 
 .order-card.status-processing {
-  border-left-color: #3b82f6;
+  border-left-color: #f97316;
 }
 
 .order-card.status-ready {
@@ -186,18 +186,18 @@ const getTimerClass = (timestamp) => {
 .order-number {
   font-size: 1rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .order-time {
   font-size: 0.8125rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .order-status-badge {
   padding: 0.25rem 0.625rem;
   background: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
+  color: #e5e5e5;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -211,7 +211,7 @@ const getTimerClass = (timestamp) => {
 
 .order-item {
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin-bottom: 0.25rem;
 }
 

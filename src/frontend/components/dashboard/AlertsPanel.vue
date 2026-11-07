@@ -177,8 +177,8 @@ const dismissAll = () => {
 }
 
 .alert-info .alert-icon {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+  background: rgba(249, 115, 22, 0.2);
+  color: #fdba74;
 }
 
 .alert-content {
@@ -187,7 +187,7 @@ const dismissAll = () => {
 
 .alert-category {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
@@ -195,15 +195,15 @@ const dismissAll = () => {
 
 .alert-message {
   font-size: 0.9375rem;
-  color: #e5e7eb;
+  color: #e5e5e5;
   font-weight: 500;
 }
 
 .btn-action {
   padding: 0.5rem 1rem;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #93c5fd;
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fdba74;
   font-size: 0.8125rem;
   font-weight: 600;
   border-radius: 0.375rem;
@@ -213,7 +213,7 @@ const dismissAll = () => {
 }
 
 .btn-action:hover {
-  background: rgba(59, 130, 246, 0.25);
-  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(249, 115, 22, 0.25);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 </style>

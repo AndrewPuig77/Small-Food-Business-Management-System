@@ -255,9 +255,9 @@
             <h3>Example</h3>
             <div class="preview-content">
               <p><strong>Purchase: $50.00</strong></p>
-              <p>✓ Earns: {{ (50 * loyaltySettings.pointsPerDollar) }} points</p>
-              <p>✓ Points Value: ${{ ((50 * loyaltySettings.pointsPerDollar) / loyaltySettings.pointsPerDollarValue).toFixed(2) }}</p>
-              <p>✓ Max Redemption: ${{ (50 * loyaltySettings.maxRedemptionPercent / 100).toFixed(2) }} ({{ loyaltySettings.maxRedemptionPercent }}% of purchase)</p>
+              <p>Earns: {{ (50 * loyaltySettings.pointsPerDollar) }} points</p>
+              <p>Points Value: ${{ ((50 * loyaltySettings.pointsPerDollar) / loyaltySettings.pointsPerDollarValue).toFixed(2) }}</p>
+              <p>Max Redemption: ${{ (50 * loyaltySettings.maxRedemptionPercent / 100).toFixed(2) }} ({{ loyaltySettings.maxRedemptionPercent }}% of purchase)</p>
             </div>
           </div>
 
@@ -607,8 +607,8 @@ onMounted(() => {
 .customers-page {
   display: flex;
   height: 100vh;
-  background: #0f1419;
-  color: #d1d5db;
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .main-content {
@@ -629,9 +629,7 @@ onMounted(() => {
   font-size: 2rem;
   font-weight: 700;
   margin: 0;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
 }
 
 .btn-primary {
@@ -639,7 +637,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: #f97316;
   border: none;
   color: white;
   font-weight: 600;
@@ -650,7 +648,7 @@ onMounted(() => {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
 }
 
 .btn-primary svg {
@@ -669,6 +667,7 @@ onMounted(() => {
   flex: 1;
   min-width: 300px;
   position: relative;
+  align-self: center;
 }
 
 .search-icon {
@@ -678,7 +677,7 @@ onMounted(() => {
   transform: translateY(-50%);
   width: 1.25rem;
   height: 1.25rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .search-input {
@@ -686,14 +685,14 @@ onMounted(() => {
   padding: 0.875rem 1rem 0.875rem 3rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border-radius: 0.5rem;
   font-size: 0.875rem;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -714,13 +713,13 @@ onMounted(() => {
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #3b82f6;
+  color: #f97316;
   margin-bottom: 0.25rem;
 }
 
 .stat-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -746,7 +745,7 @@ onMounted(() => {
   text-align: left;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -763,12 +762,12 @@ onMounted(() => {
 
 .customer-name {
   font-weight: 600;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .customer-contact {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .customer-contact div {
@@ -785,8 +784,8 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.75rem;
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
   border-radius: 1rem;
   font-size: 0.875rem;
   font-weight: 600;
@@ -795,7 +794,7 @@ onMounted(() => {
 
 .points-value {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .amount {
@@ -809,14 +808,14 @@ onMounted(() => {
 }
 
 .date {
-  color: #6b7280;
+  color: #737373;
   font-size: 0.875rem;
 }
 
 .no-data {
   text-align: center;
   padding: 3rem !important;
-  color: #6b7280;
+  color: #737373;
 }
 
 .action-buttons {
@@ -826,16 +825,16 @@ onMounted(() => {
 
 .btn-icon {
   padding: 0.5rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fb923c;
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-icon:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
 }
 
 .btn-icon svg {
@@ -868,7 +867,7 @@ onMounted(() => {
 }
 
 .modal {
-  background: #1a1f2e;
+  background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   width: 90%;
@@ -892,13 +891,13 @@ onMounted(() => {
 .modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0;
@@ -913,7 +912,7 @@ onMounted(() => {
 
 .modal-close:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .modal-content {
@@ -928,7 +927,7 @@ onMounted(() => {
   display: block;
   margin-bottom: 0.5rem;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-weight: 500;
 }
 
@@ -936,7 +935,7 @@ onMounted(() => {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .form-input, .form-textarea {
@@ -944,14 +943,14 @@ onMounted(() => {
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border-radius: 0.375rem;
   font-family: inherit;
 }
 
 .form-input:focus, .form-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -969,25 +968,25 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .customer-info {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(249, 115, 22, 0.1);
   padding: 1rem;
   border-radius: 0.5rem;
   margin-bottom: 1.5rem;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  border: 1px solid rgba(249, 115, 22, 0.3);
 }
 
 .customer-info h3 {
   margin: 0 0 0.5rem 0;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .customer-info p {
   margin: 0;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .points-preview {
@@ -1015,7 +1014,7 @@ onMounted(() => {
   padding: 0.75rem 1.5rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -1048,7 +1047,7 @@ onMounted(() => {
 
 .loyalty-settings-section h3 {
   margin: 0 0 1rem 0;
-  color: #60a5fa;
+  color: #fb923c;
   font-size: 1rem;
   font-weight: 600;
 }
@@ -1082,7 +1081,7 @@ onMounted(() => {
 
 .preview-content p {
   margin: 0.5rem 0;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 0.875rem;
 }
 </style>

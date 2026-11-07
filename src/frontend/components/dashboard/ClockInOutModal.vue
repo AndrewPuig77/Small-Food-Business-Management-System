@@ -66,7 +66,7 @@ const handleClockAction = async () => {
 }
 
 .modal-content {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1rem;
   width: 90%;
@@ -85,7 +85,7 @@ const handleClockAction = async () => {
 .modal-header h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -94,7 +94,7 @@ const handleClockAction = async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #e5e7eb;
+  color: #e5e5e5;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -118,7 +118,7 @@ const handleClockAction = async () => {
 
 .info-text {
   font-size: 1rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .status-in {
@@ -128,18 +128,18 @@ const handleClockAction = async () => {
 
 .status-out {
   font-weight: 700;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .user-name {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .btn-action {
   padding: 0.875rem 2rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: #f97316;
   border: none;
   color: #fff;
   font-size: 1rem;
@@ -151,6 +151,6 @@ const handleClockAction = async () => {
 
 .btn-action:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.4);
 }
 </style>

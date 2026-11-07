@@ -767,8 +767,8 @@ onUnmounted(() => {
 .app-container {
   display: flex;
   height: 100vh;
-  background: #0f1419;
-  color: #d1d5db;
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .main-content {
@@ -800,19 +800,19 @@ onUnmounted(() => {
 .page-title {
   font-size: 2rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .page-subtitle {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
 .btn-nav {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   padding: 0.5rem;
   border-radius: 0.5rem;
   cursor: pointer;
@@ -828,7 +828,7 @@ onUnmounted(() => {
 
 .week-label {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   padding: 0 0.5rem;
   min-width: 180px;
   text-align: center;
@@ -838,7 +838,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   color: white;
   padding: 0.625rem 1.25rem;
   border: none;
@@ -855,7 +855,7 @@ onUnmounted(() => {
 .btn-secondary {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   padding: 0.625rem 1.25rem;
   border-radius: 0.5rem;
   font-weight: 600;
@@ -874,8 +874,8 @@ onUnmounted(() => {
 
 /* Clock Section */
 .clock-section {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.2);
   border-radius: 1rem;
   padding: 1.5rem;
   margin-bottom: 2rem;
@@ -891,14 +891,14 @@ onUnmounted(() => {
 .clock-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin: 0;
 }
 
 .btn-icon-only {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   padding: 0.5rem;
   border-radius: 0.5rem;
   cursor: pointer;
@@ -934,7 +934,7 @@ onUnmounted(() => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -950,18 +950,18 @@ onUnmounted(() => {
 
 .clocked-in-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.125rem;
 }
 
 .clocked-in-position {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
 }
 
 .clocked-in-time {
-  color: #60a5fa;
+  color: #fb923c;
   font-size: 0.75rem;
 }
 
@@ -993,7 +993,7 @@ onUnmounted(() => {
 .empty-clock {
   text-align: center;
   padding: 2rem;
-  color: #6b7280;
+  color: #737373;
   font-style: italic;
   margin-bottom: 1.5rem;
 }
@@ -1030,13 +1030,13 @@ onUnmounted(() => {
 
 .cost-card:first-child {
   min-width: 200px;
-  border-color: rgba(59, 130, 246, 0.3);
-  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(249, 115, 22, 0.3);
+  background: rgba(249, 115, 22, 0.1);
 }
 
 .cost-label {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
@@ -1049,12 +1049,12 @@ onUnmounted(() => {
 }
 
 .cost-card:first-child .cost-value {
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .cost-label-sm {
   font-size: 0.625rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   margin-bottom: 0.25rem;
 }
@@ -1068,12 +1068,12 @@ onUnmounted(() => {
 
 .cost-hours {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .schedule-grid {
   min-width: 1200px;
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   overflow: hidden;
@@ -1089,7 +1089,7 @@ onUnmounted(() => {
 .employee-column-header {
   padding: 1rem;
   font-weight: 600;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.75rem;
   text-transform: uppercase;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -1103,13 +1103,13 @@ onUnmounted(() => {
 
 .day-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .day-date {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .schedule-body {
@@ -1137,7 +1137,7 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1154,7 +1154,7 @@ onUnmounted(() => {
 
 .employee-name-text {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
   margin-bottom: 0.125rem;
   white-space: nowrap;
@@ -1164,7 +1164,7 @@ onUnmounted(() => {
 
 .employee-role-text {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: capitalize;
 }
 
@@ -1184,8 +1184,8 @@ onUnmounted(() => {
 
 .shift-card {
   padding: 0.5rem;
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.4);
   border-radius: 0.375rem;
   margin-bottom: 0.25rem;
   cursor: pointer;
@@ -1194,7 +1194,7 @@ onUnmounted(() => {
 }
 
 .shift-card:hover {
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.3);
   transform: translateY(-2px);
 }
 
@@ -1211,13 +1211,13 @@ onUnmounted(() => {
 .shift-time {
   font-weight: 600;
   font-size: 0.75rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.125rem;
 }
 
 .shift-role {
   font-size: 0.625rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: capitalize;
 }
 
@@ -1257,7 +1257,7 @@ onUnmounted(() => {
 }
 
 .modal {
-  background: #1a1f2e;
+  background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   max-width: 500px;
@@ -1277,13 +1277,13 @@ onUnmounted(() => {
 .modal-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   font-size: 2rem;
   line-height: 1;
@@ -1293,7 +1293,7 @@ onUnmounted(() => {
 }
 
 .modal-close:hover {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-content {
@@ -1314,24 +1314,24 @@ onUnmounted(() => {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin-bottom: 0.5rem;
 }
 
 .form-input, .form-textarea {
   width: 100%;
   padding: 0.75rem;
-  background: #1f2937;
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
   transition: border-color 0.2s;
 }
 
 .form-input:focus, .form-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 .form-textarea {
@@ -1346,5 +1346,81 @@ onUnmounted(() => {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Clock history (these classes previously had no styles) */
+.history-container {
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.history-container .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.history-container .card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.date-range-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.date-input {
+  height: 38px;
+  padding: 0 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  color-scheme: dark;
+}
+.date-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.btn-primary-sm {
+  height: 38px;
+  padding: 0 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 8px;
+}
+.btn-primary-sm:hover {
+  background: var(--accent-hover);
+}
+.table-container {
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.data-table th {
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 0.75rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.data-table tbody tr:last-child td {
+  border-bottom: none;
 }
 </style>

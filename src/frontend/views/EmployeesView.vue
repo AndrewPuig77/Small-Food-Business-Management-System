@@ -12,19 +12,19 @@
         </div>
         <div class="header-actions">
           <button @click="$router.push('/schedule')" class="btn-secondary">
-            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="header-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             Manage Schedules
           </button>
-          <button @click="openAnnouncementModal" class="btn-secondary" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #818cf8;">
-            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button @click="openAnnouncementModal" class="btn-secondary">
+            <svg class="header-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
             </svg>
             Post Announcement
           </button>
           <button @click="openEmployeeModal()" class="btn-primary">
-            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="header-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             Add Employee
@@ -1225,8 +1225,8 @@ const saveAnnouncement = async () => {
 .employees-page {
   display: flex;
   height: 100vh;
-  background: #0f1419;
-  color: #d1d5db;
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 /* Sidebar Styles */
@@ -1254,13 +1254,11 @@ const saveAnnouncement = async () => {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
 }
 
 .page-subtitle {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
 }
 
@@ -1268,7 +1266,7 @@ const saveAnnouncement = async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   color: white;
   padding: 0.75rem 1.5rem;
   border: none;
@@ -1288,7 +1286,7 @@ const saveAnnouncement = async () => {
   gap: 0.5rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d1d5db;
+  color: #d4d4d4;
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
   font-weight: 600;
@@ -1298,13 +1296,14 @@ const saveAnnouncement = async () => {
 
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #f3f4f6;
+  color: #f5f5f5;
   transform: translateY(-2px);
 }
 
-.btn-icon {
+.header-icon {
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
 }
 
 /* Filter Bar */
@@ -1328,22 +1327,22 @@ const saveAnnouncement = async () => {
   transform: translateY(-50%);
   width: 20px;
   height: 20px;
-  color: #6b7280;
+  color: #737373;
 }
 
 .search-input {
   width: 100%;
   padding: 0.75rem 1rem 0.75rem 3rem;
-  background: #1f2937;
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 .filter-chips {
@@ -1356,7 +1355,7 @@ const saveAnnouncement = async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.875rem;
@@ -1364,18 +1363,18 @@ const saveAnnouncement = async () => {
 
 .filter-chip:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .filter-chip.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: #3b82f6;
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #f97316;
+  color: #fb923c;
 }
 
 /* Employees Table */
 .employees-table-container {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   overflow: hidden;
@@ -1394,7 +1393,7 @@ const saveAnnouncement = async () => {
   padding: 1rem;
   text-align: left;
   font-weight: 600;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1404,7 +1403,7 @@ const saveAnnouncement = async () => {
 .employees-table td {
   padding: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .employees-table tbody tr:hover {
@@ -1416,14 +1415,14 @@ const saveAnnouncement = async () => {
   align-items: center;
   gap: 0.75rem;
   font-weight: 500;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .employee-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1435,8 +1434,8 @@ const saveAnnouncement = async () => {
 .role-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  color: #fb923c;
   border-radius: 1rem;
   font-size: 0.75rem;
   font-weight: 500;
@@ -1448,7 +1447,7 @@ const saveAnnouncement = async () => {
 }
 
 .contact-secondary {
-  color: #6b7280;
+  color: #737373;
   font-size: 0.75rem;
   margin-top: 0.25rem;
 }
@@ -1459,7 +1458,7 @@ const saveAnnouncement = async () => {
 }
 
 .text-muted {
-  color: #6b7280;
+  color: #737373;
 }
 
 .status-badge {
@@ -1495,14 +1494,14 @@ const saveAnnouncement = async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.375rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-icon-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .action-icon-btn.delete:hover {
@@ -1520,7 +1519,7 @@ const saveAnnouncement = async () => {
 .loading, .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .empty-icon {
@@ -1536,14 +1535,14 @@ const saveAnnouncement = async () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 /* Modal */
@@ -1559,7 +1558,7 @@ const saveAnnouncement = async () => {
 }
 
 .modal {
-  background: #1a1f2e;
+  background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   max-width: 600px;
@@ -1579,20 +1578,20 @@ const saveAnnouncement = async () => {
 .modal-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   cursor: pointer;
   transition: color 0.2s;
   padding: 0.5rem;
 }
 
 .modal-close:hover {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-close svg {
@@ -1619,27 +1618,27 @@ const saveAnnouncement = async () => {
 .form-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #d1d5db;
+  color: #d4d4d4;
   margin-bottom: 0.5rem;
 }
 
 .form-input {
   padding: 0.75rem;
-  background: #1f2937;
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
   transition: border-color 0.2s;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f97316;
 }
 
 .readonly-input {
-  background: #111827 !important;
+  background: #111111 !important;
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -1660,12 +1659,12 @@ const saveAnnouncement = async () => {
 .section-header h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .section-description {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 1rem;
 }
 
@@ -1685,7 +1684,7 @@ const saveAnnouncement = async () => {
 
 .field-hint {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   margin-top: 0.5rem;
   font-style: italic;
 }
@@ -1723,19 +1722,19 @@ const saveAnnouncement = async () => {
   width: 16px;
   left: 3px;
   bottom: 3px;
-  background-color: #6b7280;
+  background-color: #737373;
   transition: 0.3s;
   border-radius: 50%;
 }
 
 .toggle-switch input:checked + .toggle-slider {
-  background-color: rgba(59, 130, 246, 0.3);
-  border-color: #3b82f6;
+  background-color: rgba(249, 115, 22, 0.3);
+  border-color: #f97316;
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
   transform: translateX(20px);
-  background-color: #3b82f6;
+  background-color: #f97316;
 }
 
 .modal-actions {
@@ -1750,14 +1749,14 @@ const saveAnnouncement = async () => {
 .permissions-section {
   margin-top: 1.5rem;
   padding: 1.5rem;
-  background: rgba(59, 130, 246, 0.05);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.05);
+  border: 1px solid rgba(249, 115, 22, 0.2);
   border-radius: 0.5rem;
 }
 
 .permissions-section h4 {
   margin: 0 0 0.5rem 0;
-  color: #60a5fa;
+  color: #fb923c;
   font-size: 1rem;
 }
 
@@ -1782,7 +1781,7 @@ const saveAnnouncement = async () => {
 
 .permission-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(249, 115, 22, 0.3);
 }
 
 .permission-item input[type="checkbox"] {
@@ -1798,13 +1797,13 @@ const saveAnnouncement = async () => {
 
 .permission-name {
   font-weight: 600;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-size: 0.875rem;
 }
 
 .permission-desc {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .quick-presets {
@@ -1860,7 +1859,7 @@ const saveAnnouncement = async () => {
 
 .employee-list-item:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: #3b82f6;
+  border-color: #f97316;
   transform: translateX(4px);
 }
 
@@ -1868,7 +1867,7 @@ const saveAnnouncement = async () => {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1884,25 +1883,25 @@ const saveAnnouncement = async () => {
 
 .employee-list-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .employee-list-role {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: capitalize;
 }
 
 .chevron-icon {
   width: 20px;
   height: 20px;
-  color: #6b7280;
+  color: #737373;
   flex-shrink: 0;
 }
 
 .section-description {
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
@@ -1925,20 +1924,20 @@ const saveAnnouncement = async () => {
 }
 
 .checkbox-group .checkbox-label:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(249, 115, 22, 0.1);
 }
 
 .checkbox-group .checkbox-label span {
   font-size: 0.875rem;
-  color: #e5e7eb;
+  color: #e5e5e5;
 }
 
 .form-checkbox {
   width: 1.125rem;
   height: 1.125rem;
-  border: 2px solid #374151;
+  border: 2px solid #262626;
   border-radius: 0.25rem;
-  background: #111827;
+  background: #111111;
   cursor: pointer;
   transition: all 0.2s;
   appearance: none;
@@ -1949,8 +1948,8 @@ const saveAnnouncement = async () => {
 }
 
 .form-checkbox:checked {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #f97316;
+  border-color: #f97316;
 }
 
 .form-checkbox:checked::after {
@@ -1967,16 +1966,16 @@ const saveAnnouncement = async () => {
 
 .form-checkbox:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
 
 .form-textarea {
   width: 100%;
   padding: 0.75rem;
-  background: #111827;
-  border: 1px solid #374151;
+  background: #111111;
+  border: 1px solid #262626;
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 0.875rem;
   resize: vertical;
   font-family: inherit;
@@ -1984,15 +1983,15 @@ const saveAnnouncement = async () => {
 
 .form-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 /* Announcements Section */
 .announcements-section {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: rgba(17, 24, 39, 0.6);
+  background: rgba(17, 17, 17, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
 }
@@ -2007,7 +2006,7 @@ const saveAnnouncement = async () => {
 .section-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .btn-icon {
@@ -2016,7 +2015,7 @@ const saveAnnouncement = async () => {
   border-radius: 0.375rem;
   padding: 0.5rem;
   cursor: pointer;
-  color: #9ca3af;
+  color: #a3a3a3;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -2025,7 +2024,7 @@ const saveAnnouncement = async () => {
 
 .btn-icon:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .btn-icon.btn-danger:hover {
@@ -2037,7 +2036,7 @@ const saveAnnouncement = async () => {
 .empty-state-sm {
   text-align: center;
   padding: 2rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .empty-icon-sm {
@@ -2054,7 +2053,7 @@ const saveAnnouncement = async () => {
 }
 
 .announcement-card {
-  background: rgba(17, 24, 39, 0.8);
+  background: rgba(17, 17, 17, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
   padding: 1rem;
@@ -2075,7 +2074,7 @@ const saveAnnouncement = async () => {
 }
 
 .announcement-card.priority-normal {
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid #f97316;
 }
 
 .announcement-header {
@@ -2110,13 +2109,13 @@ const saveAnnouncement = async () => {
 }
 
 .priority-badge.normal {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: rgba(249, 115, 22, 0.2);
+  color: #f97316;
 }
 
 .date-text {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .announcement-actions {
@@ -2127,13 +2126,13 @@ const saveAnnouncement = async () => {
 .announcement-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.5rem;
 }
 
 .announcement-message {
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   line-height: 1.5;
   margin-bottom: 0.75rem;
 }
@@ -2155,24 +2154,24 @@ const saveAnnouncement = async () => {
 
 .target-roles .label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .role-tag {
   padding: 0.125rem 0.5rem;
-  background: rgba(99, 102, 241, 0.2);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid #3a3a3a;
   border-radius: 0.25rem;
   font-size: 0.75rem;
-  color: #818cf8;
+  color: #d4d4d4;
 }
 
 .inactive-badge {
   padding: 0.25rem 0.5rem;
-  background: rgba(107, 114, 128, 0.2);
+  background: rgba(115, 115, 115, 0.2);
   border-radius: 0.25rem;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .expired-badge {

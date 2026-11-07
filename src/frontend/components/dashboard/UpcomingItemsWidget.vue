@@ -109,7 +109,7 @@ const formatDateRange = (startDate, endDate) => {
 .widget-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -129,7 +129,7 @@ const formatDateRange = (startDate, endDate) => {
 .section-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #9ca3af;
+  color: #a3a3a3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -158,7 +158,7 @@ const formatDateRange = (startDate, endDate) => {
 .item-icon {
   width: 20px;
   height: 20px;
-  color: #9ca3af;
+  color: #a3a3a3;
   flex-shrink: 0;
 }
 
@@ -173,18 +173,18 @@ const formatDateRange = (startDate, endDate) => {
 .item-main {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #e5e5e5;
   margin-bottom: 0.125rem;
 }
 
 .item-sub {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #6b7280;
+  color: #737373;
 }
 </style>

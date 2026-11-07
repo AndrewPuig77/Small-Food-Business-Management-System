@@ -110,7 +110,7 @@ const handleClick = () => {
   opacity: 0.1;
 }
 
-.metric-card.color-blue::before { background-color: #3b82f6; }
+.metric-card.color-blue::before { background-color: #f97316; }
 .metric-card.color-green::before { background-color: #10b981; }
 .metric-card.color-orange::before { background-color: #f59e0b; }
 .metric-card.color-red::before { background-color: #ef4444; }
@@ -126,7 +126,7 @@ const handleClick = () => {
 
 .metric-label {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -135,7 +135,7 @@ const handleClick = () => {
 .metric-value {
   font-size: 1.875rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
   line-height: 1.2;
 }
 
@@ -162,7 +162,7 @@ const handleClick = () => {
 
 .metric-subtitle {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: #737373;
   margin-top: 0.25rem;
 }
 </style>

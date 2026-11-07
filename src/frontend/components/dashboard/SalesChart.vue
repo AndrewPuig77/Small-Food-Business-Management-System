@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 
 const props = defineProps({
   data: {
@@ -45,9 +45,21 @@ const periods = ref([
   { label: 'Year', value: 'year' }
 ]);
 
+// Redraw whenever the canvas gets a size or is resized (e.g. window resize).
+// Drawing before layout gave a zero-width canvas and an empty chart.
+let resizeObserver = null;
+
 onMounted(async () => {
   await nextTick();
   renderChart();
+  if (chartCanvas.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => renderChart());
+    resizeObserver.observe(chartCanvas.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (resizeObserver) resizeObserver.disconnect();
 });
 
 watch(() => props.data, () => {
@@ -64,6 +76,7 @@ const renderChart = () => {
   const ctx = chartCanvas.value.getContext('2d');
   const width = chartCanvas.value.offsetWidth;
   const height = 300;
+  if (width === 0) return; // not laid out yet; the ResizeObserver will redraw
   
   chartCanvas.value.width = width;
   chartCanvas.value.height = height;
@@ -99,14 +112,14 @@ const renderChart = () => {
     
     // Gradient fill
     const gradient = ctx.createLinearGradient(0, y, 0, height - padding);
-    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)');
-    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)');
+    gradient.addColorStop(0, 'rgba(249, 115, 22, 0.8)');
+    gradient.addColorStop(1, 'rgba(249, 115, 22, 0.2)');
     
     ctx.fillStyle = gradient;
     ctx.fillRect(x, y, barWidth - barPadding, barHeight);
     
     // Draw date label
-    ctx.fillStyle = '#9ca3af';
+    ctx.fillStyle = '#a3a3a3';
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     const date = new Date(point.date);
@@ -114,7 +127,7 @@ const renderChart = () => {
     ctx.fillText(label, x + (barWidth - barPadding) / 2, height - padding + 20);
     
     // Draw value on top of bar
-    ctx.fillStyle = '#e5e7eb';
+    ctx.fillStyle = '#e5e5e5';
     ctx.font = 'bold 12px sans-serif';
     ctx.fillText(`$${(point.sales ?? 0).toFixed(0)}`, x + (barWidth - barPadding) / 2, y - 5);
   });
@@ -141,7 +154,7 @@ const renderChart = () => {
 .widget-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin: 0;
 }
 
@@ -154,7 +167,7 @@ const renderChart = () => {
   padding: 0.375rem 0.875rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.8125rem;
   font-weight: 500;
   border-radius: 0.375rem;
@@ -164,13 +177,13 @@ const renderChart = () => {
 
 .period-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
+  color: #e5e5e5;
 }
 
 .period-btn.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #93c5fd;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #fdba74;
 }
 
 .chart-container {

@@ -767,20 +767,20 @@ watch(selectedPeriod, () => {
 .employee-account-page {
   display: flex;
   min-height: 100vh;
-  background: #0f1419;
-  color: #d1d5db;
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .employee-content {
   flex: 1;
-  margin-left: 240px;
+  min-width: 0;
   min-height: 100vh;
   overflow-y: auto;
   max-height: 100vh;
 }
 
 .simple-header {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1.5rem 2rem;
 }
@@ -796,10 +796,7 @@ watch(selectedPeriod, () => {
 .employee-greeting {
   font-size: 1.75rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
   margin: 0;
 }
 
@@ -811,10 +808,10 @@ watch(selectedPeriod, () => {
 
 .role-badge {
   padding: 0.5rem 1rem;
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-radius: 0.5rem;
-  color: #60a5fa;
+  color: #fb923c;
   font-weight: 600;
   font-size: 0.875rem;
 }
@@ -852,7 +849,7 @@ watch(selectedPeriod, () => {
 }
 
 .action-card {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   padding: 1.5rem;
@@ -862,7 +859,7 @@ watch(selectedPeriod, () => {
 }
 
 .action-card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(249, 115, 22, 0.3);
   transform: translateY(-2px);
 }
 
@@ -882,9 +879,9 @@ watch(selectedPeriod, () => {
 }
 
 .clock-icon {
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fb923c;
 }
 
 .schedule-icon {
@@ -913,7 +910,7 @@ watch(selectedPeriod, () => {
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .status-info {
@@ -923,7 +920,7 @@ watch(selectedPeriod, () => {
 }
 
 .status-text {
-  color: #9ca3af;
+  color: #a3a3a3;
   margin: 0;
 }
 
@@ -965,7 +962,7 @@ watch(selectedPeriod, () => {
 }
 
 .empty-state-sm {
-  color: #6b7280;
+  color: #737373;
   font-style: italic;
   padding: 0.5rem 0;
 }
@@ -987,15 +984,15 @@ watch(selectedPeriod, () => {
 
 .shift-time {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .shift-role-tag {
   padding: 0.25rem 0.5rem;
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
   border-radius: 0.25rem;
   font-size: 0.75rem;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .task-item {
@@ -1023,12 +1020,12 @@ watch(selectedPeriod, () => {
 
 .task-title {
   font-weight: 500;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .task-due {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .priority-badge {
@@ -1062,25 +1059,25 @@ watch(selectedPeriod, () => {
 
 .announcement-title {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .announcement-message {
-  color: #d1d5db;
+  color: #d4d4d4;
   margin: 0.5rem 0;
   font-size: 0.875rem;
 }
 
 .announcement-date {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
 }
 
 .btn-view-more {
   padding: 0.5rem 1rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  color: #fb923c;
   border-radius: 0.5rem;
   cursor: pointer;
   width: 100%;
@@ -1090,11 +1087,11 @@ watch(selectedPeriod, () => {
 }
 
 .btn-view-more:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
 }
 
 .section-card {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   padding: 2rem;
@@ -1105,7 +1102,7 @@ watch(selectedPeriod, () => {
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0 0 1.5rem 0;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .week-nav {
@@ -1121,7 +1118,7 @@ watch(selectedPeriod, () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1132,7 +1129,7 @@ watch(selectedPeriod, () => {
 
 .week-label {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .weekly-schedule-grid {
@@ -1157,13 +1154,13 @@ watch(selectedPeriod, () => {
 
 .day-name {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
   margin-bottom: 0.25rem;
 }
 
 .day-date {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .day-shifts {
@@ -1173,14 +1170,14 @@ watch(selectedPeriod, () => {
 
 .no-shift {
   text-align: center;
-  color: #6b7280;
+  color: #737373;
   font-style: italic;
   padding: 1rem 0;
 }
 
 .employee-shift {
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-radius: 0.5rem;
   padding: 0.75rem;
   margin-bottom: 0.75rem;
@@ -1188,19 +1185,19 @@ watch(selectedPeriod, () => {
 
 .shift-time-display {
   font-weight: 600;
-  color: #60a5fa;
+  color: #fb923c;
   margin-bottom: 0.25rem;
 }
 
 .shift-role-display {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.25rem;
 }
 
 .shift-notes-display {
   font-size: 0.75rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   font-style: italic;
 }
 
@@ -1215,7 +1212,7 @@ watch(selectedPeriod, () => {
   padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #9ca3af;
+  color: #a3a3a3;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -1223,9 +1220,9 @@ watch(selectedPeriod, () => {
 }
 
 .period-btn.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.3);
+  color: #fb923c;
 }
 
 .period-btn:hover {
@@ -1248,7 +1245,7 @@ watch(selectedPeriod, () => {
 
 .stat-label {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1257,7 +1254,7 @@ watch(selectedPeriod, () => {
 .stat-value {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 /* Modal Styles */
@@ -1273,7 +1270,7 @@ watch(selectedPeriod, () => {
 }
 
 .modal {
-  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   max-width: 600px;
@@ -1294,13 +1291,13 @@ watch(selectedPeriod, () => {
 .modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
@@ -1309,7 +1306,7 @@ watch(selectedPeriod, () => {
 }
 
 .modal-close:hover {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .modal-content {
@@ -1353,11 +1350,11 @@ watch(selectedPeriod, () => {
 
 .task-full-title {
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .task-description {
-  color: #d1d5db;
+  color: #d4d4d4;
   margin: 0.5rem 0;
   font-size: 0.875rem;
 }
@@ -1370,21 +1367,21 @@ watch(selectedPeriod, () => {
 
 .task-type-tag {
   padding: 0.25rem 0.5rem;
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(249, 115, 22, 0.2);
   border-radius: 0.25rem;
   font-size: 0.75rem;
-  color: #60a5fa;
+  color: #fb923c;
 }
 
 .task-due-full {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .empty-state {
   text-align: center;
   padding: 2rem;
-  color: #6b7280;
+  color: #737373;
   font-style: italic;
 }
 
@@ -1402,20 +1399,20 @@ watch(selectedPeriod, () => {
   text-align: left;
   padding: 0.75rem;
   background: rgba(30, 41, 59, 0.5);
-  color: #94a3b8;
+  color: #a3a3a3;
   font-weight: 600;
   font-size: 0.875rem;
-  border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+  border-bottom: 2px solid rgba(249, 115, 22, 0.2);
 }
 
 .time-logs-table td {
   padding: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  color: #e5e5e5;
 }
 
 .time-logs-table tr:hover {
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(249, 115, 22, 0.05);
 }
 
 .status-badge {
@@ -1431,8 +1428,8 @@ watch(selectedPeriod, () => {
 }
 
 .status-badge.completed {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
 }
 </style>
 

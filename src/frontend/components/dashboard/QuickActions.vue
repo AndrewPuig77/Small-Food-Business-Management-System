@@ -76,7 +76,7 @@ const handleClick = (actionId) => {
 .section-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #f9fafb;
+  color: #fafafa;
   margin-bottom: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -108,8 +108,8 @@ const handleClick = (actionId) => {
 }
 
 .action-blue:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.4);
 }
 
 .action-green:hover {
@@ -150,13 +150,13 @@ const handleClick = (actionId) => {
 .action-icon :deep(svg) {
   width: 24px;
   height: 24px;
-  color: #e5e7eb;
+  color: #e5e5e5;
 }
 
 .action-label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #e5e5e5;
   text-align: center;
 }
 </style>

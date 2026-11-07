@@ -82,7 +82,7 @@ const cancel = () => {
 }
 
 .confirm-modal {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   padding: 2rem;
@@ -129,8 +129,8 @@ const cancel = () => {
 }
 
 .modal-icon.info {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
 }
 
 .modal-content {
@@ -141,13 +141,13 @@ const cancel = () => {
 .modal-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: #fafafa;
   margin-bottom: 0.75rem;
 }
 
 .modal-message {
   font-size: 1rem;
-  color: #d1d5db;
+  color: #d4d4d4;
   line-height: 1.6;
 }
 
@@ -170,7 +170,7 @@ const cancel = () => {
 
 .btn-cancel {
   background: rgba(255, 255, 255, 0.05);
-  color: #d1d5db;
+  color: #d4d4d4;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -191,11 +191,11 @@ const cancel = () => {
 }
 
 .btn-confirm.info {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: #f97316;
 }
 
 .btn-confirm:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
 }
 </style>

@@ -2,10 +2,10 @@
   <Transition name="toast">
     <div v-if="toastState.show" :class="['toast', `toast-${toastState.type}`]">
       <div class="toast-icon">
-        <span v-if="toastState.type === 'success'">✓</span>
-        <span v-else-if="toastState.type === 'error'">✕</span>
-        <span v-else-if="toastState.type === 'warning'">⚠</span>
-        <span v-else>ℹ</span>
+        <span v-if="toastState.type === 'success'"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
+        <span v-else-if="toastState.type === 'error'"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+        <span v-else-if="toastState.type === 'warning'"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17h.01"/></svg></span>
+        <span v-else><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></span>
       </div>
       <div class="toast-content">
         <p class="toast-message">{{ toastState.message }}</p>
@@ -51,8 +51,8 @@ import { toastState } from '../composables/useToast';
 }
 
 .toast-info {
-  background: rgba(59, 130, 246, 0.95);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.95);
+  border: 1px solid rgba(249, 115, 22, 0.3);
 }
 
 .toast-icon {

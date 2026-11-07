@@ -7,11 +7,11 @@
       <div class="view-header">
         <h1>Reservations</h1>
         <div v-if="!settings.enabled" class="alert alert-info">
-          <span>📢 Reservation system is currently disabled. </span>
+          <span>Reservation system is currently disabled. </span>
           <button v-if="canManageSettings" @click="showSettingsModal = true" class="btn-link">Enable Now</button>
         </div>
         <button v-if="canManageSettings" @click="showSettingsModal = true" class="btn-secondary">
-          ⚙️ Settings
+          Settings
         </button>
       </div>
 
@@ -565,12 +565,12 @@ export default {
 .app-container {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(to bottom right, #111827, #1f2937, #000000);
+  background: #0a0a0a;
 }
 
 .reservations-view {
   flex: 1;
-  margin-left: 250px;
+  min-width: 0;
   padding: 2rem;
   max-width: 1400px;
   height: 100vh;
@@ -589,10 +589,7 @@ export default {
 .view-header h1 {
   margin: 0;
   font-size: 2rem;
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
 }
 
 .alert {
@@ -605,15 +602,15 @@ export default {
 }
 
 .alert-info {
-  background-color: #e3f2fd;
-  color: #1976d2;
-  border: 1px solid #90caf9;
+  background-color: var(--accent-soft);
+  color: #ea580c;
+  border: 1px solid var(--accent-ring);
 }
 
 .btn-link {
   background: none;
   border: none;
-  color: #1976d2;
+  color: #ea580c;
   text-decoration: underline;
   cursor: pointer;
   font-weight: 600;
@@ -625,19 +622,19 @@ export default {
   gap: 1rem;
   margin-bottom: 2rem;
   padding: 1rem;
-  background: rgba(31, 41, 55, 0.5);
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  background: rgba(23, 23, 23, 0.5);
+  border: 1px solid rgba(82, 82, 82, 0.3);
   border-radius: 8px;
   backdrop-filter: blur(10px);
 }
 
 .date-input {
   padding: 0.5rem 1rem;
-  border: 1px solid rgba(75, 85, 99, 0.5);
+  border: 1px solid rgba(82, 82, 82, 0.5);
   border-radius: 4px;
   font-size: 1rem;
-  background: rgba(31, 41, 55, 0.8);
-  color: #f3f4f6;
+  background: rgba(23, 23, 23, 0.8);
+  color: #f5f5f5;
   color-scheme: dark;
 }
 
@@ -648,18 +645,18 @@ export default {
 
 .btn-icon {
   padding: 0.5rem 1rem;
-  border: 1px solid rgba(75, 85, 99, 0.5);
-  background: rgba(31, 41, 55, 0.8);
+  border: 1px solid rgba(82, 82, 82, 0.5);
+  background: rgba(23, 23, 23, 0.8);
   border-radius: 4px;
   cursor: pointer;
   font-size: 1.2rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   transition: all 0.2s;
 }
 
 .btn-icon:hover {
   background: rgba(55, 65, 81, 0.9);
-  border-color: rgba(107, 114, 128, 0.7);
+  border-color: rgba(115, 115, 115, 0.7);
 }
 
 .time-slots-section {
@@ -668,7 +665,7 @@ export default {
 
 .time-slots-section h2 {
   margin-bottom: 1rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .time-slots-grid {
@@ -683,13 +680,13 @@ export default {
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
-  background: rgba(31, 41, 55, 0.5);
+  background: rgba(23, 23, 23, 0.5);
 }
 
 .time-slot.available {
   background: rgba(16, 185, 129, 0.1);
   border: 2px solid #10b981;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .time-slot.available:hover {
@@ -702,24 +699,24 @@ export default {
   border: 2px solid #ef4444;
   cursor: not-allowed;
   opacity: 0.6;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .slot-time {
   font-weight: 600;
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .slot-status {
   font-size: 0.9rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .reservations-list-section {
-  background: rgba(31, 41, 55, 0.5);
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  background: rgba(23, 23, 23, 0.5);
+  border: 1px solid rgba(82, 82, 82, 0.3);
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -734,13 +731,13 @@ export default {
 
 .section-header h2 {
   margin: 0;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .empty-state {
   text-align: center;
   padding: 3rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .reservations-list {
@@ -753,9 +750,9 @@ export default {
   display: flex;
   justify-content: space-between;
   padding: 1.5rem;
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  border: 1px solid rgba(82, 82, 82, 0.3);
   border-radius: 8px;
-  background: rgba(17, 24, 39, 0.5);
+  background: rgba(17, 17, 17, 0.5);
 }
 
 .reservation-info {
@@ -771,47 +768,49 @@ export default {
 
 .reservation-header h3 {
   margin: 0;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  border: 1px solid transparent;
 }
 
 .status-badge.pending {
-  background: #fff3cd;
-  color: #856404;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
 }
 
 .status-badge.confirmed {
-  background: #d1ecf1;
-  color: #0c5460;
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: #fb923c;
 }
 
-.status-badge.seated {
-  background: #d4edda;
-  color: #155724;
-}
-
+.status-badge.seated,
 .status-badge.completed {
-  background: #d4edda;
-  color: #155724;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
 }
 
 .status-badge.cancelled {
-  background: #f8d7da;
-  color: #721c24;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
 }
 
 .reservation-details {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.5rem;
-  color: #d1d5db;
+  color: #d4d4d4;
 }
 
 .reservation-actions {
@@ -827,71 +826,71 @@ export default {
   white-space: nowrap;
 }
 
-.btn-primary {
-  background: #2196f3;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
+/* Buttons: same system as the rest of the app */
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-info,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
+  transition: background-color 150ms, border-color 150ms, color 150ms;
 }
 
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+  padding: 0.625rem 1.125rem;
+}
 .btn-primary:hover {
-  background: #1976d2;
+  background: var(--accent-hover);
 }
 
 .btn-secondary {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.625rem 1.125rem;
 }
-
 .btn-secondary:hover {
-  background: #5a6268;
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
 .btn-success {
-  background: #4caf50;
-  color: white;
-  border: none;
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
   padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
 }
-
 .btn-success:hover {
-  background: #45a049;
+  background: rgba(34, 197, 94, 0.2);
 }
 
 .btn-info {
-  background: #17a2b8;
-  color: white;
-  border: none;
+  background: var(--accent-soft);
+  color: #fb923c;
+  border: 1px solid var(--accent-ring);
   padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
 }
-
 .btn-info:hover {
-  background: #138496;
+  background: rgba(249, 115, 22, 0.2);
 }
 
 .btn-danger {
-  background: #f44336;
-  color: white;
-  border: none;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
   padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
 }
-
 .btn-danger:hover {
-  background: #da190b;
+  background: rgba(239, 68, 68, 0.2);
 }
 
 /* Modal Styles */
@@ -910,7 +909,7 @@ export default {
 }
 
 .modal-content {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   max-width: 600px;
@@ -930,7 +929,7 @@ export default {
 
 .modal-header h2 {
   margin: 0;
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .modal-close {
@@ -938,7 +937,7 @@ export default {
   border: none;
   font-size: 2rem;
   cursor: pointer;
-  color: #9ca3af;
+  color: #a3a3a3;
   width: 32px;
   height: 32px;
   display: flex;
@@ -950,7 +949,7 @@ export default {
 
 .modal-close:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #f9fafb;
+  color: #fafafa;
 }
 
 .modal-body {
@@ -973,23 +972,23 @@ export default {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .form-control {
   width: 100%;
   padding: 0.75rem;
-  background: rgba(31, 41, 55, 0.8);
-  border: 1px solid rgba(75, 85, 99, 0.5);
+  background: rgba(23, 23, 23, 0.8);
+  border: 1px solid rgba(82, 82, 82, 0.5);
   border-radius: 0.5rem;
-  color: #f3f4f6;
+  color: #f5f5f5;
   font-size: 1rem;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #3b82f6;
-  background: rgba(31, 41, 55, 0.95);
+  border-color: #f97316;
+  background: rgba(23, 23, 23, 0.95);
 }
 
 /* Date and time picker styling */
@@ -1015,7 +1014,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -1033,7 +1032,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 small {
   display: block;
   margin-top: 0.25rem;
-  color: #9ca3af;
+  color: #a3a3a3;
   font-size: 0.85rem;
 }
 </style>
