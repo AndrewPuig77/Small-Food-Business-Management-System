@@ -75,6 +75,12 @@
               </div>
             </div>
             <p v-if="item.description" class="menu-item-description">{{ item.description }}</p>
+            <p v-if="recipesByItem[item.id]" class="item-recipe" data-testid="item-recipe">
+              Uses {{ recipesByItem[item.id].map((r) => `${r.quantity} ${r.unit} ${r.name}`).join(', ') }}
+            </p>
+            <div v-if="groupsForItem(item.id).length" class="item-group-chips">
+              <span v-for="g in groupsForItem(item.id)" :key="g.id" class="item-group-chip">{{ g.name }}</span>
+            </div>
             <div class="menu-item-footer">
               <div class="menu-item-price">${{ parseFloat(item.price).toFixed(2) }}</div>
               <div :class="['menu-item-status', { available: item.available, unavailable: !item.available }]">
@@ -86,6 +92,100 @@
             <img :src="item.image_url" :alt="item.name" class="menu-item-image" />
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Modifier Groups -->
+    <section class="modifier-section">
+      <div class="modifier-section-header">
+        <div>
+          <h2 class="section-title">Modifier groups</h2>
+          <p class="section-subtitle">Choices customers make for an item, like size or toppings. Attach groups to items when editing them.</p>
+        </div>
+        <button type="button" class="btn-secondary" @click="openGroupEditor()">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" /></svg>
+          New group
+        </button>
+      </div>
+
+      <div v-if="modifierGroups.length === 0" class="modifier-empty">
+        No modifier groups yet. Create one such as "Size" (pick 1) or "Toppings" (pick up to 3).
+      </div>
+      <div v-else class="modifier-grid">
+        <div v-for="group in modifierGroups" :key="group.id" class="modifier-card" data-testid="modifier-group">
+          <div class="modifier-card-header">
+            <div>
+              <h3 class="modifier-card-title">{{ group.name }}</h3>
+              <p class="modifier-rule">{{ ruleText(group) }}</p>
+            </div>
+            <div class="menu-item-actions">
+              <button @click="openGroupEditor(group)" class="action-icon-btn" title="Edit group" aria-label="Edit group">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              </button>
+              <button @click="deleteGroup(group)" class="action-icon-btn delete" title="Delete group" aria-label="Delete group">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            </div>
+          </div>
+          <ul class="modifier-option-list">
+            <li v-for="o in group.options" :key="o.id">
+              <span>{{ o.name }}</span>
+              <span class="modifier-price">{{ o.price > 0 ? '+$' + o.price.toFixed(2) : 'Free' }}</span>
+            </li>
+          </ul>
+          <p class="modifier-usage">
+            {{ group.menu_item_ids.length ? 'Used by ' + group.menu_item_ids.length + (group.menu_item_ids.length === 1 ? ' item' : ' items') : 'Not attached to any items' }}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modifier Group Editor -->
+    <div v-if="groupForm" class="modal-overlay" @click.self="groupForm = null">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 class="text-2xl font-bold">{{ groupForm.id ? 'Edit modifier group' : 'New modifier group' }}</h2>
+          <button @click="groupForm = null" class="modal-close" aria-label="Close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <form @submit.prevent="saveGroup" class="modal-body">
+          <div class="form-group">
+            <label for="group-name">Group name *</label>
+            <input id="group-name" v-model="groupForm.name" type="text" class="input-field" placeholder="e.g. Size, Toppings, Crust" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="group-min">Minimum picks</label>
+              <input id="group-min" v-model.number="groupForm.minSelect" type="number" min="0" class="input-field" />
+              <p class="field-help">0 = optional, 1 or more = required</p>
+            </div>
+            <div class="form-group">
+              <label for="group-max">Maximum picks</label>
+              <input id="group-max" v-model.number="groupForm.maxSelect" type="number" min="1" class="input-field" />
+              <p class="field-help">1 = customer picks one</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Options *</label>
+            <div v-for="(o, i) in groupForm.options" :key="i" class="option-row">
+              <input v-model="o.name" type="text" class="input-field" :placeholder="'Option ' + (i + 1)" :aria-label="'Option ' + (i + 1) + ' name'" />
+              <div class="price-input">
+                <span>+$</span>
+                <input v-model.number="o.price" type="number" step="0.01" min="0" class="input-field" :aria-label="'Option ' + (i + 1) + ' price'" />
+              </div>
+              <button type="button" class="action-icon-btn delete" :disabled="groupForm.options.length === 1" @click="groupForm.options.splice(i, 1)" aria-label="Remove option">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <button type="button" class="link-btn" @click="groupForm.options.push({ name: '', price: 0 })">+ Add option</button>
+          </div>
+          <div v-if="groupError" class="form-error" role="alert">{{ groupError }}</div>
+          <div class="modal-actions">
+            <button type="button" @click="groupForm = null" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary">{{ groupForm.id ? 'Save group' : 'Create group' }}</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -142,6 +242,40 @@
               <option :value="1">Yes</option>
               <option :value="0">No</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Modifier groups</label>
+            <p v-if="modifierGroups.length === 0" class="field-help">
+              No modifier groups yet. Create them in the Modifier groups section below the menu.
+            </p>
+            <div v-else class="group-checklist">
+              <label v-for="g in modifierGroups" :key="g.id" class="group-check">
+                <input type="checkbox" :value="g.id" v-model="itemForm.groupIds" />
+                <span class="group-check-name">{{ g.name }}</span>
+                <span class="group-check-rule">{{ ruleText(g) }}</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Recipe</label>
+            <p class="field-help">Ingredients used for one of this item. They come out of inventory when it's sold.</p>
+            <p v-if="inventoryItems.length === 0" class="field-help">Add items on the Inventory screen to build recipes.</p>
+            <template v-else>
+              <div v-for="(line, i) in itemForm.recipe" :key="i" class="option-row recipe-row">
+                <select v-model.number="line.inventoryItemId" class="input-field" :aria-label="'Ingredient ' + (i + 1)">
+                  <option :value="null" disabled>Choose ingredient</option>
+                  <option v-for="inv in inventoryItems" :key="inv.id" :value="inv.id">{{ inv.name }}</option>
+                </select>
+                <div class="price-input">
+                  <input v-model.number="line.quantity" type="number" step="0.001" min="0" class="input-field" :aria-label="'Amount of ingredient ' + (i + 1)" />
+                  <span class="unit">{{ unitFor(line.inventoryItemId) }}</span>
+                </div>
+                <button type="button" class="action-icon-btn delete" @click="itemForm.recipe.splice(i, 1)" aria-label="Remove ingredient">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <button type="button" class="link-btn" @click="itemForm.recipe.push({ inventoryItemId: null, quantity: '' })">+ Add ingredient</button>
+            </template>
           </div>
           <div class="modal-actions">
             <button type="button" @click="closeItemModal" class="btn-secondary">Cancel</button>
@@ -247,12 +381,103 @@ const itemForm = ref({
   categoryId: null,
   price: 0,
   imageUrl: '',
-  available: 1
+  available: 1,
+  groupIds: [],
+  recipe: []
 });
 
 const categoryForm = ref({
   name: ''
 });
+
+// Recipes
+const recipesByItem = ref({});
+const inventoryItems = ref([]);
+const unitFor = (inventoryItemId) => (inventoryItems.value.find((i) => i.id === inventoryItemId) || {}).unit || '';
+
+// Modifier groups
+const modifierGroups = ref([]);
+const groupForm = ref(null);
+const groupError = ref('');
+
+const groupsForItem = (itemId) =>
+  modifierGroups.value.filter((g) => g.menu_item_ids.includes(itemId));
+
+const ruleText = (group) => {
+  const min = group.min_select;
+  const max = group.max_select;
+  if (min === max) return min === 1 ? 'Required, pick 1' : `Required, pick ${min}`;
+  if (min === 0) return max === 1 ? 'Optional, pick up to 1' : `Optional, pick up to ${max}`;
+  return `Required, pick ${min} to ${max}`;
+};
+
+const openGroupEditor = (group = null) => {
+  groupError.value = '';
+  groupForm.value = group
+    ? {
+        id: group.id,
+        name: group.name,
+        minSelect: group.min_select,
+        maxSelect: group.max_select,
+        options: group.options.map((o) => ({ name: o.name, price: o.price }))
+      }
+    : { id: null, name: '', minSelect: 0, maxSelect: 1, options: [{ name: '', price: 0 }, { name: '', price: 0 }] };
+};
+
+// Managers act directly; other roles enter the owner code first (the backend
+// enforces the same rule).
+const withApproval = async (message, action) => {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (['owner', 'manager', 'admin'].includes(String(user.role || '').toLowerCase())) {
+    await action();
+    return;
+  }
+  ownerCodeMessage.value = message;
+  pendingAction.value = { type: 'run', run: action };
+  showOwnerCodeModal.value = true;
+};
+
+const saveGroup = () => withApproval('Enter owner code to save this modifier group:', performSaveGroup);
+
+const performSaveGroup = async () => {
+  groupError.value = '';
+  const { ipcRenderer } = window.electron;
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const form = groupForm.value;
+  const groupData = {
+    name: form.name,
+    minSelect: form.minSelect,
+    maxSelect: form.maxSelect,
+    options: form.options.map((o) => ({ name: o.name, price: o.price || 0 }))
+  };
+  const result = form.id
+    ? await ipcRenderer.invoke('modifiers:update-group', { businessId: user.businessId, groupId: form.id, groupData })
+    : await ipcRenderer.invoke('modifiers:create-group', { businessId: user.businessId, groupData });
+  if (!result.success) {
+    groupError.value = result.error;
+    return;
+  }
+  groupForm.value = null;
+  await loadMenuData();
+};
+
+const deleteGroup = async (group) => {
+  const used = group.menu_item_ids.length;
+  const warning = used ? ` It is used by ${used} item${used === 1 ? '' : 's'}.` : '';
+  if (!confirm(`Delete the "${group.name}" modifier group?${warning} Past orders are not affected.`)) return;
+  await withApproval(`Enter owner code to delete "${group.name}":`, () => performDeleteGroup(group));
+};
+
+const performDeleteGroup = async (group) => {
+  const { ipcRenderer } = window.electron;
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const result = await ipcRenderer.invoke('modifiers:delete-group', { businessId: user.businessId, groupId: group.id });
+  if (!result.success) {
+    alert('Could not delete group: ' + result.error);
+    return;
+  }
+  await loadMenuData();
+};
 
 const filteredItems = computed(() => {
   if (selectedCategory.value === null) {
@@ -267,10 +492,20 @@ const loadMenuData = async () => {
     const { ipcRenderer } = window.electron;
     const user = JSON.parse(localStorage.getItem('currentUser'));
     
-    const [itemsResult, categoriesResult] = await Promise.all([
+    const [itemsResult, categoriesResult, groupsResult, recipesResult, inventoryResult] = await Promise.all([
       ipcRenderer.invoke('menu:get-all-items', user.businessId),
-      ipcRenderer.invoke('menu:get-categories', user.businessId)
+      ipcRenderer.invoke('menu:get-categories', user.businessId),
+      ipcRenderer.invoke('modifiers:get-groups', user.businessId),
+      ipcRenderer.invoke('recipes:get-by-item', user.businessId),
+      ipcRenderer.invoke('inventory:get-all-items', user.businessId)
     ]);
+
+    recipesByItem.value = recipesResult && recipesResult.success ? recipesResult.data : {};
+    inventoryItems.value = Array.isArray(inventoryResult) ? inventoryResult : [];
+
+    if (groupsResult && groupsResult.success) {
+      modifierGroups.value = groupsResult.data;
+    }
 
     if (itemsResult.success) {
       menuItems.value = itemsResult.items;
@@ -294,7 +529,9 @@ const editItem = (item) => {
     categoryId: item.category_id,
     price: item.price,
     imageUrl: item.image_url || '',
-    available: item.available
+    available: item.available,
+    groupIds: groupsForItem(item.id).map((g) => g.id),
+    recipe: (recipesByItem.value[item.id] || []).map((r) => ({ inventoryItemId: r.inventoryItemId, quantity: r.quantity }))
   };
 };
 
@@ -307,7 +544,9 @@ const closeItemModal = () => {
     categoryId: null,
     price: 0,
     imageUrl: '',
-    available: 1
+    available: 1,
+    groupIds: [],
+    recipe: []
   };
 };
 
@@ -355,6 +594,25 @@ const performSaveItem = async () => {
     }
 
     if (result.success) {
+      const menuItemId = editingItem.value ? editingItem.value.id : result.itemId;
+      const linkResult = await ipcRenderer.invoke('modifiers:set-item-groups', {
+        businessId: user.businessId,
+        menuItemId,
+        groupIds: [...itemForm.value.groupIds]
+      });
+      if (!linkResult.success) {
+        alert('Item saved, but modifier groups could not be attached: ' + linkResult.error);
+      }
+      const recipeResult = await ipcRenderer.invoke('recipes:set', {
+        businessId: user.businessId,
+        menuItemId,
+        lines: itemForm.value.recipe
+          .filter((l) => l.inventoryItemId)
+          .map((l) => ({ inventoryItemId: l.inventoryItemId, quantity: Number(l.quantity) }))
+      });
+      if (!recipeResult.success) {
+        alert('Item saved, but the recipe could not be saved: ' + recipeResult.error);
+      }
       await loadMenuData();
       closeItemModal();
     } else {
@@ -401,7 +659,9 @@ const performDeleteItem = async (item) => {
   }
 };
 
-const saveCategory = async () => {
+const saveCategory = () => withApproval('Enter owner code to add a category:', performSaveCategory);
+
+const performSaveCategory = async () => {
   try {
     const { ipcRenderer } = window.electron;
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -480,6 +740,8 @@ const submitOwnerCode = async () => {
         await performSaveItem();
       } else if (pendingAction.value.type === 'delete') {
         await performDeleteItem(pendingAction.value.item);
+      } else if (pendingAction.value.type === 'run') {
+        await pendingAction.value.run();
       }
       pendingAction.value = null;
     }
@@ -918,5 +1180,187 @@ onMounted(async () => {
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+/* Modifier groups */
+.item-group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.item-group-chip {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+}
+.modifier-section {
+  margin-top: 2.5rem;
+}
+.modifier-section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.section-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-faint);
+}
+.modifier-empty {
+  padding: 1.5rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  color: var(--text-faint);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.modifier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.modifier-card {
+  padding: 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.modifier-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.modifier-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.modifier-rule {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--accent);
+}
+.modifier-option-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.modifier-option-list li {
+  display: flex;
+  justify-content: space-between;
+}
+.modifier-price {
+  color: var(--text-faint);
+}
+.modifier-usage {
+  margin-top: 0.875rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+.field-help {
+  margin-top: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.option-row > .input-field {
+  flex: 1;
+}
+.price-input {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 120px;
+  color: var(--text-faint);
+  font-size: 0.875rem;
+}
+.option-row .action-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.link-btn {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+.link-btn:hover {
+  color: var(--accent-hover);
+}
+.form-error {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 10px;
+}
+.group-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.group-check {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.group-check:hover {
+  border-color: var(--border-strong);
+}
+.group-check-name {
+  color: var(--text);
+  font-weight: 500;
+}
+.group-check-rule {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+
+/* Recipes */
+.item-recipe {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+.recipe-row select {
+  flex: 1;
+}
+.recipe-row .price-input {
+  width: 150px;
+}
+.recipe-row .unit {
+  min-width: 2.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-faint);
 }
 </style>
