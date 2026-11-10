@@ -59,6 +59,13 @@
       <div class="cart-panel">
         <!-- POS Controls Header -->
         <div class="pos-controls">
+          <router-link to="/cash-drawer" :class="['drawer-pill', drawerOpen ? 'open' : 'closed']" data-testid="drawer-pill">
+            <span class="drawer-dot"></span>
+            {{ drawerOpen ? 'Drawer open' : 'Drawer closed' }}
+          </router-link>
+          <button type="button" class="tabs-btn" data-testid="tabs-btn" @click="openTabsList">
+            Tabs <span class="tabs-count">{{ openTabs.length }}</span>
+          </button>
           <button @click="toggleOrderHistory" class="control-btn" title="Order History">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -79,6 +86,38 @@
               <span class="stat-value">${{ (dailySummary.total_sales || 0).toFixed(2) }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- Tab loaded into the cart -->
+        <div v-if="currentTab" class="current-tab" data-testid="current-tab">
+          <span>Tab: <strong>{{ currentTab.name }}</strong></span>
+          <button type="button" class="link-btn" @click="detachTab">Start new order</button>
+        </div>
+
+        <!-- Order type -->
+        <div class="order-type-section">
+          <div class="order-type-toggle" role="radiogroup" aria-label="Order type">
+            <button
+              v-for="type in orderTypes"
+              :key="type.value"
+              type="button"
+              role="radio"
+              :aria-checked="orderType === type.value"
+              :class="['order-type-btn', { active: orderType === type.value }]"
+              @click="orderType = type.value"
+            >
+              {{ type.label }}
+            </button>
+          </div>
+          <input
+            v-if="orderType === 'dine-in'"
+            v-model="tableNumber"
+            type="text"
+            maxlength="20"
+            class="table-input"
+            placeholder="Table # (optional)"
+            aria-label="Table number"
+          />
         </div>
 
         <!-- Customer Section -->
@@ -135,6 +174,9 @@
             <div v-for="(item, index) in cart" :key="index" class="cart-item">
               <div class="cart-item-info">
                 <div class="cart-item-name">{{ item.name }}</div>
+                <div v-if="item.modifiers && item.modifiers.length" class="cart-item-modifiers">
+                  {{ item.modifiers.map(m => m.name).join(', ') }}
+                </div>
                 <div class="cart-item-price">${{ parseFloat(item.price).toFixed(2) }} × {{ item.quantity }}</div>
                 <div v-if="item.notes" class="cart-item-notes">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="note-icon">
@@ -201,6 +243,9 @@
         <!-- Action Buttons -->
         <div class="cart-actions">
           <button @click="clearCart" class="btn-clear" :disabled="cart.length === 0">Clear</button>
+          <button @click="holdOrder" class="btn-hold" data-testid="hold-btn" :disabled="cart.length === 0">
+            {{ currentTab ? 'Save tab' : 'Hold' }}
+          </button>
           <button @click="showCheckout = true" class="btn-checkout" :disabled="cart.length === 0">
             Checkout
           </button>
@@ -245,6 +290,7 @@
         <div class="modal-content">
           <div class="checkout-summary">
             <h3>Order Summary</h3>
+            <p class="checkout-order-type">{{ orderTypeLabel }}<span v-if="orderType === 'dine-in' && tableNumber.trim()"> · Table {{ tableNumber.trim() }}</span></p>
             <div class="checkout-items">
               <div v-for="(item, index) in cart" :key="index" class="checkout-item">
                 <div>
@@ -372,15 +418,20 @@
         <div class="modal-content">
           <div class="receipt">
             <div class="receipt-header">
+              <p v-if="receiptIsReprint" class="receipt-reprint">Reprint</p>
               <h3>{{ businessName }}</h3>
               <p>Transaction #{{ lastTransaction.id }}</p>
               <p>{{ new Date(lastTransaction.created_at).toLocaleString() }}</p>
               <p>Cashier: {{ lastTransaction.cashier_name }}</p>
+              <p>{{ formatOrderType(lastTransaction.order_type) }}<span v-if="lastTransaction.table_number"> · Table {{ lastTransaction.table_number }}</span></p>
             </div>
             
             <div class="receipt-items">
               <div v-for="item in lastTransaction.items" :key="item.id" class="receipt-item">
-                <span>{{ item.item_name }} × {{ item.quantity }}</span>
+                <span>
+                  {{ item.item_name }} × {{ item.quantity }}
+                  <span v-if="receiptModifiers(item)" class="receipt-modifiers">{{ receiptModifiers(item) }}</span>
+                </span>
                 <span>${{ parseFloat(item.total_price).toFixed(2) }}</span>
               </div>
             </div>
@@ -404,6 +455,17 @@
               </div>
             </div>
             
+            <div v-if="lastTransaction.refunds && lastTransaction.refunds.length" class="receipt-totals receipt-refunds">
+              <div v-for="r in lastTransaction.refunds" :key="r.id" class="receipt-row">
+                <span>Refund to {{ r.method_type }}: {{ r.reason }}</span>
+                <span>-${{ Number(r.amount).toFixed(2) }}</span>
+              </div>
+              <div class="receipt-row total">
+                <span>Net paid</span>
+                <span>${{ (Number(lastTransaction.total) - Number(lastTransaction.refunded_amount || 0)).toFixed(2) }}</span>
+              </div>
+            </div>
+
             <div v-if="lastTransaction.customer_name" class="receipt-customer">
               <p>Customer: {{ lastTransaction.customer_name }}</p>
               <p v-if="lastTransaction.points_earned > 0">Points Earned: {{ lastTransaction.points_earned }}</p>
@@ -427,12 +489,28 @@
           <button @click="showModifierModal = false" class="modal-close">×</button>
         </div>
         <div class="modal-content">
-          <div class="modifiers-section">
-            <h3>Select Options:</h3>
+          <div v-for="group in currentModifierGroups" :key="group.id" class="modifier-group" data-testid="pos-modifier-group">
+            <div class="modifier-group-header">
+              <h3>{{ group.name }}</h3>
+              <span :class="['modifier-badge', group.min_select > 0 ? 'required' : 'optional']">
+                {{ groupRuleText(group) }}
+              </span>
+            </div>
             <div class="modifier-options">
-              <label v-for="mod in commonModifiers" :key="mod.name" class="modifier-option">
-                <input type="checkbox" :checked="selectedModifiers.some(m => m.name === mod.name)" @change="toggleModifier(mod)" />
-                <span>{{ mod.name }} (+${{ mod.price.toFixed(2) }})</span>
+              <label
+                v-for="option in group.options"
+                :key="option.id"
+                :class="['modifier-option', { selected: isOptionSelected(group, option), disabled: isOptionDisabled(group, option) }]"
+              >
+                <input
+                  :type="group.max_select === 1 ? 'radio' : 'checkbox'"
+                  :name="'group-' + group.id"
+                  :checked="isOptionSelected(group, option)"
+                  :disabled="isOptionDisabled(group, option)"
+                  @change="toggleOption(group, option)"
+                />
+                <span class="modifier-option-name">{{ option.name }}</span>
+                <span class="modifier-option-price">{{ option.price > 0 ? '+$' + option.price.toFixed(2) : '' }}</span>
               </label>
             </div>
           </div>
@@ -441,8 +519,11 @@
             <textarea v-model="itemNotes" rows="3" class="form-textarea" placeholder="e.g., No onions, extra sauce..."></textarea>
           </div>
           <div class="modal-actions">
+            <p v-if="modifierErrors.length" class="modifier-errors">{{ modifierErrors.join('. ') }}</p>
             <button @click="showModifierModal = false" class="btn-secondary">Cancel</button>
-            <button @click="addToCartWithModifiers" class="btn-primary">Add to Cart</button>
+            <button @click="addToCartWithModifiers" class="btn-primary" :disabled="modifierErrors.length > 0">
+              Add to Cart · ${{ modifierLinePrice.toFixed(2) }}
+            </button>
           </div>
         </div>
       </div>
@@ -509,7 +590,7 @@
     </div>
 
     <!-- Owner Code Verification Modal -->
-    <div v-if="showOwnerCodeModal" class="modal-overlay" @click.self="cancelOwnerVerification">
+    <div v-if="showOwnerCodeModal" class="modal-overlay owner-code-overlay" @click.self="cancelOwnerVerification">
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h2>Owner Authorization Required</h2>
@@ -564,6 +645,128 @@
       </div>
     </div>
 
+    <!-- Name a new tab -->
+    <div v-if="holdState" class="modal-overlay" @click.self="holdState = null">
+      <form class="modal" data-testid="hold-modal" @submit.prevent="confirmHold">
+        <div class="modal-header">
+          <h2>Hold order as a tab</h2>
+          <button type="button" @click="holdState = null" class="modal-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-content">
+          <p class="refund-summary">The order is sent to the kitchen now and paid later.</p>
+          <div class="form-group">
+            <label for="tab-name">Tab name</label>
+            <input id="tab-name" v-model="holdState.name" type="text" maxlength="40" class="form-input" placeholder="e.g. Table 4 or Alex" />
+          </div>
+          <p v-if="holdState.error" class="tab-error" role="alert">{{ holdState.error }}</p>
+          <div class="modal-actions">
+            <button type="button" @click="holdState = null" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary" :disabled="!holdState.name.trim() || holdState.busy">Hold order</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Open tabs -->
+    <div v-if="showTabsList" class="modal-overlay" @click.self="showTabsList = false">
+      <div class="modal modal-large" data-testid="tabs-modal">
+        <div class="modal-header">
+          <h2>Open tabs</h2>
+          <button @click="showTabsList = false" class="modal-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-content">
+          <p v-if="!openTabs.length" class="tab-empty">No open tabs. Use Hold to save an order and pay later.</p>
+          <div v-else class="tab-list">
+            <div v-for="tab in openTabs" :key="tab.id" class="tab-row" data-testid="tab-row">
+              <div>
+                <div class="tab-row-name">{{ tab.tab_name }}</div>
+                <div class="tab-row-meta">
+                  {{ formatOrderType(tab.order_type) }}<span v-if="tab.table_number"> · Table {{ tab.table_number }}</span>
+                  · {{ itemCount(tab) }} {{ itemCount(tab) === 1 ? 'item' : 'items' }}
+                  · opened {{ new Date(String(tab.tab_opened_at).replace(' ', 'T')).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }}
+                </div>
+              </div>
+              <div class="tab-row-actions">
+                <span class="tab-row-total">${{ Number(tab.subtotal).toFixed(2) }}</span>
+                <button class="btn-small btn-ghost-small" @click="cancelTabPrompt(tab)">Cancel tab</button>
+                <button class="btn-small btn-primary" @click="resumeTab(tab)">Resume</button>
+              </div>
+            </div>
+          </div>
+          <div v-if="cancelState" class="form-group cancel-tab-form">
+            <label for="cancel-tab-reason">Reason for cancelling "{{ cancelState.tab.tab_name }}"</label>
+            <input id="cancel-tab-reason" v-model="cancelState.reason" type="text" maxlength="200" class="form-input" placeholder="Required" />
+            <p v-if="cancelState.error" class="tab-error" role="alert">{{ cancelState.error }}</p>
+            <div class="modal-actions">
+              <button type="button" class="btn-secondary" @click="cancelState = null">Keep tab</button>
+              <button type="button" class="btn-danger btn-small" :disabled="!cancelState.reason.trim()" @click="confirmCancelTab">Cancel tab</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Refund Modal -->
+    <div v-if="refundState" class="modal-overlay" @click.self="refundState = null">
+      <div class="modal" data-testid="refund-modal">
+        <div class="modal-header">
+          <h2>Refund sale #{{ refundState.info.transactionId }}</h2>
+          <button @click="refundState = null" class="modal-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-content">
+          <p class="refund-summary">
+            Paid ${{ refundState.info.total.toFixed(2) }}
+            <span v-if="refundState.info.refundedTotal > 0"> · refunded ${{ refundState.info.refundedTotal.toFixed(2) }}</span>
+            · ${{ refundState.info.remaining.toFixed(2) }} can be refunded
+          </p>
+
+          <div class="refund-items">
+            <div v-for="item in refundState.info.items" :key="item.transactionItemId" class="refund-item">
+              <div>
+                <div class="refund-item-name">{{ item.name }}</div>
+                <div class="refund-item-meta">
+                  ${{ item.unitRefund.toFixed(2) }} each · {{ item.refundableQuantity }} of {{ item.quantity }} refundable
+                </div>
+              </div>
+              <div class="refund-stepper">
+                <button type="button" :aria-label="'Fewer ' + item.name" :disabled="!refundState.qty[item.transactionItemId]" @click="stepRefund(item, -1)">-</button>
+                <span>{{ refundState.qty[item.transactionItemId] || 0 }}</span>
+                <button type="button" :aria-label="'More ' + item.name" :disabled="(refundState.qty[item.transactionItemId] || 0) >= item.refundableQuantity" @click="stepRefund(item, 1)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="refund-extra">Extra amount (optional)</label>
+            <input id="refund-extra" v-model="refundState.extra" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. goodwill or tip" />
+          </div>
+          <div class="form-group">
+            <label for="refund-method">Refund to</label>
+            <select id="refund-method" v-model="refundState.method" class="form-input">
+              <option v-for="m in refundMethods" :key="m.value" :value="m.value">{{ m.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="refund-reason">Reason</label>
+            <input id="refund-reason" v-model="refundState.reason" type="text" maxlength="200" class="form-input" placeholder="Required" />
+          </div>
+
+          <div class="refund-total">
+            <span>Refund total</span>
+            <strong data-testid="refund-total">${{ refundPreview.toFixed(2) }}</strong>
+          </div>
+          <p v-if="refundState.error" class="refund-error" role="alert">{{ refundState.error }}</p>
+
+          <div class="modal-actions">
+            <button @click="refundState = null" class="btn-secondary">Cancel</button>
+            <button @click="submitRefund" class="btn-primary" :disabled="refundPreview <= 0 || !refundState.reason.trim() || refundState.busy">
+              Refund ${{ refundPreview.toFixed(2) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Order History Modal -->
     <div v-if="showOrderHistory" class="modal-overlay" @click.self="toggleOrderHistory">
       <div class="modal modal-large">
@@ -588,7 +791,14 @@
                 <span :class="['history-status', transaction.status]">{{ transaction.status }}</span>
               </div>
               <div class="history-actions">
-                <button v-if="transaction.status === 'completed'" @click="openVoidModal(transaction)" class="btn-small btn-danger">Void</button>
+                <span v-if="transaction.refunded_amount > 0" class="history-refunded">Refunded ${{ Number(transaction.refunded_amount).toFixed(2) }}</span>
+                <button @click="openReceipt(transaction)" class="btn-small btn-ghost-small">Receipt</button>
+                <button
+                  v-if="transaction.status === 'completed' && Number(transaction.refunded_amount || 0) < Number(transaction.total) - 0.005"
+                  @click="openRefund(transaction)"
+                  class="btn-small btn-ghost-small"
+                >Refund</button>
+                <button v-if="transaction.status === 'completed' && !(transaction.refunded_amount > 0)" @click="openVoidModal(transaction)" class="btn-small btn-danger">Void</button>
               </div>
             </div>
           </div>
@@ -609,15 +819,6 @@ import { useAutoRefresh } from '../composables/useAutoRefresh';
 const { ipcRenderer } = window.electron;
 const { showSuccess, showError, showWarning } = useToast();
 
-// Common modifiers for customization
-const commonModifiers = [
-  { name: 'Extra Cheese', price: 1.50 },
-  { name: 'Bacon', price: 2.00 },
-  { name: 'Avocado', price: 1.75 },
-  { name: 'Extra Sauce', price: 0.50 },
-  { name: 'Gluten Free', price: 2.50 },
-  { name: 'Large Size', price: 2.00 }
-];
 
 // State
 const menuItems = ref([]);
@@ -638,6 +839,34 @@ const kitchenNotes = ref('');
 const editingItemIndex = ref(null);
 
 const showCheckout = ref(false);
+
+// Cash drawer status (shown in the header; cash sales are tracked per session)
+const drawerOpen = ref(false);
+const loadDrawerStatus = async () => {
+  const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  const result = await ipcRenderer.invoke('drawer:get-current', user.businessId);
+  drawerOpen.value = !!(result && result.success && result.data);
+};
+
+// Order type and table
+const orderTypes = [
+  { value: 'dine-in', label: 'Dine in' },
+  { value: 'takeout', label: 'Takeout' },
+  { value: 'delivery', label: 'Delivery' }
+];
+const orderType = ref('dine-in');
+const tableNumber = ref('');
+const orderTypeLabel = computed(() => orderTypes.find((t) => t.value === orderType.value)?.label || '');
+const formatOrderType = (value) => orderTypes.find((t) => t.value === value)?.label || 'Dine in';
+
+// Modifiers saved on a transaction item, as text for the receipt
+const receiptModifiers = (item) => {
+  let mods = item.modifiers;
+  if (typeof mods === 'string') {
+    try { mods = JSON.parse(mods); } catch { mods = []; }
+  }
+  return Array.isArray(mods) && mods.length ? mods.map((m) => m.name).join(', ') : '';
+};
 const selectedPaymentMethod = ref('Cash');
 const paymentMethods = ['Cash', 'Card', 'Mobile Payment'];
 const cashReceived = ref(0);
@@ -662,8 +891,11 @@ const manualDiscount = ref(0);
 // Modifiers
 const showModifierModal = ref(false);
 const currentModifierItem = ref(null);
-const selectedModifiers = ref([]);
 const itemNotes = ref('');
+// Modifier groups per menu item ({ [menuItemId]: [group] }) and the current
+// selection in the customize dialog ({ [groupId]: [optionId] }).
+const modifiersByItem = ref({});
+const modifierSelection = ref({});
 
 // Owner Code Verification
 const showOwnerCodeModal = ref(false);
@@ -712,6 +944,24 @@ const dailySummary = ref(null);
 
 const showReceipt = ref(false);
 const lastTransaction = ref(null);
+const receiptIsReprint = ref(false);
+
+// Open tabs
+const openTabs = ref([]);
+const showTabsList = ref(false);
+const currentTab = ref(null); // { id, name } when a tab is loaded into the cart
+const holdState = ref(null);
+const cancelState = ref(null);
+
+// Refunds
+const refundState = ref(null);
+const refundMethods = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'mobile payment', label: 'Mobile payment' },
+  { value: 'store credit', label: 'Store credit' }
+];
+const isAdminRole = (role) => ['owner', 'manager', 'admin'].includes(String(role || '').toLowerCase());
 
 const taxRate = ref(7.5);
 const businessName = ref('Food Business');
@@ -743,12 +993,16 @@ const filteredMenuItems = computed(() => {
   return filtered;
 });
 
+// Money is rounded to cents at each step so what's shown, charged and saved
+// always match (e.g. 7% of $3.50 is $0.25, not $0.245).
+const cents = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100;
+
 const subtotal = computed(() => {
-  return cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  return cents(cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0));
 });
 
 const tax = computed(() => {
-  return subtotal.value * (taxRate.value / 100);
+  return cents(subtotal.value * (taxRate.value / 100));
 });
 
 const discount = computed(() => {
@@ -769,7 +1023,7 @@ const discount = computed(() => {
 });
 
 const total = computed(() => {
-  return Math.max(0, subtotal.value + tax.value - discount.value + tipAmount.value);
+  return cents(Math.max(0, subtotal.value + tax.value - cents(discount.value) + cents(tipAmount.value)));
 });
 
 const totalPaid = computed(() => {
@@ -829,10 +1083,13 @@ const loadData = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     
-    const [menuData, categoriesData] = await Promise.all([
+    const [menuData, categoriesData, modifiersData] = await Promise.all([
       ipcRenderer.invoke('menu:get-all-items', currentUser.businessId),
-      ipcRenderer.invoke('menu:get-categories', currentUser.businessId)
+      ipcRenderer.invoke('menu:get-categories', currentUser.businessId),
+      ipcRenderer.invoke('modifiers:get-by-item', currentUser.businessId)
     ]);
+
+    modifiersByItem.value = modifiersData && modifiersData.success ? modifiersData.data : {};
 
     menuItems.value = menuData.items || [];
     categories.value = categoriesData.categories || [];
@@ -845,15 +1102,13 @@ const loadData = async () => {
 };
 
 const addToCart = (menuItem) => {
-  // Check if item has potential modifiers (e.g., "Burger", "Pizza", "Sandwich")
-  const needsModifiers = ['burger', 'pizza', 'sandwich', 'salad', 'pasta'].some(
-    keyword => menuItem.name.toLowerCase().includes(keyword)
-  );
-  
-  if (needsModifiers) {
+  // Items with modifier groups open the customize dialog
+  const groups = modifiersByItem.value[menuItem.id] || [];
+
+  if (groups.length > 0) {
     openModifierModal(menuItem);
   } else {
-    const existingItem = cart.value.find(item => item.id === menuItem.id && !item.modifiers);
+    const existingItem = cart.value.find(item => item.id === menuItem.id && !(item.modifiers && item.modifiers.length) && !item.notes);
     
     if (existingItem) {
       existingItem.quantity++;
@@ -903,8 +1158,8 @@ const saveKitchenNotes = () => {
 };
 
 const clearCart = () => {
-  if (confirm('Clear entire cart?')) {
-    cart.value = [];
+  if (confirm(currentTab.value ? 'Clear the cart? The tab stays saved.' : 'Clear entire cart?')) {
+    resetOrder();
   }
 };
 
@@ -998,26 +1253,49 @@ const completeTransaction = async () => {
       pointsRedeemed,
       status: 'completed',
       kitchenStatus: 'pending',
+      orderType: orderType.value,
+      tableNumber: orderType.value === 'dine-in' ? tableNumber.value.trim() : null,
       items: cart.value.map(item => ({
         menuItemId: item.id,
         quantity: item.quantity,
         unitPrice: item.price,
         totalPrice: item.price * item.quantity,
         notes: item.notes || null,
+        modifierOptionIds: item.modifierOptionIds || [],
         modifiers: item.modifiers && item.modifiers.length > 0 ? item.modifiers : null
       })),
       payments: paymentsList
     };
     
-    const transaction = await ipcRenderer.invoke('pos:create-transaction', {
-      businessId: currentUser.businessId || currentUser.business_id,
-      transactionData
-    });
+    // Send a plain copy: cart lines hold Vue reactive arrays (modifiers,
+    // option ids) that Electron's IPC cannot clone.
+    let transaction;
+    if (currentTab.value) {
+      const result = await ipcRenderer.invoke('tabs:close', {
+        businessId: currentUser.businessId || currentUser.business_id,
+        tabId: currentTab.value.id,
+        transactionData: JSON.parse(JSON.stringify(transactionData))
+      });
+      if (!result.success) {
+        showError(result.error);
+        return;
+      }
+      transaction = result.data;
+      currentTab.value = null;
+      loadOpenTabs();
+    } else {
+      transaction = await ipcRenderer.invoke('pos:create-transaction', {
+        businessId: currentUser.businessId || currentUser.business_id,
+        transactionData: JSON.parse(JSON.stringify(transactionData))
+      });
+    }
     
     lastTransaction.value = transaction;
     
     // Reset
     cart.value = [];
+    orderType.value = 'dine-in';
+    tableNumber.value = '';
     selectedCustomer.value = null;
     usePoints.value = false;
     payments.value = [];
@@ -1045,6 +1323,7 @@ const completeTransaction = async () => {
 const closeReceipt = () => {
   showReceipt.value = false;
   lastTransaction.value = null;
+  receiptIsReprint.value = false;
 };
 
 const printReceipt = () => {
@@ -1060,7 +1339,8 @@ const addPayment = () => {
   if (amount > 0 && selectedPaymentMethod.value) {
     payments.value.push({
       methodType: selectedPaymentMethod.value,
-      amount: selectedPaymentMethod.value === 'Cash' ? cashReceived.value : Math.min(paymentAmount.value, remainingBalance.value),
+      // Cash covers at most the remaining balance; the rest is change
+      amount: Math.min(selectedPaymentMethod.value === 'Cash' ? cashReceived.value : paymentAmount.value, remainingBalance.value),
       referenceNumber: selectedPaymentMethod.value !== 'Cash' ? `REF-${Date.now()}` : null
     });
     paymentAmount.value = 0;
@@ -1097,7 +1377,7 @@ const applyDiscount = async () => {
     : discountValue.value;
   
   // Check if owner code required (for staff roles or large discounts)
-  const requiresOwnerCode = user.role === 'staff' || discountAmount > 20;
+  const requiresOwnerCode = !isAdminRole(user.role) || discountAmount > 20;
   
   if (requiresOwnerCode && user.role !== 'owner' && user.role !== 'manager') {
     // Staff always requires owner code for any discount
@@ -1123,35 +1403,82 @@ const removeDiscount = () => {
 };
 
 // Modifiers
+const currentModifierGroups = computed(() =>
+  currentModifierItem.value ? modifiersByItem.value[currentModifierItem.value.id] || [] : []
+);
+
+const groupRuleText = (group) => {
+  const { min_select: min, max_select: max } = group;
+  if (min === max) return min === 1 ? 'Required' : `Pick ${min}`;
+  if (min === 0) return max === 1 ? 'Optional' : `Up to ${max}`;
+  return `Pick ${min}-${max}`;
+};
+
+const isOptionSelected = (group, option) =>
+  (modifierSelection.value[group.id] || []).includes(option.id);
+
+// In multi-pick groups, unchecked options are disabled once the max is hit
+const isOptionDisabled = (group, option) =>
+  group.max_select > 1 &&
+  !isOptionSelected(group, option) &&
+  (modifierSelection.value[group.id] || []).length >= group.max_select;
+
+const toggleOption = (group, option) => {
+  const current = modifierSelection.value[group.id] || [];
+  let next;
+  if (group.max_select === 1) {
+    // Radio behaviour; optional single-choice groups can be cleared
+    next = current.includes(option.id) && group.min_select === 0 ? [] : [option.id];
+  } else if (current.includes(option.id)) {
+    next = current.filter((id) => id !== option.id);
+  } else {
+    next = current.length < group.max_select ? [...current, option.id] : current;
+  }
+  modifierSelection.value = { ...modifierSelection.value, [group.id]: next };
+};
+
+const selectedModifierOptions = computed(() =>
+  currentModifierGroups.value.flatMap((group) =>
+    group.options
+      .filter((o) => isOptionSelected(group, o))
+      .map((o) => ({ id: o.id, name: o.name, price: o.price, group: group.name }))
+  )
+);
+
+const modifierErrors = computed(() =>
+  currentModifierGroups.value
+    .filter((g) => (modifierSelection.value[g.id] || []).length < g.min_select)
+    .map((g) => (g.min_select === 1 ? `Choose a ${g.name.toLowerCase()}` : `Choose ${g.min_select} ${g.name.toLowerCase()}`))
+);
+
+const modifierLinePrice = computed(() => {
+  if (!currentModifierItem.value) return 0;
+  const extra = selectedModifierOptions.value.reduce((sum, m) => sum + (m.price || 0), 0);
+  return Math.round((parseFloat(currentModifierItem.value.price) + extra) * 100) / 100;
+});
+
 const openModifierModal = (menuItem) => {
   currentModifierItem.value = menuItem;
-  selectedModifiers.value = [];
+  modifierSelection.value = {};
   itemNotes.value = '';
   showModifierModal.value = true;
 };
 
-const toggleModifier = (modifier) => {
-  const index = selectedModifiers.value.findIndex(m => m.name === modifier.name);
-  if (index > -1) {
-    selectedModifiers.value.splice(index, 1);
-  } else {
-    selectedModifiers.value.push(modifier);
-  }
-};
-
 const addToCartWithModifiers = () => {
+  if (modifierErrors.value.length) return;
   const item = currentModifierItem.value;
-  const modifierCost = selectedModifiers.value.reduce((sum, m) => sum + (m.price || 0), 0);
-  
+  const modifiers = selectedModifierOptions.value;
+
   cart.value.push({
     id: item.id,
     name: item.name,
-    price: parseFloat(item.price) + modifierCost,
+    price: modifierLinePrice.value,
     quantity: 1,
-    modifiers: [...selectedModifiers.value],
+    modifiers,
+    modifierOptionIds: modifiers.map((m) => m.id),
     notes: itemNotes.value
   });
-  
+
   showModifierModal.value = false;
 };
 
@@ -1186,6 +1513,10 @@ const submitOwnerCode = async () => {
         showDiscountModal.value = false;
       } else if (pendingAction.value.type === 'void') {
         await performVoidTransaction();
+      } else if (pendingAction.value.type === 'refund') {
+        await performRefund();
+      } else if (pendingAction.value.type === 'cancel-tab') {
+        await performCancelTab();
       }
       pendingAction.value = null;
     }
@@ -1204,6 +1535,8 @@ const cancelOwnerVerification = () => {
 
 // Void Transaction
 const openVoidModal = (transaction) => {
+  // Order history would otherwise cover this dialog
+  showOrderHistory.value = false;
   transactionToVoid.value = transaction;
   voidReason.value = '';
   showVoidModal.value = true;
@@ -1217,8 +1550,8 @@ const voidTransaction = async () => {
   
   const user = JSON.parse(localStorage.getItem('currentUser'));
   
-  // Check if owner code required (for staff roles)
-  if (user.role === 'staff') {
+  // Every non-manager role needs the owner code
+  if (!isAdminRole(user.role)) {
     ownerCodeMessage.value = `Void Transaction #${transactionToVoid.value.id}`;
     pendingAction.value = { type: 'void' };
     showVoidModal.value = false;
@@ -1232,18 +1565,23 @@ const voidTransaction = async () => {
 const performVoidTransaction = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    await ipcRenderer.invoke('pos:void-transaction', {
+    const voidResult = await ipcRenderer.invoke('pos:void-transaction', {
       businessId: currentUser.businessId,
       transactionId: transactionToVoid.value.id,
       voidReason: voidReason.value,
       voidedBy: currentUser.id
     });
     
+    if (voidResult && voidResult.success === false) {
+      showError(voidResult.error);
+      return;
+    }
     showSuccess('Transaction voided successfully');
     showVoidModal.value = false;
     voidReason.value = '';
     transactionToVoid.value = null;
-    loadOrderHistory();
+    await loadOrderHistory();
+    showOrderHistory.value = true;
   } catch (error) {
     console.error('Error voiding transaction:', error);
     showError('Error voiding transaction');
@@ -1251,6 +1589,243 @@ const performVoidTransaction = async () => {
 };
 
 // Order History
+// ----- Open tabs
+const loadOpenTabs = async () => {
+  const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  const result = await ipcRenderer.invoke('tabs:get-open', user.businessId);
+  openTabs.value = result && result.success ? result.data : [];
+};
+
+const itemCount = (tab) => tab.items.reduce((n, i) => n + i.quantity, 0);
+
+const openTabsList = async () => {
+  cancelState.value = null;
+  await loadOpenTabs();
+  showTabsList.value = true;
+};
+
+// Cart lines -> items for the backend
+const cartToItems = () =>
+  cart.value.map((item) => ({
+    menuItemId: item.id,
+    name: item.name,
+    quantity: item.quantity,
+    unitPrice: item.price,
+    notes: item.notes || null,
+    modifierOptionIds: item.modifierOptionIds || []
+  }));
+
+const resetOrder = () => {
+  cart.value = [];
+  orderType.value = 'dine-in';
+  tableNumber.value = '';
+  currentTab.value = null;
+};
+
+const holdOrder = async () => {
+  if (!currentTab.value) {
+    holdState.value = {
+      name: orderType.value === 'dine-in' && tableNumber.value.trim() ? `Table ${tableNumber.value.trim()}` : '',
+      error: '',
+      busy: false
+    };
+    return;
+  }
+  // Save changes to the tab that's loaded
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const result = await ipcRenderer.invoke('tabs:update', {
+    businessId: user.businessId,
+    tabId: currentTab.value.id,
+    tab: JSON.parse(JSON.stringify({
+      name: currentTab.value.name,
+      orderType: orderType.value,
+      tableNumber: tableNumber.value,
+      items: cartToItems()
+    }))
+  });
+  if (!result.success) {
+    showError(result.error);
+    return;
+  }
+  showSuccess(`Saved tab "${currentTab.value.name}"`);
+  resetOrder();
+  loadOpenTabs();
+};
+
+const confirmHold = async () => {
+  const st = holdState.value;
+  st.busy = true;
+  st.error = '';
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const result = await ipcRenderer.invoke('tabs:open', {
+    businessId: user.businessId,
+    userId: user.userId || user.id,
+    tab: JSON.parse(JSON.stringify({
+      name: st.name,
+      orderType: orderType.value,
+      tableNumber: tableNumber.value,
+      customerId: selectedCustomer.value?.id || null,
+      items: cartToItems()
+    }))
+  });
+  st.busy = false;
+  if (!result.success) {
+    st.error = result.error;
+    return;
+  }
+  holdState.value = null;
+  showSuccess(`Held as "${result.data.tab_name}" and sent to the kitchen`);
+  resetOrder();
+  selectedCustomer.value = null;
+  loadOpenTabs();
+};
+
+const resumeTab = (tab) => {
+  if (cart.value.length && !confirm('Replace the current cart with this tab?')) return;
+  cart.value = tab.items.map((i) => ({
+    id: i.menu_item_id,
+    name: i.item_name,
+    price: Number(i.unit_price),
+    quantity: i.quantity,
+    modifiers: i.modifiers || [],
+    modifierOptionIds: (i.modifiers || []).map((m) => m.id),
+    notes: i.notes || ''
+  }));
+  orderType.value = tab.order_type || 'dine-in';
+  tableNumber.value = tab.table_number || '';
+  currentTab.value = { id: tab.id, name: tab.tab_name };
+  showTabsList.value = false;
+};
+
+// Keep the tab open but start a fresh order
+const detachTab = () => {
+  resetOrder();
+};
+
+const cancelTabPrompt = (tab) => {
+  cancelState.value = { tab, reason: '', error: '' };
+};
+
+const confirmCancelTab = async () => {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!isAdminRole(user.role)) {
+    ownerCodeMessage.value = `Cancel tab "${cancelState.value.tab.tab_name}"`;
+    pendingAction.value = { type: 'cancel-tab' };
+    showOwnerCodeModal.value = true;
+    return;
+  }
+  await performCancelTab();
+};
+
+const performCancelTab = async () => {
+  const st = cancelState.value;
+  if (!st) return;
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const result = await ipcRenderer.invoke('tabs:cancel', { businessId: user.businessId, tabId: st.tab.id, reason: st.reason });
+  if (!result.success) {
+    st.error = result.error;
+    return;
+  }
+  if (currentTab.value && currentTab.value.id === st.tab.id) resetOrder();
+  cancelState.value = null;
+  showSuccess(`Cancelled tab "${st.tab.tab_name}"`);
+  loadOpenTabs();
+};
+
+// Receipt reprint from order history
+const openReceipt = async (transaction) => {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const full = await ipcRenderer.invoke('pos:get-transaction', { businessId: user.businessId, transactionId: transaction.id });
+  if (!full) {
+    showError('Could not load that sale');
+    return;
+  }
+  lastTransaction.value = full;
+  receiptIsReprint.value = true;
+  showOrderHistory.value = false;
+  showReceipt.value = true;
+};
+
+// Refunds
+const refundPreview = computed(() => {
+  const st = refundState.value;
+  if (!st) return 0;
+  const items = st.info.items.reduce((sum, i) => sum + (st.qty[i.transactionItemId] || 0) * i.unitRefund, 0);
+  const extra = Number(st.extra) > 0 ? Number(st.extra) : 0;
+  return cents(Math.min(items + extra, st.info.remaining));
+});
+
+const openRefund = async (transaction) => {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const result = await ipcRenderer.invoke('refunds:get-refundable', { businessId: user.businessId, transactionId: transaction.id });
+  if (!result.success) {
+    showError(result.error);
+    return;
+  }
+  const firstMethod = (result.data.payments[0] || {}).method || 'cash';
+  // Order history would otherwise cover this dialog
+  showOrderHistory.value = false;
+  refundState.value = {
+    info: result.data,
+    qty: {},
+    extra: '',
+    method: refundMethods.some((m) => m.value === firstMethod) ? firstMethod : 'cash',
+    reason: '',
+    error: '',
+    busy: false
+  };
+};
+
+const stepRefund = (item, delta) => {
+  const st = refundState.value;
+  const next = Math.min(item.refundableQuantity, Math.max(0, (st.qty[item.transactionItemId] || 0) + delta));
+  st.qty = { ...st.qty, [item.transactionItemId]: next };
+};
+
+const submitRefund = async () => {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!isAdminRole(user.role)) {
+    ownerCodeMessage.value = `Refund $${refundPreview.value.toFixed(2)} on sale #${refundState.value.info.transactionId}`;
+    pendingAction.value = { type: 'refund' };
+    showOwnerCodeModal.value = true;
+    return;
+  }
+  await performRefund();
+};
+
+const performRefund = async () => {
+  const st = refundState.value;
+  if (!st) return;
+  st.busy = true;
+  st.error = '';
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const refund = {
+    items: Object.entries(st.qty)
+      .filter(([, q]) => q > 0)
+      .map(([id, q]) => ({ transactionItemId: Number(id), quantity: q })),
+    amount: Number(st.extra) > 0 ? Number(st.extra) : 0,
+    method: st.method,
+    reason: st.reason
+  };
+  const result = await ipcRenderer.invoke('refunds:create', {
+    businessId: user.businessId,
+    transactionId: st.info.transactionId,
+    userId: user.userId || user.id,
+    refund
+  });
+  st.busy = false;
+  if (!result.success) {
+    st.error = result.error;
+    return;
+  }
+  const refunded = result.data.refundedTotal - st.info.refundedTotal;
+  refundState.value = null;
+  showSuccess(`Refunded $${refunded.toFixed(2)}`);
+  await loadOrderHistory();
+  showOrderHistory.value = true;
+  loadDrawerStatus();
+};
+
 const loadOrderHistory = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -1293,7 +1868,7 @@ const toggleDarkMode = () => {
   document.documentElement.classList.toggle('dark', darkMode.value);
 };
 
-onMounted(() => {
+onMounted(async () => {
   loadData();
   
   // Load dark mode preference
@@ -1310,10 +1885,13 @@ onMounted(() => {
     loyaltySettings.value = JSON.parse(savedSettings);
   }
   
-  // Load tax rate from localStorage
-  const savedTaxRate = localStorage.getItem(`taxRate_${currentUser.businessId}`);
-  if (savedTaxRate) {
-    taxRate.value = parseFloat(savedTaxRate);
+  loadDrawerStatus();
+  loadOpenTabs();
+
+  // Tax rate is stored on the business in the database
+  const taxResult = await ipcRenderer.invoke('business:get-tax-rate', currentUser.businessId);
+  if (taxResult && taxResult.success) {
+    taxRate.value = taxResult.taxRate;
   }
 });
 
@@ -2625,5 +3203,378 @@ useKeyboardShortcuts({
   color: #ef4444;
   font-size: 0.875rem;
   margin-top: 0.5rem;
+}
+
+/* Modifier groups in the customize dialog */
+.modifier-group {
+  margin-bottom: 1.25rem;
+}
+.modifier-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.625rem;
+}
+.modifier-group-header h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.modifier-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+.modifier-badge.required {
+  color: #fb923c;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+}
+.modifier-badge.optional {
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+}
+.modifier-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.modifier-option.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.modifier-option-name {
+  flex: 1;
+  color: var(--text);
+}
+.modifier-option-price {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.modifier-errors {
+  margin-right: auto;
+  align-self: center;
+  font-size: 0.875rem;
+  color: #fb923c;
+}
+.cart-item-modifiers {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  margin: 0.125rem 0;
+}
+
+/* Order type */
+.order-type-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.order-type-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.order-type-btn {
+  padding: 0.45rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 7px;
+  transition: background-color 150ms, color 150ms;
+}
+.order-type-btn:hover {
+  color: var(--text);
+}
+.order-type-btn.active {
+  color: #fff;
+  background: var(--accent);
+}
+.table-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.table-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.checkout-order-type {
+  margin: -0.25rem 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+.receipt-modifiers {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+/* Drawer status */
+.drawer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: auto;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  text-decoration: none;
+}
+.drawer-pill.open {
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.08);
+}
+.drawer-pill.closed {
+  color: var(--text-muted);
+}
+.drawer-pill:hover {
+  border-color: var(--border-strong);
+}
+.drawer-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* Refunds and receipt reprints */
+.history-refunded {
+  margin-right: auto;
+  font-size: 0.8125rem;
+  color: #fbbf24;
+}
+.btn-ghost-small {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border) !important;
+}
+.btn-ghost-small:hover {
+  border-color: var(--border-strong) !important;
+}
+.receipt-reprint {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 999px;
+}
+.receipt-refunds {
+  color: #fbbf24;
+}
+.refund-summary {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.refund-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.refund-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.refund-item-name {
+  color: var(--text);
+  font-weight: 500;
+}
+.refund-item-meta {
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+.refund-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.refund-stepper button {
+  width: 32px;
+  height: 32px;
+  font-size: 1.125rem;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.refund-stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.refund-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+  border-radius: 10px;
+  color: var(--text);
+}
+.refund-total strong {
+  font-size: 1.25rem;
+  color: #fb923c;
+}
+.refund-error {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #f87171;
+}
+
+/* The owner-code prompt always sits above whatever dialog asked for it */
+.modal-overlay.owner-code-overlay {
+  z-index: 1100;
+}
+
+/* Open tabs */
+.tabs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.tabs-btn:hover {
+  border-color: var(--border-strong);
+}
+.tabs-count {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+}
+.current-tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.75rem 1.5rem 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+  border-radius: 10px;
+}
+.current-tab strong {
+  color: #fb923c;
+}
+.btn-hold {
+  padding: 0 1rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.btn-hold:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.btn-hold:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.tab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.tab-row-name {
+  font-weight: 600;
+  color: var(--text);
+}
+.tab-row-meta {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+.tab-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tab-row-total {
+  margin-right: 0.5rem;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.tab-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-faint);
+}
+.tab-error {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #f87171;
+}
+
+.link-btn {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.link-btn:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+.cancel-tab-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.btn-hold {
+  flex: 1;
 }
 </style>

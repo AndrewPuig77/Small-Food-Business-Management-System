@@ -98,6 +98,9 @@
             <div v-if="order.table_number" class="table-number">
               Table {{ order.table_number }}
             </div>
+            <div v-if="order.tab_name && order.tab_name !== 'Table ' + order.table_number" class="table-number tab-name">
+              {{ order.tab_name }}
+            </div>
           </div>
 
           <div class="order-items">
@@ -157,6 +160,7 @@
               Complete
             </button>
             <button
+              v-if="isManager"
               @click="deleteOrder(order.id)"
               class="btn-action btn-delete"
               title="Delete Order"
@@ -179,6 +183,11 @@ import Sidebar from '../components/Sidebar.vue';
 import { useModals } from '../composables/useModals.js';
 
 const { ipcRenderer } = window.electron;
+
+// Deleting an order removes the sale record, so only managers can do it
+const isManager = ['owner', 'manager', 'admin'].includes(
+  String((JSON.parse(localStorage.getItem('currentUser') || '{}')).role || '').toLowerCase()
+);
 
 // Modal utilities
 const { showConfirm, showError, showSuccess } = useModals();
