@@ -45,9 +45,11 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 
 ### Point of Sale
 - Fast checkout with keyboard shortcuts
-- Cash, card, and digital payments
-- Split bills and custom discounts
-- Receipt generation and transaction history
+- Cash, card, and digital payments, with split bills and discounts
+- **Modifier groups** per item (e.g. Size: pick 1, Toppings: up to 3)
+- Dine in, takeout, or delivery, with table numbers
+- **Open tabs**: hold an order, send it to the kitchen, pay later
+- Partial refunds by item or amount, and receipt reprints
 
 </td>
 <td width="50%" valign="top">
@@ -85,9 +87,9 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 
 ### Inventory Control
 - Stock levels with minimum thresholds
+- **Recipes**: selling an item takes its ingredients out of stock (voids put them back)
 - Low-stock and reorder alerts
-- Quick adjustments and out-of-stock marking
-- Supplier management
+- Quick adjustments, out-of-stock marking, and suppliers
 
 </td>
 <td valign="top">
@@ -110,22 +112,23 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 </td>
 <td valign="top">
 
-### Reports
+### Reports & Cash
 - Sales, expenses, and profit and loss
-- Employee performance and inventory reports
-- Date-range filtering
+- **Cash drawer**: opening float, pay-ins/outs, count and over/short at close
+- **End-of-day report** by payment method, order type, voids, and refunds
 - Export to **PDF** and **Excel**
 
 </td>
 </tr>
 </table>
 
-### Security
+### Security & Data Safety
 - bcrypt password hashing and signed session tokens (JWT), with a random signing secret generated per installation
-- Role-based access, checked against the verified session rather than client-side state
+- **Permissions enforced in the backend**: every request needs a signed-in user; voids, refunds, and menu changes need a manager or a fresh owner-code approval; backups, settings, and staff management are manager-only
+- **Audit log** of sign-ins, voids, refunds, discounts, price changes, drawer activity, and settings
 - All database queries use bound parameters, never string-built SQL
-- The UI runs with Node.js disabled and context isolation on, and reaches the backend only through a minimal preload bridge
-- Owner-code verification for sensitive actions
+- The UI runs with Node.js disabled and context isolation on, behind a minimal preload bridge
+- **Backups**: automatic daily backups, export to any drive, and safe restore (a copy of the current data is kept first)
 
 ---
 
@@ -156,9 +159,27 @@ For detailed setup and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)
 | `npm run build` | Build for production |
 | `npm run preview` | Preview the production build |
 | `npm run lint` | Lint the codebase |
-| `npm test` | Run the test suite (Jest) |
+| `npm test` | Run the automated tests (Jest, see [Testing](#testing)) |
 | `npm run dist` | Build and package installers for the current OS |
 | `npm run dist:win` / `dist:mac` / `dist:linux` | Package for a specific platform |
+
+---
+
+## Testing
+
+`npm test` runs the integration tests in `tests/integration` against a real (temporary) SQLite database. Each test file gets its own database.
+
+| Suite | Covers |
+| --- | --- |
+| `existing-services` | Auth, menu, inventory, employees, POS, and other core services |
+| `modifiers` | Modifier groups, selection rules, and checkout validation |
+| `order-type` | Dine in / takeout / delivery, tables, and the stored tax rate |
+| `cash-drawer` | Drawer sessions, pay-ins/outs, variance, and end-of-day reports |
+| `refunds` | Partial refunds, limits, and their effect on the drawer and reports |
+| `tabs` | Holding, updating, paying, and cancelling open tabs |
+| `backups` | Automatic, manual, export, and restore, including bad files |
+| `access-control` | Backend permissions, owner-code approvals, password resets, audit log |
+| `recipes` | Ingredient deduction on sale, voids, tabs, and cleanup |
 
 ---
 
@@ -304,6 +325,15 @@ Full schema: [docs/design/database-schema.md](docs/design/database-schema.md)
 - [x] Database migrations for schema updates
 - [x] Real-time data synchronization
 - [x] POS keyboard shortcuts
+- [x] Modifier groups per menu item
+- [x] Order type and table number at the POS
+- [x] Cash drawer sessions and end-of-day reports
+- [x] Partial refunds and receipt reprints
+- [x] Open tabs and held orders
+- [x] Automatic backups, export, and restore
+- [x] Audit log and permission checks in the backend
+- [x] Recipe-based stock deduction
+- [x] Automated test suite (`npm test`)
 
 ---
 
