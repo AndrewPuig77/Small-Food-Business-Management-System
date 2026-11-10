@@ -98,6 +98,8 @@ Food Business Manager is a cross-platform **Electron + Vue 3** desktop applicati
 - Items, categories, and descriptions
 - Pricing and availability controls
 - One-click out-of-stock toggles
+- Reusable **modifier groups** with min/max choices and per-option prices
+- Per-item **recipes** linking menu items to inventory ingredients
 
 </td>
 </tr>
@@ -246,17 +248,25 @@ src/
 │   ├── database/
 │   │   ├── database.js            # SQLite init, migrations, batched saves
 │   │   └── sql.js                 # sql`` tag for parameterized queries
-│   ├── database/
+│   ├── security/
+│   │   ├── accessControl.js       # Per-handler permission rules
+│   │   └── auditHooks.js          # Records sensitive actions to the audit log
 │   ├── services/                  # Business logic layer
 │   │   ├── analyticsService.js
 │   │   ├── announcementService.js
+│   │   ├── auditService.js        # Audit log reads and writes
 │   │   ├── authService.js
+│   │   ├── backupService.js       # Automatic/manual backups, export, restore
+│   │   ├── cashDrawerService.js   # Drawer sessions, pay-ins/outs, end-of-day
 │   │   ├── dashboardService.js
 │   │   ├── employeeService.js
 │   │   ├── expenseService.js
 │   │   ├── inventoryService.js
 │   │   ├── menuService.js
-│   │   ├── posService.js
+│   │   ├── modifierService.js     # Modifier groups and options
+│   │   ├── posService.js          # Checkout, order types, open tabs
+│   │   ├── recipeService.js       # Ingredient deduction from stock
+│   │   ├── refundService.js       # Partial and full refunds
 │   │   ├── reservationService.js
 │   │   ├── scheduleService.js
 │   │   ├── shiftSwapService.js
@@ -268,12 +278,16 @@ src/
 │   ├── components/
 │   │   ├── dashboard/             # Dashboard widgets (SalesChart, ProfitPulse, LiveOrderFeed, …)
 │   │   ├── AlertModal.vue
+│   │   ├── BackupsPanel.vue       # Backup and restore controls (Profile)
 │   │   ├── ConfirmModal.vue
+│   │   ├── DrawerReport.vue       # End-of-day drawer report
 │   │   ├── LoadingSpinner.vue
-│   │   └── Sidebar.vue
-│   ├── composables/               # useModals, useOwnerVerification
+│   │   ├── OwnerCodeModal.vue
+│   │   ├── Sidebar.vue
+│   │   └── Toast.vue
+│   ├── composables/               # useModals, useOwnerVerification, useAutoRefresh, useToast, …
 │   ├── router/
-│   ├── views/                     # Dashboard, POS, Menu, Inventory, Employees, Reports, …
+│   ├── views/                     # Dashboard, POS, Menu, Inventory, Cash Drawer, Audit Log, Reports, …
 │   └── App.vue
 └── main/
     ├── main.js                    # Electron main process
@@ -281,7 +295,10 @@ src/
 
 config/                            # Vite and build config
 docs/                              # Requirements, design, and specifications
-tests/                             # Test suite
+tests/
+├── integration/                   # Jest integration tests, one file per feature
+├── helpers/                       # Temporary test database setup
+└── mocks/                         # Electron stub for running outside the app
 database/                          # Local SQLite files (gitignored)
 ```
 
@@ -295,19 +312,25 @@ database/                          # Local SQLite files (gitignored)
 | Table | Purpose |
 | --- | --- |
 | `businesses` | Business information |
-| `users` | Authentication |
-| `employees` | Employee profiles |
-| `schedules` | Work schedules |
+| `users`, `sessions` | Authentication |
+| `employees`, `employee_notes`, `employee_documents`, `emergency_contacts` | Employee profiles |
+| `employee_schedules`, `shifts`, `employee_availability` | Work schedules |
 | `time_logs` | Clock in/out records |
-| `tasks` | Task assignments |
+| `employee_tasks` | Task assignments |
 | `announcements` | Staff communications |
-| `menu_items` | Menu catalog |
-| `inventory` | Stock tracking |
-| `transactions` | Sales records |
-| `customers` | Customer database |
-| `expenses` | Expense tracking |
 | `time_off_requests` | Leave requests |
-| `shift_swaps` | Schedule exchanges |
+| `shift_swap_requests` | Schedule exchanges |
+| `menu_categories`, `menu_items` | Menu catalog |
+| `modifier_groups`, `modifier_options`, `menu_item_modifier_groups` | Item modifiers |
+| `menu_item_recipes` | Ingredients used per menu item |
+| `inventory_categories`, `inventory_items`, `inventory_transactions`, `inventory_waste`, `suppliers` | Stock tracking |
+| `transactions`, `transaction_items`, `payment_methods` | Sales records, including open tabs |
+| `refunds` | Refunds against completed sales |
+| `cash_drawer_sessions`, `cash_drawer_movements` | Cash drawer shifts and pay-ins/outs |
+| `customers` | Customer database |
+| `reservations` | Table reservations |
+| `expenses`, `recurring_expenses` | Expense tracking |
+| `audit_log` | Record of sensitive actions |
 
 Full schema: [docs/design/database-schema.md](docs/design/database-schema.md)
 
