@@ -16,6 +16,8 @@ import ReportsView from '../views/ReportsView.vue';
 import ExpensesView from '../views/ExpensesView.vue';
 import ReservationsView from '../views/ReservationsView.vue';
 import KitchenView from '../views/KitchenView.vue';
+import CashDrawerView from '../views/CashDrawerView.vue';
+import AuditLogView from '../views/AuditLogView.vue';
 
 const routes = [
   {
@@ -84,6 +86,18 @@ const routes = [
     path: '/pos',
     name: 'POS',
     component: POSView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/audit-log',
+    name: 'AuditLog',
+    component: AuditLogView,
+    meta: { requiresAuth: true, requiresRole: ['owner', 'manager', 'admin'] }
+  },
+  {
+    path: '/cash-drawer',
+    name: 'CashDrawer',
+    component: CashDrawerView,
     meta: { requiresAuth: true }
   },
   {

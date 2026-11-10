@@ -51,6 +51,7 @@
                 @change="saveTaxRate"
               />
               <p class="text-gray-400 text-xs mt-1">Applied to all POS transactions</p>
+              <p v-if="taxRateError" class="text-red-400 text-sm mt-1" role="alert">{{ taxRateError }}</p>
             </div>
 
             <div v-if="taxRateSuccess" class="p-3 bg-green-900/50 border border-green-700 text-green-300 rounded-lg text-sm">
@@ -91,6 +92,9 @@
             </button>
           </div>
         </div>
+
+        <!-- Backups (owner / manager) -->
+        <BackupsPanel v-if="['owner', 'manager', 'admin'].includes(String(currentUser?.role || '').toLowerCase())" />
       </div>
     </div>
   </div>
@@ -99,6 +103,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import BackupsPanel from '../components/BackupsPanel.vue';
 
 const { ipcRenderer } = window.electron;
 
@@ -134,22 +139,31 @@ onMounted(() => {
   if (user) {
     currentUser.value = JSON.parse(user);
     
-    // Load tax rate from localStorage
-    const savedTaxRate = localStorage.getItem(`taxRate_${currentUser.value.businessId}`);
-    if (savedTaxRate) {
-      taxRate.value = parseFloat(savedTaxRate);
-    }
+    // Tax rate is stored on the business in the database
+    window.electron.ipcRenderer.invoke('business:get-tax-rate', currentUser.value.businessId).then((result) => {
+      if (result && result.success) taxRate.value = result.taxRate;
+    });
   }
 });
 
-const saveTaxRate = () => {
-  if (currentUser.value) {
-    localStorage.setItem(`taxRate_${currentUser.value.businessId}`, taxRate.value.toString());
-    taxRateSuccess.value = 'Tax rate saved successfully!';
-    setTimeout(() => {
-      taxRateSuccess.value = '';
-    }, 3000);
+const taxRateError = ref('');
+
+const saveTaxRate = async () => {
+  if (!currentUser.value) return;
+  taxRateError.value = '';
+  const result = await window.electron.ipcRenderer.invoke('business:update-tax-rate', {
+    businessId: currentUser.value.businessId,
+    taxRate: taxRate.value
+  });
+  if (!result.success) {
+    taxRateError.value = result.error;
+    return;
   }
+  taxRate.value = result.taxRate;
+  taxRateSuccess.value = 'Tax rate saved successfully!';
+  setTimeout(() => {
+    taxRateSuccess.value = '';
+  }, 3000);
 };
 
 const saveOwnerCode = async () => {
