@@ -617,6 +617,120 @@ const createTables = () => {
     )
   `);
 
+  // Modifier groups (e.g. "Size": pick 1; "Toppings": pick up to 3) and
+  // their options. Groups are attached to menu items through
+  // menu_item_modifier_groups, so one group can be reused across items.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS modifier_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      min_select INTEGER NOT NULL DEFAULT 0,
+      max_select INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS modifier_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      group_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      price DECIMAL(10,2) NOT NULL DEFAULT 0,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (group_id) REFERENCES modifier_groups(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS menu_item_modifier_groups (
+      menu_item_id INTEGER NOT NULL,
+      group_id INTEGER NOT NULL,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (menu_item_id, group_id),
+      FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (group_id) REFERENCES modifier_groups(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Cash drawer sessions: one per shift/day, from opening float to count.
+  // Times use the same local 'YYYY-MM-DD HH:MM:SS' format as transactions.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS cash_drawer_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      opened_by INTEGER NOT NULL,
+      opened_at TEXT NOT NULL,
+      opening_float DECIMAL(10,2) NOT NULL DEFAULT 0,
+      closed_by INTEGER,
+      closed_at TEXT,
+      expected_cash DECIMAL(10,2),
+      counted_cash DECIMAL(10,2),
+      variance DECIMAL(10,2),
+      closing_notes TEXT,
+      report_json TEXT,
+      FOREIGN KEY (business_id) REFERENCES businesses(id)
+    )
+  `);
+
+  // Cash added to (pay in) or taken from (pay out) the drawer outside of sales
+  db.run(`
+    CREATE TABLE IF NOT EXISTS cash_drawer_movements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER NOT NULL,
+      business_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      reason TEXT,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (session_id) REFERENCES cash_drawer_sessions(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Refunds against a completed sale: whole or partial, by item or amount.
+  // items_json: [{ transactionItemId, name, quantity, amount }]
+  db.run(`
+    CREATE TABLE IF NOT EXISTS refunds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      transaction_id INTEGER NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      method_type TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      items_json TEXT,
+      refunded_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+    )
+  `);
+
+  // Recipes: how much of each inventory item one menu item uses
+  db.run(`
+    CREATE TABLE IF NOT EXISTS menu_item_recipes (
+      menu_item_id INTEGER NOT NULL,
+      inventory_item_id INTEGER NOT NULL,
+      quantity DECIMAL(10,3) NOT NULL,
+      PRIMARY KEY (menu_item_id, inventory_item_id),
+      FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Audit log of sensitive actions (append-only from the app's side)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      details_json TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+
   // Run migrations for existing databases
   runMigrations();
   
@@ -748,6 +862,47 @@ const runMigrations = () => {
     console.error('Owner code migration error:', error);
   }
 
+  // Link sales and refunds to the cash drawer session that was open at the
+  // time, so a session's cash is counted exactly (not by timestamp).
+  try {
+    ['transactions', 'refunds'].forEach((table) => {
+      const info = db.exec(`PRAGMA table_info(${table})`);
+      if (info.length > 0) {
+        const columns = info[0].values.map((row) => row[1]);
+        if (!columns.includes('drawer_session_id')) {
+          db.run(`ALTER TABLE ${table} ADD COLUMN drawer_session_id INTEGER`);
+          saveDatabase();
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Drawer session migration error:', error);
+  }
+
+  // Open tabs: a sale saved (and sent to the kitchen) before it is paid.
+  try {
+    const info = db.exec('PRAGMA table_info(transactions)');
+    if (info.length > 0) {
+      const columns = info[0].values.map((row) => row[1]);
+      if (!columns.includes('tab_name')) db.run('ALTER TABLE transactions ADD COLUMN tab_name TEXT');
+      if (!columns.includes('tab_opened_at')) db.run('ALTER TABLE transactions ADD COLUMN tab_opened_at TEXT');
+      saveDatabase();
+    }
+  } catch (error) {
+    console.error('Open tabs migration error:', error);
+  }
+
+  // Whether a sale's ingredients were taken from stock (0 no, 1 yes, 2 put back)
+  try {
+    const info = db.exec('PRAGMA table_info(transactions)');
+    if (info.length > 0 && !info[0].values.map((row) => row[1]).includes('stock_deducted')) {
+      db.run('ALTER TABLE transactions ADD COLUMN stock_deducted INTEGER DEFAULT 0');
+      saveDatabase();
+    }
+  } catch (error) {
+    console.error('Stock deduction migration error:', error);
+  }
+
   // Add permissions column to employees table
   try {
     const employeesResult = db.exec('PRAGMA table_info(employees)');
@@ -765,10 +920,52 @@ const runMigrations = () => {
 };
 
 // Export database instance and helper methods
+// Check that a file's contents are a database from this app. Returns a short
+// summary; throws with a readable message if it isn't usable.
+const inspectDatabase = (buffer) => {
+  const header = Buffer.from(buffer.slice(0, 16)).toString('latin1');
+  if (header !== 'SQLite format 3\u0000') {
+    throw new Error('This file is not a Food Business Manager backup');
+  }
+  let candidate;
+  try {
+    candidate = new SQL.Database(buffer);
+    const tables = candidate.exec("SELECT name FROM sqlite_master WHERE type = 'table'");
+    const names = tables.length ? tables[0].values.map((r) => r[0]) : [];
+    const required = ['businesses', 'users', 'menu_items', 'transactions'];
+    const missing = required.filter((t) => !names.includes(t));
+    if (missing.length) throw new Error('This file is not a Food Business Manager backup');
+    const business = candidate.exec('SELECT name FROM businesses ORDER BY id LIMIT 1');
+    const sales = candidate.exec("SELECT COUNT(*) FROM transactions WHERE status = 'completed'");
+    return {
+      businessName: business.length && business[0].values.length ? business[0].values[0][0] : null,
+      sales: sales.length ? sales[0].values[0][0] : 0
+    };
+  } catch (error) {
+    if (/not a Food Business Manager backup/.test(error.message)) throw error;
+    throw new Error('This backup file is damaged and cannot be read');
+  } finally {
+    if (candidate) candidate.close();
+  }
+};
+
+// Swap the live database for the given contents (used by restore).
+const replaceDatabase = (buffer) => {
+  inspectDatabase(buffer);
+  const previous = db;
+  db = new SQL.Database(buffer);
+  wrappedDb = wrapDb(db);
+  createTables(); // bring older backups up to the current schema
+  writeToDisk();
+  if (previous) previous.close();
+};
+
 module.exports = {
   getDb: () => wrappedDb,
   saveDatabase,
   flushDatabase,
+  inspectDatabase,
+  replaceDatabase,
   
   // Check if setup is complete (any users exist)
   isSetupComplete() {

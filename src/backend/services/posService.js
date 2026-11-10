@@ -1,5 +1,32 @@
 const { getDb, saveDatabase } = require('../database/database');
 const { sql } = require('../database/sql');
+const ModifierService = require('./modifierService');
+
+const ORDER_TYPES = ['dine-in', 'takeout', 'delivery'];
+
+// The cash drawer session open right now, if any
+const openDrawerSessionId = (businessId) => {
+  const r = getDb().exec(sql`SELECT id FROM cash_drawer_sessions WHERE business_id = ${businessId} AND status = 'open' ORDER BY id DESC LIMIT 1`);
+  return r.length && r[0].values.length ? r[0].values[0][0] : null;
+};
+
+const round2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100;
+const isCash = (methodType) => String(methodType || '').toLowerCase() === 'cash';
+
+// Record what each payment actually covered. When payments add up to more
+// than the total, the difference is change handed back, so it comes off the
+// cash payments (latest first). Card/mobile amounts are left as entered.
+const normalizePayments = (payments, total) => {
+  const list = (payments || []).map((p) => ({ ...p, amount: round2(p.amount) }));
+  let overage = round2(list.reduce((sum, p) => sum + p.amount, 0) - round2(total));
+  for (let i = list.length - 1; i >= 0 && overage > 0; i--) {
+    if (!isCash(list[i].methodType)) continue;
+    const reduce = Math.min(list[i].amount, overage);
+    list[i].amount = round2(list[i].amount - reduce);
+    overage = round2(overage - reduce);
+  }
+  return list.filter((p) => p.amount > 0);
+};
 
 
 // ==================== CUSTOMERS ====================
@@ -96,6 +123,28 @@ const updateCustomerPoints = (businessId, customerId, pointsChange, totalSpent) 
   return getCustomerById(businessId, customerId);
 };
 
+// ==================== BUSINESS SETTINGS ====================
+
+// Sales tax rate (percent) stored on the business. Single source of truth
+// for every till; previously it lived only in each browser's localStorage.
+const getTaxRate = (businessId) => {
+  const result = getDb().exec(sql`SELECT tax_rate FROM businesses WHERE id = ${businessId}`);
+  if (!result.length || !result[0].values.length) throw new Error('Business not found');
+  const rate = result[0].values[0][0];
+  return rate === null || rate === undefined ? 7.5 : Number(rate);
+};
+
+const updateTaxRate = (businessId, taxRate) => {
+  const rate = Number(taxRate);
+  if (taxRate === '' || taxRate === null || !Number.isFinite(rate) || rate < 0 || rate > 100) {
+    throw new Error('Tax rate must be a number between 0 and 100');
+  }
+  getTaxRate(businessId); // throws if the business doesn't exist
+  getDb().run(sql`UPDATE businesses SET tax_rate = ${rate} WHERE id = ${businessId}`);
+  saveDatabase();
+  return rate;
+};
+
 // ==================== TRANSACTIONS ====================
 
 // Create new transaction
@@ -105,6 +154,30 @@ const createTransaction = (businessId, transactionData) => {
   
   const pointsEarned = transactionData.pointsEarned || 0;
   const pointsRedeemed = transactionData.pointsRedeemed || 0;
+
+  // Order type and table. Table numbers only apply to dine-in orders.
+  const orderType = transactionData.orderType || 'dine-in';
+  if (!ORDER_TYPES.includes(orderType)) {
+    throw new Error(`Invalid order type: ${orderType}`);
+  }
+  const rawTable = transactionData.tableNumber == null ? '' : String(transactionData.tableNumber).trim();
+  if (rawTable.length > 20) {
+    throw new Error('Table number is too long');
+  }
+  const tableNumber = orderType === 'dine-in' && rawTable ? rawTable : null;
+
+  // Check modifier selections before writing anything, so an invalid order
+  // is rejected as a whole. Items send `modifierOptionIds`; the stored
+  // modifiers (names and prices) come from the database, not the client.
+  const itemModifiers = (transactionData.items || []).map((item) => {
+    const menuItemId = item.menuItemId || item.menu_item_id;
+    const optionIds = Array.isArray(item.modifierOptionIds) ? item.modifierOptionIds : [];
+    const check = ModifierService.validateSelection(businessId, menuItemId, optionIds);
+    if (!check.valid) {
+      throw new Error(`Invalid options for ${item.name || 'item #' + menuItemId}: ${check.errors.join('; ')}`);
+    }
+    return check.modifiers.length ? check.modifiers : null;
+  });
 
   // Generate local datetime string for created_at
   const now = new Date();
@@ -135,23 +208,27 @@ const createTransaction = (businessId, transactionData) => {
   const query = sql`
     INSERT INTO transactions (
       business_id, cashier_id, customer_id, subtotal, tax, discount, tip_amount, total, 
-      points_earned, points_redeemed, status, notes, kitchen_status, daily_order_number, created_at
+      points_earned, points_redeemed, status, notes, kitchen_status, daily_order_number, created_at,
+      order_type, table_number, drawer_session_id
     ) VALUES (
       ${businessId},
       ${transactionData.cashierId},
       ${transactionData.customerId || null},
-      ${transactionData.subtotal},
-      ${transactionData.tax || 0},
-      ${transactionData.discount || 0},
-      ${transactionData.tipAmount || 0},
-      ${transactionData.total},
+      ${round2(transactionData.subtotal)},
+      ${round2(transactionData.tax)},
+      ${round2(transactionData.discount)},
+      ${round2(transactionData.tipAmount)},
+      ${round2(transactionData.total)},
       ${pointsEarned},
       ${pointsRedeemed},
-      ${transactionData.status || 'completed'},
+      'completed',
       ${transactionData.notes},
       ${transactionData.kitchenStatus || 'pending'},
       ${nextDailyOrderNumber},
-      ${localDateTime}
+      ${localDateTime},
+      ${orderType},
+      ${tableNumber},
+      ${openDrawerSessionId(businessId)}
     )
   `;
   
@@ -190,12 +267,12 @@ const createTransaction = (businessId, transactionData) => {
       console.log('[POS] createTransaction - items to insert for transactionId=' + transactionId + ':', JSON.stringify(transactionData.items));
     } catch (e) {}
 
-    transactionData.items.forEach(item => {
+    transactionData.items.forEach((item, index) => {
       // Defensive checks
       if (!item.menuItemId && (item.menu_item_id === undefined || item.menu_item_id === null)) {
         try { console.warn('[POS] createTransaction - missing menuItemId for item', JSON.stringify(item)); } catch (e) {}
       }
-      const modifiersJson = item.modifiers ? JSON.stringify(item.modifiers) : null;
+      const modifiersJson = itemModifiers[index] ? JSON.stringify(itemModifiers[index]) : null;
       db.run(sql`
         INSERT INTO transaction_items (
           transaction_id, menu_item_id, quantity, unit_price, total_price, notes, modifiers
@@ -203,8 +280,8 @@ const createTransaction = (businessId, transactionData) => {
           ${transactionId},
           ${item.menuItemId || item.menu_item_id || null},
           ${item.quantity || 1},
-          ${item.unitPrice || item.unit_price || 0},
-          ${item.totalPrice || item.total_price || 0},
+          ${round2(item.unitPrice || item.unit_price || 0)},
+          ${round2(item.totalPrice || item.total_price || 0)},
           ${item.notes},
           ${modifiersJson}
         )
@@ -224,8 +301,9 @@ const createTransaction = (businessId, transactionData) => {
   }
   
   // Add payment methods
-  if (transactionData.payments && transactionData.payments.length > 0) {
-    transactionData.payments.forEach(payment => {
+  const payments = normalizePayments(transactionData.payments, transactionData.total);
+  if (payments.length > 0) {
+    payments.forEach(payment => {
       db.run(sql`
         INSERT INTO payment_methods (
           transaction_id, method_type, amount, reference_number
@@ -245,7 +323,10 @@ const createTransaction = (businessId, transactionData) => {
     const netPoints = pointsEarned - pointsRedeemed;
     updateCustomerPoints(businessId, transactionData.customerId, netPoints, transactionData.total);
   }
-  
+
+  // Take the items' ingredients out of inventory
+  require('./recipeService').deductForSale(businessId, transactionId, transactionData.cashierId);
+
   return getTransactionById(businessId, transactionId);
 };
 
@@ -323,7 +404,11 @@ const getTransactionById = (businessId, transactionId) => {
       return payment;
     });
   }
-  
+
+  // Refunds against this sale (shown on reprinted receipts)
+  transaction.refunds = require('./refundService').getRefunds(businessId, transactionId);
+  transaction.refunded_amount = round2(transaction.refunds.reduce((sum, r) => sum + r.amount, 0));
+
   return transaction;
 };
 
@@ -334,12 +419,13 @@ const getRecentTransactions = (businessId, limit = 50) => {
     SELECT 
       t.*,
       u.full_name as cashier_name,
-      c.name as customer_name
+      c.name as customer_name,
+      (SELECT COALESCE(SUM(r.amount), 0) FROM refunds r WHERE r.transaction_id = t.id) as refunded_amount
     FROM transactions t
     LEFT JOIN users u ON t.cashier_id = u.id
     LEFT JOIN customers c ON t.customer_id = c.id
     WHERE t.business_id = ${businessId}
-    ORDER BY t.created_at DESC
+    ORDER BY t.created_at DESC, t.id DESC
     LIMIT ${limit}
   `;
   
@@ -444,7 +530,15 @@ const voidTransaction = (businessId, transactionId, voidReason, voidedBy) => {
   if (transaction.status === 'voided') {
     throw new Error('Transaction is already voided');
   }
+
+  // A sale with refunds has already returned money; refund the rest instead
+  if (transaction.refunds && transaction.refunds.length) {
+    throw new Error('This sale has refunds. Refund the remaining amount instead of voiding.');
+  }
   
+  // Put the sale's ingredients back into inventory
+  require('./recipeService').restoreForVoid(businessId, transactionId, voidedBy);
+
   // Update transaction status
   db.run(sql`
     UPDATE transactions 
@@ -556,6 +650,7 @@ const getOrders = (businessId) => {
     WHERE business_id = ${businessId}
       AND kitchen_status IS NOT NULL
       AND kitchen_status != 'completed'
+      AND status NOT IN ('voided', 'cancelled')
     ORDER BY created_at DESC
   `;
   
@@ -797,7 +892,232 @@ function ensureKitchenColumns(db) {
   }
 }
 
+// ==================== OPEN TABS ====================
+//
+// A tab is a sale saved with status 'open': it appears on the kitchen display
+// straight away and is paid later. Its items can be changed until it is
+// closed. Closing completes it like a normal sale (time of sale = when it was
+// paid, so reports and the cash drawer count it then). Open tabs carry no
+// totals, so they never show up in sales figures.
+
+const localNowString = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+
+const tabOrderMeta = (data) => {
+  const orderType = data.orderType || 'dine-in';
+  if (!ORDER_TYPES.includes(orderType)) throw new Error(`Invalid order type: ${orderType}`);
+  const rawTable = data.tableNumber == null ? '' : String(data.tableNumber).trim();
+  if (rawTable.length > 20) throw new Error('Table number is too long');
+  return { orderType, tableNumber: orderType === 'dine-in' && rawTable ? rawTable : null };
+};
+
+const tabName = (name) => {
+  const text = String(name || '').trim();
+  if (!text) throw new Error('Give the tab a name');
+  if (text.length > 40) throw new Error('Tab name is too long');
+  return text;
+};
+
+// Validate items and their modifiers; returns rows ready to insert.
+const tabItems = (businessId, items) => {
+  if (!Array.isArray(items) || items.length === 0) throw new Error('A tab needs at least one item');
+  return items.map((item) => {
+    const menuItemId = item.menuItemId || item.menu_item_id;
+    const quantity = Number.parseInt(item.quantity, 10);
+    if (!menuItemId) throw new Error('Item is missing');
+    if (!quantity || quantity < 1) throw new Error('Quantities must be at least 1');
+    const optionIds = Array.isArray(item.modifierOptionIds) ? item.modifierOptionIds : [];
+    const check = ModifierService.validateSelection(businessId, menuItemId, optionIds);
+    if (!check.valid) throw new Error(`Invalid options for ${item.name || 'item #' + menuItemId}: ${check.errors.join('; ')}`);
+    const unitPrice = round2(item.unitPrice || item.unit_price || 0);
+    return {
+      menuItemId,
+      quantity,
+      unitPrice,
+      totalPrice: round2(unitPrice * quantity),
+      notes: item.notes || null,
+      modifiers: check.modifiers.length ? JSON.stringify(check.modifiers) : null
+    };
+  });
+};
+
+const replaceTabItems = (db, tabId, rowsToInsert) => {
+  db.run(sql`DELETE FROM transaction_items WHERE transaction_id = ${tabId}`);
+  rowsToInsert.forEach((r) => {
+    db.run(sql`
+      INSERT INTO transaction_items (transaction_id, menu_item_id, quantity, unit_price, total_price, notes, modifiers)
+      VALUES (${tabId}, ${r.menuItemId}, ${r.quantity}, ${r.unitPrice}, ${r.totalPrice}, ${r.notes}, ${r.modifiers})
+    `);
+  });
+};
+
+const itemSignature = (rowsList) =>
+  rowsList.map((r) => `${r.menu_item_id || r.menuItemId}:${r.quantity}:${r.modifiers || ''}:${r.notes || ''}`).sort().join('|');
+
+const getTabRow = (businessId, tabId) => {
+  const r = getDb().exec(sql`SELECT * FROM transactions WHERE id = ${tabId} AND business_id = ${businessId}`);
+  if (!r.length || !r[0].values.length) return null;
+  return Object.fromEntries(r[0].columns.map((c, i) => [c, r[0].values[0][i]]));
+};
+
+const requireOpenTab = (businessId, tabId) => {
+  const tab = getTabRow(businessId, tabId);
+  if (!tab) throw new Error('Tab not found');
+  if (tab.status !== 'open') throw new Error('This tab is no longer open');
+  return tab;
+};
+
+const openTab = (businessId, userId, data) => {
+  const db = getDb();
+  ensureKitchenColumns(db);
+  const name = tabName(data.name);
+  const { orderType, tableNumber } = tabOrderMeta(data);
+  const items = tabItems(businessId, data.items);
+  const now = localNowString();
+
+  const maxRes = db.exec(sql`SELECT COALESCE(MAX(daily_order_number), 0) FROM transactions WHERE business_id = ${businessId} AND DATE(created_at) = ${now.slice(0, 10)}`);
+  const dailyNumber = (Number(maxRes.length ? maxRes[0].values[0][0] : 0) || 0) + 1;
+  const subtotal = round2(items.reduce((s, i) => s + i.totalPrice, 0));
+
+  db.run(sql`
+    INSERT INTO transactions (
+      business_id, cashier_id, customer_id, subtotal, tax, discount, tip_amount, total,
+      points_earned, points_redeemed, status, kitchen_status, daily_order_number, created_at,
+      order_type, table_number, tab_name, tab_opened_at
+    ) VALUES (
+      ${businessId}, ${userId}, ${data.customerId || null}, ${subtotal}, 0, 0, 0, 0,
+      0, 0, 'open', 'pending', ${dailyNumber}, ${now},
+      ${orderType}, ${tableNumber}, ${name}, ${now}
+    )
+  `);
+  const tabId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
+  replaceTabItems(db, tabId, items);
+  saveDatabase();
+  return getTransactionById(businessId, tabId);
+};
+
+// Replace a tab's items (and optionally its name, order type, table or
+// customer). If the items changed, the kitchen sees the order again.
+const updateTab = (businessId, tabId, data) => {
+  const db = getDb();
+  const tab = requireOpenTab(businessId, tabId);
+  const name = data.name === undefined ? tab.tab_name : tabName(data.name);
+  const meta = tabOrderMeta({
+    orderType: data.orderType === undefined ? tab.order_type : data.orderType,
+    tableNumber: data.tableNumber === undefined ? tab.table_number : data.tableNumber
+  });
+  const items = tabItems(businessId, data.items);
+
+  const before = getTransactionById(businessId, tabId).items;
+  const changed = itemSignature(before) !== itemSignature(items);
+  const subtotal = round2(items.reduce((s, i) => s + i.totalPrice, 0));
+
+  replaceTabItems(db, tabId, items);
+  db.run(sql`
+    UPDATE transactions
+    SET tab_name = ${name}, order_type = ${meta.orderType}, table_number = ${meta.tableNumber},
+        customer_id = ${data.customerId === undefined ? tab.customer_id : data.customerId || null},
+        subtotal = ${subtotal},
+        kitchen_status = ${changed ? 'pending' : tab.kitchen_status}
+    WHERE id = ${tabId}
+  `);
+  saveDatabase();
+  return getTransactionById(businessId, tabId);
+};
+
+const getOpenTabs = (businessId) => {
+  const ids = getDb().exec(sql`
+    SELECT id FROM transactions
+    WHERE business_id = ${businessId} AND status = 'open'
+    ORDER BY tab_opened_at, id
+  `);
+  if (!ids.length) return [];
+  return ids[0].values.map(([id]) => {
+    const tab = getTransactionById(businessId, id);
+    tab.items = tab.items.map((i) => ({ ...i, modifiers: i.modifiers ? JSON.parse(i.modifiers) : [] }));
+    return tab;
+  });
+};
+
+// Pay a tab: same data as createTransaction (final items, totals, payments).
+const closeTab = (businessId, tabId, transactionData) => {
+  const db = getDb();
+  const tab = requireOpenTab(businessId, tabId);
+  const meta = tabOrderMeta({
+    orderType: transactionData.orderType || tab.order_type,
+    tableNumber: transactionData.tableNumber === undefined ? tab.table_number : transactionData.tableNumber
+  });
+  const items = tabItems(businessId, transactionData.items);
+
+  const before = getTransactionById(businessId, tabId).items;
+  const changed = itemSignature(before) !== itemSignature(items);
+  replaceTabItems(db, tabId, items);
+
+  const customerId = transactionData.customerId || tab.customer_id || null;
+  const pointsEarned = transactionData.pointsEarned || 0;
+  const pointsRedeemed = transactionData.pointsRedeemed || 0;
+  db.run(sql`
+    UPDATE transactions
+    SET status = 'completed',
+        cashier_id = ${transactionData.cashierId || tab.cashier_id},
+        customer_id = ${customerId},
+        subtotal = ${round2(transactionData.subtotal)},
+        tax = ${round2(transactionData.tax)},
+        discount = ${round2(transactionData.discount)},
+        tip_amount = ${round2(transactionData.tipAmount)},
+        total = ${round2(transactionData.total)},
+        points_earned = ${pointsEarned},
+        points_redeemed = ${pointsRedeemed},
+        notes = ${transactionData.notes || tab.notes || null},
+        order_type = ${meta.orderType},
+        table_number = ${meta.tableNumber},
+        kitchen_status = ${changed ? 'pending' : tab.kitchen_status},
+        created_at = ${localNowString()},
+        drawer_session_id = ${openDrawerSessionId(businessId)}
+    WHERE id = ${tabId}
+  `);
+
+  normalizePayments(transactionData.payments, transactionData.total).forEach((payment) => {
+    db.run(sql`
+      INSERT INTO payment_methods (transaction_id, method_type, amount, reference_number)
+      VALUES (${tabId}, ${payment.methodType}, ${payment.amount}, ${payment.referenceNumber})
+    `);
+  });
+  saveDatabase();
+
+  if (customerId) {
+    updateCustomerPoints(businessId, customerId, pointsEarned - pointsRedeemed, transactionData.total);
+  }
+  require('./recipeService').deductForSale(businessId, tabId, transactionData.cashierId || tab.cashier_id);
+  return getTransactionById(businessId, tabId);
+};
+
+// Cancel a tab that won't be paid (e.g. walked out, opened by mistake).
+const cancelTab = (businessId, tabId, reason) => {
+  requireOpenTab(businessId, tabId);
+  const text = String(reason || '').trim();
+  if (!text) throw new Error('A reason is required');
+  getDb().run(sql`
+    UPDATE transactions
+    SET status = 'cancelled', void_reason = ${text}, kitchen_status = 'completed'
+    WHERE id = ${tabId} AND business_id = ${businessId}
+  `);
+  saveDatabase();
+  return { success: true };
+};
+
 module.exports = {
+  openTab,
+  updateTab,
+  getOpenTabs,
+  closeTab,
+  cancelTab,
+  normalizePayments,
+  getTaxRate,
+  updateTaxRate,
   // Customers
   searchCustomers,
   getCustomerById,

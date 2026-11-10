@@ -248,6 +248,7 @@ const updateItem = (businessId, itemId, itemData) => {
 // Delete inventory item
 const deleteItem = (businessId, itemId) => {
   const db = getDb();
+  require('./recipeService').removeForInventoryItem(itemId);
   
   const query = sql`
     DELETE FROM inventory_items 
@@ -268,7 +269,8 @@ const adjustStock = (businessId, itemId, adjustment, userId, notes, transactionT
   const item = getItemById(businessId, itemId);
   if (!item) throw new Error('Item not found');
   
-  const newQuantity = parseFloat(item.quantity) + parseFloat(adjustment);
+  // Rounded to 3 decimals so repeated fractional usage doesn't drift
+  const newQuantity = Math.round((parseFloat(item.quantity) + parseFloat(adjustment) + Number.EPSILON) * 1000) / 1000;
   
   // Update item quantity
   db.run(sql`

@@ -1,4 +1,4 @@
-const { ipcMain } = require('electron');
+const { ipcMain, dialog, BrowserWindow } = require('electron');
 const { isSetupComplete, init } = require('./database/database');
 const { sql } = require('./database/sql');
 const AuthService = require('./services/authService');
@@ -16,39 +16,131 @@ const AnnouncementService = require('./services/announcementService');
 const ShiftSwapService = require('./services/shiftSwapService');
 const AnalyticsService = require('./services/analyticsService');
 const DashboardService = require('./services/dashboardService');
+const ModifierService = require('./services/modifierService');
+const CashDrawerService = require('./services/cashDrawerService');
+const RefundService = require('./services/refundService');
+const BackupService = require('./services/backupService');
+const RecipeService = require('./services/recipeService');
+const AuditService = require('./services/auditService');
+const AuditHooks = require('./security/auditHooks');
+const { createAccessControl, AccessDenied } = require('./security/accessControl');
 
 // Setup IPC handlers for communication between main and renderer processes
 const setupIPC = async () => {
   // Initialize database
   await init();
+
+  // Automatic backups: one at startup if the last is a day old, then checked
+  // hourly while the app runs.
+  const runAutoBackup = () => {
+    try {
+      BackupService.autoBackupIfDue();
+    } catch (error) {
+      console.error('Automatic backup failed:', error);
+    }
+  };
+  runAutoBackup();
+  setInterval(runAutoBackup, 60 * 60 * 1000).unref?.();
   
+  // ---- Access control and audit for every channel (see security/accessControl.js)
+  // Employee permission flags for a signed-in user (from their employee record)
+  const permissionsFor = (user) => {
+    try {
+      const { getDb } = require('./database/database');
+      const r = getDb().exec(sql`SELECT permissions FROM employees WHERE user_id = ${user.userId} LIMIT 1`);
+      const raw = r.length && r[0].values.length ? r[0].values[0][0] : null;
+      return raw ? JSON.parse(raw) : {};
+    } catch (error) {
+      return {};
+    }
+  };
+  const access = createAccessControl({ permissionsFor });
+  const isDeniedLevel = (channel) => access.levelFor(channel) !== 'signedIn';
+
+  // Register a handler that is checked before it runs and audited after.
+  function handle(channel, fn) {
+    ipcMain.handle(channel, async (event, ...args) => {
+      const senderId = event.sender.id;
+      let user;
+      try {
+        user = access.authorize(channel, senderId, args);
+      } catch (error) {
+        if (!(error instanceof AccessDenied)) throw error;
+        const who = access.userFor(senderId);
+        if (who) AuditService.record(who.businessId, who.userId, 'access.denied', { channel, reason: error.message });
+        // Mutations report errors as { success: false }; reads simply fail
+        if (isDeniedLevel(channel)) return { success: false, error: error.message, denied: true };
+        throw error;
+      }
+      const ctx = AuditHooks.before(channel, args);
+      const result = await fn(event, ...args);
+      try {
+        AuditHooks.after(channel, args, result, ctx, user || access.userFor(senderId));
+      } catch (error) {
+        console.error('Audit log error:', error);
+      }
+      return result;
+    });
+  }
+
+  const sessionUser = (decoded) => ({
+    userId: decoded.userId,
+    role: decoded.role,
+    businessId: decoded.businessId,
+    username: decoded.username
+  });
+
+  handle('audit:list', async (event, { businessId, filters }) => {
+    try {
+      return { success: true, data: AuditService.list(businessId, filters || {}), actions: AuditService.ACTIONS };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
   // Check if setup is complete
-  ipcMain.handle('check-setup', async () => {
+  handle('check-setup', async () => {
     return isSetupComplete();
   });
 
   // Complete setup
-  ipcMain.handle('complete-setup', async (event, setupData) => {
+  handle('complete-setup', async (event, setupData) => {
+    // Setup can only run once: afterwards new owners can't be created this way
+    if (isSetupComplete()) {
+      return { success: false, error: 'Setup has already been completed' };
+    }
     return AuthService.completeSetup(setupData);
   });
 
   // Login
-  ipcMain.handle('login', async (event, payload) => {
-    return AuthService.login(payload.username, payload.password, payload.remember);
+  handle('login', async (event, payload) => {
+    const result = AuthService.login(payload.username, payload.password, payload.remember);
+    if (result.success) {
+      const u = result.user;
+      access.bind(event.sender.id, { userId: u.userId, role: u.role, businessId: u.businessId, username: u.username });
+      AuditService.record(u.businessId, u.userId, 'login.success', {});
+    } else {
+      AuditService.record(1, null, 'login.failed', { username: String(payload.username || '').slice(0, 60) });
+    }
+    return result;
   });
 
   // Verify token
-  ipcMain.handle('verify-token', async (event, token) => {
-    return AuthService.verifyToken(token);
+  handle('verify-token', async (event, token) => {
+    const result = AuthService.verifyToken(token);
+    if (result.valid) access.bind(event.sender.id, sessionUser(result.user));
+    else access.unbind(event.sender.id);
+    return result;
   });
 
   // Logout
-  ipcMain.handle('logout', async (event, token) => {
+  handle('logout', async (event, token) => {
+    access.unbind(event.sender.id);
     return AuthService.logout(token);
   });
 
   // Verify owner code
-  ipcMain.handle('auth:verify-owner-code', async (event, { businessId, code }) => {
+  handle('auth:verify-owner-code', async (event, { businessId, code }) => {
     try {
       const { getDb } = require('./database/database');
       const db = getDb();
@@ -59,9 +151,14 @@ const setupIPC = async () => {
       if (result.length > 0 && result[0].values.length > 0) {
         const ownerCode = result[0].values[0][0];
         if (ownerCode && ownerCode === code) {
+          access.grantApproval(event.sender.id);
+          const who = access.userFor(event.sender.id);
+          if (who) AuditService.record(who.businessId, who.userId, 'owner_code.approved', {});
           return { success: true };
         }
       }
+      const who = access.userFor(event.sender.id);
+      if (who) AuditService.record(who.businessId, who.userId, 'owner_code.rejected', {});
       return { success: false };
     } catch (error) {
       console.error('Error verifying owner code:', error);
@@ -70,7 +167,7 @@ const setupIPC = async () => {
   });
 
   // Get business settings
-  ipcMain.handle('get-business', async (event, businessId) => {
+  handle('get-business', async (event, businessId) => {
     try {
       const { getDb } = require('./database/database');
       const db = getDb();
@@ -92,7 +189,7 @@ const setupIPC = async () => {
   });
 
   // Update owner code
-  ipcMain.handle('business:update-owner-code', async (event, { businessId, ownerCode }) => {
+  handle('business:update-owner-code', async (event, { businessId, ownerCode }) => {
     try {
       const { getDb, saveDatabase } = require('./database/database');
       const db = getDb();
@@ -107,7 +204,7 @@ const setupIPC = async () => {
   });
 
   // Get user by ID
-  ipcMain.handle('user:get-by-id', async (event, { businessId, userId }) => {
+  handle('user:get-by-id', async (event, { businessId, userId }) => {
     try {
       const { getDb } = require('./database/database');
       const db = getDb();
@@ -134,277 +231,447 @@ const setupIPC = async () => {
   });
 
   // Menu Items
-  ipcMain.handle('menu:get-all-items', async (event, businessId) => {
+  handle('menu:get-all-items', async (event, businessId) => {
     return MenuService.getAllItems(businessId);
   });
 
-  ipcMain.handle('menu:get-item', async (event, itemId) => {
+  handle('menu:get-item', async (event, itemId) => {
     return MenuService.getItemById(itemId);
   });
 
-  ipcMain.handle('menu:create-item', async (event, { businessId, itemData }) => {
+  handle('menu:create-item', async (event, { businessId, itemData }) => {
     return MenuService.createItem(businessId, itemData);
   });
 
-  ipcMain.handle('menu:update-item', async (event, { itemId, itemData }) => {
+  handle('menu:update-item', async (event, { itemId, itemData }) => {
     return MenuService.updateItem(itemId, itemData);
   });
 
-  ipcMain.handle('menu:delete-item', async (event, itemId) => {
+  handle('menu:delete-item', async (event, itemId) => {
     return MenuService.deleteItem(itemId);
   });
 
+  // Modifier groups. Errors (e.g. validation) are returned, not thrown, so
+  // the UI can show the message.
+  const modifierCall = (fn) => {
+    try {
+      return { success: true, data: fn() };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  handle('modifiers:get-groups', async (event, businessId) =>
+    modifierCall(() => ModifierService.getGroups(businessId)));
+
+  handle('modifiers:get-by-item', async (event, businessId) =>
+    modifierCall(() => ModifierService.getModifiersByItem(businessId)));
+
+  handle('modifiers:create-group', async (event, { businessId, groupData }) =>
+    modifierCall(() => ModifierService.createGroup(businessId, groupData)));
+
+  handle('modifiers:update-group', async (event, { businessId, groupId, groupData }) =>
+    modifierCall(() => ModifierService.updateGroup(businessId, groupId, groupData)));
+
+  handle('modifiers:delete-group', async (event, { businessId, groupId }) =>
+    modifierCall(() => ModifierService.deleteGroup(businessId, groupId)));
+
+  handle('modifiers:set-item-groups', async (event, { businessId, menuItemId, groupIds }) =>
+    modifierCall(() => ModifierService.setItemGroups(businessId, menuItemId, groupIds)));
+
   // Menu Categories
-  ipcMain.handle('menu:get-categories', async (event, businessId) => {
+  handle('menu:get-categories', async (event, businessId) => {
     return MenuService.getCategories(businessId);
   });
 
-  ipcMain.handle('menu:create-category', async (event, { businessId, categoryData }) => {
+  handle('menu:create-category', async (event, { businessId, categoryData }) => {
     return MenuService.createCategory(businessId, categoryData);
   });
 
-  ipcMain.handle('menu:update-category', async (event, { categoryId, categoryData }) => {
+  handle('menu:update-category', async (event, { categoryId, categoryData }) => {
     return MenuService.updateCategory(categoryId, categoryData);
   });
 
-  ipcMain.handle('menu:delete-category', async (event, categoryId) => {
+  handle('menu:delete-category', async (event, categoryId) => {
     return MenuService.deleteCategory(categoryId);
   });
 
   // Employees
-  ipcMain.handle('employee:get-all', async (event, businessId) => {
+  handle('employee:get-all', async (event, businessId) => {
     return EmployeeService.getAllEmployees(businessId);
   });
 
-  ipcMain.handle('employee:get-by-id', async (event, { businessId, employeeId }) => {
+  handle('employee:get-by-id', async (event, { businessId, employeeId }) => {
     return EmployeeService.getEmployeeById(businessId, employeeId);
   });
 
-  ipcMain.handle('employee:create', async (event, { businessId, employeeData }) => {
+  handle('employee:create', async (event, { businessId, employeeData }) => {
     return EmployeeService.createEmployee(businessId, employeeData);
   });
 
-  ipcMain.handle('employee:update', async (event, { businessId, employeeId, employeeData }) => {
+  handle('employee:update', async (event, { businessId, employeeId, employeeData }) => {
     return EmployeeService.updateEmployee(businessId, employeeId, employeeData);
   });
 
-  ipcMain.handle('employee:delete', async (event, { businessId, employeeId }) => {
+  handle('employee:delete', async (event, { businessId, employeeId }) => {
     return EmployeeService.deleteEmployee(businessId, employeeId);
   });
 
-  ipcMain.handle('employee:update-status', async (event, { businessId, employeeId, status }) => {
+  handle('employee:update-status', async (event, { businessId, employeeId, status }) => {
     return EmployeeService.updateEmployeeStatus(businessId, employeeId, status);
   });
 
   // Employee Schedules
-  ipcMain.handle('employee:get-schedules', async (event, employeeId) => {
+  handle('employee:get-schedules', async (event, employeeId) => {
     return EmployeeService.getEmployeeSchedules(employeeId);
   });
 
-  ipcMain.handle('employee:save-schedule', async (event, { employeeId, scheduleData }) => {
+  handle('employee:save-schedule', async (event, { employeeId, scheduleData }) => {
     return EmployeeService.saveEmployeeSchedule(employeeId, scheduleData);
   });
 
   // Employee Notes
-  ipcMain.handle('employee:get-notes', async (event, employeeId) => {
+  handle('employee:get-notes', async (event, employeeId) => {
     return EmployeeService.getEmployeeNotes(employeeId);
   });
 
-  ipcMain.handle('employee:add-note', async (event, { employeeId, noteData }) => {
+  handle('employee:add-note', async (event, { employeeId, noteData }) => {
     return EmployeeService.addEmployeeNote(employeeId, noteData);
   });
 
   // Emergency Contacts
-  ipcMain.handle('employee:get-emergency-contacts', async (event, employeeId) => {
+  handle('employee:get-emergency-contacts', async (event, employeeId) => {
     return EmployeeService.getEmergencyContacts(employeeId);
   });
 
-  ipcMain.handle('employee:save-emergency-contact', async (event, { employeeId, contactData }) => {
+  handle('employee:save-emergency-contact', async (event, { employeeId, contactData }) => {
     return EmployeeService.saveEmergencyContact(employeeId, contactData);
   });
 
-  ipcMain.handle('employee:delete-emergency-contact', async (event, contactId) => {
+  handle('employee:delete-emergency-contact', async (event, contactId) => {
     return EmployeeService.deleteEmergencyContact(contactId);
   });
 
   // Employee Documents
-  ipcMain.handle('employee:get-documents', async (event, employeeId) => {
+  handle('employee:get-documents', async (event, employeeId) => {
     return EmployeeService.getEmployeeDocuments(employeeId);
   });
 
-  ipcMain.handle('employee:get-document', async (event, documentId) => {
+  handle('employee:get-document', async (event, documentId) => {
     return EmployeeService.getEmployeeDocument(documentId);
   });
 
-  ipcMain.handle('employee:upload-document', async (event, { employeeId, documentData }) => {
+  handle('employee:upload-document', async (event, { employeeId, documentData }) => {
     return EmployeeService.uploadEmployeeDocument(employeeId, documentData);
   });
 
-  ipcMain.handle('employee:delete-document', async (event, documentId) => {
+  handle('employee:delete-document', async (event, documentId) => {
     return EmployeeService.deleteEmployeeDocument(documentId);
   });
 
   // Create user account for an existing employee
-  ipcMain.handle('employee:create-account', async (event, { businessId, employeeId, accountData }) => {
+  handle('employee:create-account', async (event, { businessId, employeeId, accountData }) => {
     return EmployeeService.createUserAccountForEmployee(businessId, employeeId, accountData);
   });
 
   // Time Logs
-  ipcMain.handle('employee:get-time-logs', async (event, { employeeId, startDate, endDate }) => {
+  handle('employee:get-time-logs', async (event, { employeeId, startDate, endDate }) => {
     return EmployeeService.getTimeLogs(employeeId, startDate, endDate);
   });
 
-  ipcMain.handle('employee:clock-in', async (event, employeeId) => {
+  handle('employee:clock-in', async (event, employeeId) => {
     return EmployeeService.clockIn(employeeId);
   });
 
-  ipcMain.handle('employee:clock-out', async (event, employeeId) => {
+  handle('employee:clock-out', async (event, employeeId) => {
     return EmployeeService.clockOut(employeeId);
   });
 
-  ipcMain.handle('employee:calculate-payroll', async (event, { employeeId, startDate, endDate }) => {
+  handle('employee:calculate-payroll', async (event, { employeeId, startDate, endDate }) => {
     return EmployeeService.calculatePayroll(employeeId, startDate, endDate);
   });
 
   // Schedule/Shifts
-  ipcMain.handle('schedule:get-shifts', async (event, { businessId, startDate, endDate }) => {
+  handle('schedule:get-shifts', async (event, { businessId, startDate, endDate }) => {
     console.log('[IPC] schedule:get-shifts called with:', { businessId, startDate, endDate });
     const result = ScheduleService.getShifts(businessId, startDate, endDate);
     console.log('[IPC] schedule:get-shifts returning', result.length, 'shifts');
     return result;
   });
 
-  ipcMain.handle('schedule:create-shift', async (event, { businessId, shiftData }) => {
+  handle('schedule:create-shift', async (event, { businessId, shiftData }) => {
     console.log('[IPC] schedule:create-shift called with:', { businessId, shiftData });
     const result = ScheduleService.createShift(businessId, shiftData);
     console.log('[IPC] schedule:create-shift created shift:', result);
     return result;
   });
 
-  ipcMain.handle('schedule:update-shift', async (event, { businessId, shiftId, shiftData }) => {
+  handle('schedule:update-shift', async (event, { businessId, shiftId, shiftData }) => {
     return ScheduleService.updateShift(businessId, shiftId, shiftData);
   });
 
-  ipcMain.handle('schedule:delete-shift', async (event, { businessId, shiftId }) => {
+  handle('schedule:delete-shift', async (event, { businessId, shiftId }) => {
     return ScheduleService.deleteShift(businessId, shiftId);
   });
 
   // Inventory Items
-  ipcMain.handle('inventory:get-all-items', async (event, businessId) => {
+  handle('inventory:get-all-items', async (event, businessId) => {
     return InventoryService.getAllItems(businessId);
   });
 
-  ipcMain.handle('inventory:get-item', async (event, { businessId, itemId }) => {
+  handle('inventory:get-item', async (event, { businessId, itemId }) => {
     return InventoryService.getItemById(businessId, itemId);
   });
 
-  ipcMain.handle('inventory:create-item', async (event, { businessId, itemData }) => {
+  handle('inventory:create-item', async (event, { businessId, itemData }) => {
     return InventoryService.createItem(businessId, itemData);
   });
 
-  ipcMain.handle('inventory:create-items-batch', async (event, { businessId, itemsArray }) => {
+  handle('inventory:create-items-batch', async (event, { businessId, itemsArray }) => {
     return InventoryService.createItemsBatch(businessId, itemsArray);
   });
 
-  ipcMain.handle('inventory:update-item', async (event, { businessId, itemId, itemData }) => {
+  handle('inventory:update-item', async (event, { businessId, itemId, itemData }) => {
     return InventoryService.updateItem(businessId, itemId, itemData);
   });
 
-  ipcMain.handle('inventory:delete-item', async (event, { businessId, itemId }) => {
+  handle('inventory:delete-item', async (event, { businessId, itemId }) => {
     return InventoryService.deleteItem(businessId, itemId);
   });
 
-  ipcMain.handle('inventory:adjust-stock', async (event, { businessId, itemId, adjustment, userId, notes, transactionType, vendor }) => {
+  handle('inventory:adjust-stock', async (event, { businessId, itemId, adjustment, userId, notes, transactionType, vendor }) => {
     return InventoryService.adjustStock(businessId, itemId, adjustment, userId, notes, transactionType, vendor);
   });
 
-  ipcMain.handle('inventory:get-low-stock', async (event, businessId) => {
+  handle('inventory:get-low-stock', async (event, businessId) => {
     return InventoryService.getLowStockItems(businessId);
   });
 
   // Inventory Categories
-  ipcMain.handle('inventory:get-categories', async (event, businessId) => {
+  handle('inventory:get-categories', async (event, businessId) => {
     return InventoryService.getAllCategories(businessId);
   });
 
-  ipcMain.handle('inventory:create-category', async (event, { businessId, categoryData }) => {
+  handle('inventory:create-category', async (event, { businessId, categoryData }) => {
     return InventoryService.createCategory(businessId, categoryData);
   });
 
-  ipcMain.handle('inventory:update-category', async (event, { businessId, categoryId, categoryData }) => {
+  handle('inventory:update-category', async (event, { businessId, categoryId, categoryData }) => {
     return InventoryService.updateCategory(businessId, categoryId, categoryData);
   });
 
-  ipcMain.handle('inventory:delete-category', async (event, { businessId, categoryId }) => {
+  handle('inventory:delete-category', async (event, { businessId, categoryId }) => {
     return InventoryService.deleteCategory(businessId, categoryId);
   });
 
   // Suppliers
-  ipcMain.handle('inventory:get-suppliers', async (event, businessId) => {
+  handle('inventory:get-suppliers', async (event, businessId) => {
     return InventoryService.getAllSuppliers(businessId);
   });
 
-  ipcMain.handle('inventory:create-supplier', async (event, { businessId, supplierData }) => {
+  handle('inventory:create-supplier', async (event, { businessId, supplierData }) => {
     return InventoryService.createSupplier(businessId, supplierData);
   });
 
-  ipcMain.handle('inventory:update-supplier', async (event, { businessId, supplierId, supplierData }) => {
+  handle('inventory:update-supplier', async (event, { businessId, supplierId, supplierData }) => {
     return InventoryService.updateSupplier(businessId, supplierId, supplierData);
   });
 
-  ipcMain.handle('inventory:delete-supplier', async (event, { businessId, supplierId }) => {
+  handle('inventory:delete-supplier', async (event, { businessId, supplierId }) => {
     return InventoryService.deleteSupplier(businessId, supplierId);
   });
 
   // Inventory Transactions
-  ipcMain.handle('inventory:get-item-transactions', async (event, { businessId, itemId, limit }) => {
+  handle('inventory:get-item-transactions', async (event, { businessId, itemId, limit }) => {
     return InventoryService.getItemTransactions(businessId, itemId, limit);
   });
 
-  ipcMain.handle('inventory:get-all-transactions', async (event, { businessId, limit }) => {
+  handle('inventory:get-all-transactions', async (event, { businessId, limit }) => {
     return InventoryService.getAllTransactions(businessId, limit);
   });
 
   // POS - Customers
-  ipcMain.handle('pos:search-customers', async (event, { businessId, searchTerm }) => {
+  handle('pos:search-customers', async (event, { businessId, searchTerm }) => {
     return POSService.searchCustomers(businessId, searchTerm);
   });
 
-  ipcMain.handle('pos:get-customer', async (event, { businessId, customerId }) => {
+  handle('pos:get-customer', async (event, { businessId, customerId }) => {
     return POSService.getCustomerById(businessId, customerId);
   });
 
-  ipcMain.handle('pos:create-customer', async (event, { businessId, customerData }) => {
+  handle('pos:create-customer', async (event, { businessId, customerData }) => {
     return POSService.createCustomer(businessId, customerData);
   });
 
   // POS - Transactions
-  ipcMain.handle('pos:create-transaction', async (event, { businessId, transactionData }) => {
+  // Cash drawer. Errors are returned so the UI can show the message.
+  const drawerCall = (fn) => {
+    try {
+      return { success: true, data: fn() };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  handle('drawer:get-current', async (event, businessId) =>
+    drawerCall(() => CashDrawerService.getCurrentSession(businessId)));
+
+  handle('drawer:open', async (event, { businessId, userId, openingFloat }) =>
+    drawerCall(() => CashDrawerService.openSession(businessId, userId, openingFloat)));
+
+  handle('drawer:add-movement', async (event, { businessId, userId, type, amount, reason }) =>
+    drawerCall(() => CashDrawerService.addMovement(businessId, userId, type, amount, reason)));
+
+  handle('drawer:close', async (event, { businessId, userId, countedCash, notes }) =>
+    drawerCall(() => CashDrawerService.closeSession(businessId, userId, countedCash, notes)));
+
+  handle('drawer:get-sessions', async (event, { businessId, limit }) =>
+    drawerCall(() => CashDrawerService.getSessions(businessId, limit)));
+
+  handle('drawer:get-session-report', async (event, { businessId, sessionId }) =>
+    drawerCall(() => CashDrawerService.getSessionReport(businessId, sessionId)));
+
+  handle('drawer:get-daily-report', async (event, { businessId, date }) =>
+    drawerCall(() => CashDrawerService.getDailyReport(businessId, date)));
+
+  // Backups
+  const backupCall = async (fn) => {
+    try {
+      return { success: true, data: await fn() };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+  const windowFor = (event) => BrowserWindow.fromWebContents(event.sender);
+  // The file picked in the "restore from file" dialog. Kept here so the
+  // renderer never passes a file path to restore.
+  let chosenRestoreFile = null;
+
+  handle('backup:list', async () => backupCall(() => ({
+    backups: BackupService.listBackups(),
+    folder: BackupService.backupsDir(),
+    keepAuto: BackupService.KEEP_AUTO
+  })));
+
+  handle('backup:create', async () => backupCall(() => BackupService.createBackup('manual')));
+
+  handle('backup:export', async (event) => backupCall(async () => {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const result = await dialog.showSaveDialog(windowFor(event), {
+      title: 'Export backup',
+      defaultPath: `food-business-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.db`,
+      filters: [{ name: 'Backup', extensions: ['db'] }]
+    });
+    if (result.canceled || !result.filePath) return null;
+    return BackupService.exportBackup(result.filePath);
+  }));
+
+  handle('backup:restore', async (event, { file }) => backupCall(() => BackupService.restoreBackup(file)));
+
+  handle('backup:choose-file', async (event) => backupCall(async () => {
+    const result = await dialog.showOpenDialog(windowFor(event), {
+      title: 'Restore from a backup file',
+      properties: ['openFile'],
+      filters: [{ name: 'Backup', extensions: ['db'] }]
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    const summary = BackupService.inspectFile(result.filePaths[0]);
+    chosenRestoreFile = result.filePaths[0];
+    return { fileName: require('path').basename(chosenRestoreFile), ...summary };
+  }));
+
+  handle('backup:restore-chosen', async () => backupCall(() => {
+    if (!chosenRestoreFile) throw new Error('Choose a backup file first');
+    const result = BackupService.restoreFromFile(chosenRestoreFile);
+    chosenRestoreFile = null;
+    return result;
+  }));
+
+  // Recipes
+  const recipeCall = (fn) => {
+    try {
+      return { success: true, data: fn() };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+  handle('recipes:get-by-item', async (event, businessId) => recipeCall(() => RecipeService.getRecipesByItem(businessId)));
+  handle('recipes:set', async (event, { businessId, menuItemId, lines }) => recipeCall(() => RecipeService.setRecipe(businessId, menuItemId, lines)));
+
+  // Open tabs
+  const tabCall = (fn) => {
+    try {
+      return { success: true, data: fn() };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+  handle('tabs:get-open', async (event, businessId) => tabCall(() => POSService.getOpenTabs(businessId)));
+  handle('tabs:open', async (event, { businessId, userId, tab }) => tabCall(() => POSService.openTab(businessId, userId, tab)));
+  handle('tabs:update', async (event, { businessId, tabId, tab }) => tabCall(() => POSService.updateTab(businessId, tabId, tab)));
+  handle('tabs:close', async (event, { businessId, tabId, transactionData }) => tabCall(() => POSService.closeTab(businessId, tabId, transactionData)));
+  handle('tabs:cancel', async (event, { businessId, tabId, reason }) => tabCall(() => POSService.cancelTab(businessId, tabId, reason)));
+
+  // Refunds
+  handle('refunds:get-refundable', async (event, { businessId, transactionId }) => {
+    try {
+      return { success: true, data: RefundService.getRefundable(businessId, transactionId) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  handle('refunds:create', async (event, { businessId, transactionId, userId, refund }) => {
+    try {
+      return { success: true, data: RefundService.createRefund(businessId, transactionId, userId, refund) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  handle('business:get-tax-rate', async (event, businessId) => {
+    try {
+      return { success: true, taxRate: POSService.getTaxRate(businessId) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  handle('business:update-tax-rate', async (event, { businessId, taxRate }) => {
+    try {
+      return { success: true, taxRate: POSService.updateTaxRate(businessId, taxRate) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  handle('pos:create-transaction', async (event, { businessId, transactionData }) => {
     return POSService.createTransaction(businessId, transactionData);
   });
 
-  ipcMain.handle('pos:get-transaction', async (event, { businessId, transactionId }) => {
+  handle('pos:get-transaction', async (event, { businessId, transactionId }) => {
     return POSService.getTransactionById(businessId, transactionId);
   });
 
-  ipcMain.handle('pos:get-recent-transactions', async (event, { businessId, limit }) => {
+  handle('pos:get-recent-transactions', async (event, { businessId, limit }) => {
     return POSService.getRecentTransactions(businessId, limit);
   });
 
-  ipcMain.handle('pos:get-transactions-by-date', async (event, { businessId, startDate, endDate }) => {
+  handle('pos:get-transactions-by-date', async (event, { businessId, startDate, endDate }) => {
     return POSService.getTransactionsByDateRange(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('pos:get-daily-summary', async (event, { businessId, date }) => {
+  handle('pos:get-daily-summary', async (event, { businessId, date }) => {
     return POSService.getDailySalesSummary(businessId, date);
   });
 
-  ipcMain.handle('pos:get-payment-methods', async (event, { businessId, startDate, endDate }) => {
+  handle('pos:get-payment-methods', async (event, { businessId, startDate, endDate }) => {
     return POSService.getPaymentMethodsByDateRange(businessId, startDate, endDate);
   });
 
   // Debug: return raw transaction rows from DB for an expanded UTC window
-  ipcMain.handle('debug:get-raw-transactions', async (event, { businessId, startDate, endDate }) => {
+  handle('debug:get-raw-transactions', async (event, { businessId, startDate, endDate }) => {
     try {
       const dbModule = require('./database/database');
       const db = dbModule.getDb();
@@ -449,152 +716,161 @@ const setupIPC = async () => {
     }
   });
 
-  ipcMain.handle('pos:void-transaction', async (event, { businessId, transactionId, voidReason, voidedBy }) => {
-    return POSService.voidTransaction(businessId, transactionId, voidReason, voidedBy);
+  handle('pos:void-transaction', async (event, { businessId, transactionId, voidReason, voidedBy }) => {
+    try {
+      return { success: true, data: POSService.voidTransaction(businessId, transactionId, voidReason, voidedBy) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   });
 
   // POS - Kitchen Display System
-  ipcMain.handle('pos:get-orders', async (event, { businessId }) => {
+  handle('pos:get-orders', async (event, { businessId }) => {
     return POSService.getOrders(businessId);
   });
 
-  ipcMain.handle('pos:update-order-kitchen-status', async (event, { businessId, orderId, kitchenStatus }) => {
+  handle('pos:update-order-kitchen-status', async (event, { businessId, orderId, kitchenStatus }) => {
     return POSService.updateOrderKitchenStatus(businessId, orderId, kitchenStatus);
   });
 
-  ipcMain.handle('pos:delete-transaction', async (event, { businessId, orderId }) => {
+  handle('pos:delete-transaction', async (event, { businessId, orderId }) => {
     return POSService.deleteTransaction(businessId, orderId);
   });
 
-  ipcMain.handle('pos:reset-order-sequence', async (event, { businessId }) => {
+  handle('pos:reset-order-sequence', async (event, { businessId }) => {
     return POSService.resetOrderSequence(businessId);
   });
 
-  ipcMain.handle('pos:purge-transactions', async (event, { businessId }) => {
+  handle('pos:purge-transactions', async (event, { businessId }) => {
     return POSService.purgeTransactionsForBusiness(businessId);
   });
 
-  ipcMain.handle('pos:validate-manager-pin', async (event, { businessId, userId, pin }) => {
+  handle('pos:validate-manager-pin', async (event, { businessId, userId, pin }) => {
     return POSService.validateManagerPin(businessId, userId, pin);
   });
 
   // User - Change PIN
-  ipcMain.handle('user:change-pin', async (event, { businessId, userId, currentPin, newPin }) => {
+  handle('user:change-pin', async (event, { businessId, userId, currentPin, newPin }) => {
     return AuthService.changePin(businessId, userId, currentPin, newPin);
   });
 
   // User - Reset PIN
-  ipcMain.handle('user:reset-pin', async (event, { businessId, userId, password, newPin }) => {
+  handle('user:reset-pin', async (event, { businessId, userId, password, newPin }) => {
     return AuthService.resetPin(businessId, userId, password, newPin);
   });
 
   // Auth - Verify identity for password reset
-  ipcMain.handle('auth:verify-identity', async (event, { username, email }) => {
-    return AuthService.verifyIdentity(username, email);
+  handle('auth:verify-identity', async (event, { username, email }) => {
+    const result = AuthService.verifyIdentity(username, email);
+    // Only a successful identity check allows a password reset, for that user
+    if (result.success) access.grantResetTicket(event.sender.id, result.userId);
+    return result;
   });
 
   // Auth - Reset password
-  ipcMain.handle('auth:reset-password', async (event, { userId, businessId, newPassword }) => {
-    return AuthService.resetPassword(userId, businessId, newPassword);
+  handle('auth:reset-password', async (event, { userId, businessId, newPassword }) => {
+    const result = AuthService.resetPassword(userId, businessId, newPassword);
+    if (result && result.success) AuditService.record(businessId, userId, 'password.reset', {});
+    return result;
   });
 
   // POS - Update customer
-  ipcMain.handle('pos:update-customer', async (event, { businessId, customerId, customerData }) => {
+  handle('pos:update-customer', async (event, { businessId, customerId, customerData }) => {
     return POSService.updateCustomer(businessId, customerId, customerData);
   });
 
   // POS - Update customer points
-  ipcMain.handle('pos:update-customer-points', async (event, { businessId, customerId, pointsChange, totalSpent }) => {
+  handle('pos:update-customer-points', async (event, { businessId, customerId, pointsChange, totalSpent }) => {
     return POSService.updateCustomerPoints(businessId, customerId, pointsChange, totalSpent);
   });
 
   // POS - Delete customer
-  ipcMain.handle('pos:delete-customer', async (event, { businessId, customerId }) => {
+  handle('pos:delete-customer', async (event, { businessId, customerId }) => {
     return POSService.deleteCustomer(businessId, customerId);
   });
 
   // ==================== EXPENSES ====================
   
   // Get all expenses
-  ipcMain.handle('expense:get-all', async (event, businessId) => {
+  handle('expense:get-all', async (event, businessId) => {
     return ExpenseService.getAllExpenses(businessId);
   });
 
   // Get expenses by date range
-  ipcMain.handle('expense:get-by-date', async (event, { businessId, startDate, endDate }) => {
+  handle('expense:get-by-date', async (event, { businessId, startDate, endDate }) => {
     return ExpenseService.getExpensesByDateRange(businessId, startDate, endDate);
   });
 
   // Get expenses by category
-  ipcMain.handle('expense:get-by-category', async (event, { businessId, startDate, endDate }) => {
+  handle('expense:get-by-category', async (event, { businessId, startDate, endDate }) => {
     return ExpenseService.getExpensesByCategory(businessId, startDate, endDate);
   });
 
   // Create expense
-  ipcMain.handle('expense:create', async (event, { businessId, expenseData }) => {
+  handle('expense:create', async (event, { businessId, expenseData }) => {
     return ExpenseService.createExpense(businessId, expenseData);
   });
 
   // Update expense
-  ipcMain.handle('expense:update', async (event, { expenseId, expenseData }) => {
+  handle('expense:update', async (event, { expenseId, expenseData }) => {
     return ExpenseService.updateExpense(expenseId, expenseData);
   });
 
   // Delete expense
-  ipcMain.handle('expense:delete', async (event, expenseId) => {
+  handle('expense:delete', async (event, expenseId) => {
     return ExpenseService.deleteExpense(expenseId);
   });
 
   // Get total expenses
-  ipcMain.handle('expense:get-total', async (event, { businessId, startDate, endDate }) => {
+  handle('expense:get-total', async (event, { businessId, startDate, endDate }) => {
     return ExpenseService.getTotalExpenses(businessId, startDate, endDate);
   });
 
   // Recurring expenses
-  ipcMain.handle('expense:create-recurring', async (event, { businessId, recurringData }) => {
+  handle('expense:create-recurring', async (event, { businessId, recurringData }) => {
     return ExpenseService.createRecurringExpense(businessId, recurringData);
   });
 
-  ipcMain.handle('expense:get-recurring', async (event, businessId) => {
+  handle('expense:get-recurring', async (event, businessId) => {
     return ExpenseService.getRecurringExpenses(businessId);
   });
 
-  ipcMain.handle('expense:process-recurring', async (event, businessId) => {
+  handle('expense:process-recurring', async (event, businessId) => {
     return ExpenseService.processRecurringExpenses(businessId);
   });
 
-  ipcMain.handle('expense:update-recurring', async (event, { recurringId, data }) => {
+  handle('expense:update-recurring', async (event, { recurringId, data }) => {
     return ExpenseService.updateRecurringExpense(recurringId, data);
   });
 
-  ipcMain.handle('expense:delete-recurring', async (event, recurringId) => {
+  handle('expense:delete-recurring', async (event, recurringId) => {
     return ExpenseService.deleteRecurringExpense(recurringId);
   });
 
   // ==================== TIME LOGS / CLOCK IN-OUT ====================
   
   // Clock in
-  ipcMain.handle('timelog:clock-in', async (event, { employeeId, notes }) => {
+  handle('timelog:clock-in', async (event, { employeeId, notes }) => {
     return TimeLogService.clockIn(employeeId, notes);
   });
 
   // Clock out
-  ipcMain.handle('timelog:clock-out', async (event, { employeeId, notes }) => {
+  handle('timelog:clock-out', async (event, { employeeId, notes }) => {
     return TimeLogService.clockOut(employeeId, notes);
   });
 
   // Get time logs
-  ipcMain.handle('timelog:get-all', async (event, { businessId, startDate, endDate }) => {
+  handle('timelog:get-all', async (event, { businessId, startDate, endDate }) => {
     return TimeLogService.getTimeLogs(businessId, startDate, endDate);
   });
 
   // Get employee time logs
-  ipcMain.handle('timelog:get-employee', async (event, { employeeId, startDate, endDate }) => {
+  handle('timelog:get-employee', async (event, { employeeId, startDate, endDate }) => {
     return TimeLogService.getEmployeeTimeLogs(employeeId, startDate, endDate);
   });
 
   // Check if employee is clocked in
-  ipcMain.handle('timelog:is-clocked-in', async (event, employeeId) => {
+  handle('timelog:is-clocked-in', async (event, employeeId) => {
     console.log('[IPC] timelog:is-clocked-in called for employee:', employeeId);
     const result = TimeLogService.isEmployeeClockedIn(employeeId);
     console.log('[IPC] timelog:is-clocked-in result:', result);
@@ -602,27 +878,27 @@ const setupIPC = async () => {
   });
 
   // Get currently clocked in employees
-  ipcMain.handle('timelog:get-clocked-in', async (event, businessId) => {
+  handle('timelog:get-clocked-in', async (event, businessId) => {
     return TimeLogService.getClockedInEmployees(businessId);
   });
 
   // Update time log
-  ipcMain.handle('timelog:update', async (event, { logId, updates }) => {
+  handle('timelog:update', async (event, { logId, updates }) => {
     return TimeLogService.updateTimeLog(logId, updates);
   });
 
   // Delete time log
-  ipcMain.handle('timelog:delete', async (event, logId) => {
+  handle('timelog:delete', async (event, logId) => {
     return TimeLogService.deleteTimeLog(logId);
   });
 
   // Get payroll data
-  ipcMain.handle('timelog:get-payroll', async (event, { businessId, startDate, endDate }) => {
+  handle('timelog:get-payroll', async (event, { businessId, startDate, endDate }) => {
     return TimeLogService.getPayrollData(businessId, startDate, endDate);
   });
   
     // Admin: Cleanup negative hours and optionally set hourly rates for employees
-    ipcMain.handle('admin:fix-payroll-employees', async (event, { businessId, employees }) => {
+    handle('admin:fix-payroll-employees', async (event, { businessId, employees }) => {
       try {
         return TimeLogService.cleanupAndFixEmployees(businessId, employees || []);
       } catch (e) {
@@ -632,12 +908,12 @@ const setupIPC = async () => {
     });
 
   // Get payroll summary
-  ipcMain.handle('timelog:get-payroll-summary', async (event, { businessId, startDate, endDate }) => {
+  handle('timelog:get-payroll-summary', async (event, { businessId, startDate, endDate }) => {
     return TimeLogService.getPayrollSummary(businessId, startDate, endDate);
   });
 
   // Debug: Get all time logs (no filters)
-  ipcMain.handle('timelog:debug-all', async (event) => {
+  handle('timelog:debug-all', async (event) => {
     const { getDb } = require('./database/database');
     const db = getDb();
     const result = db.exec('SELECT * FROM time_logs');
@@ -646,12 +922,12 @@ const setupIPC = async () => {
   });
 
   // Reservations - Settings
-  ipcMain.handle('reservation:get-settings', async (event, businessId) => {
+  handle('reservation:get-settings', async (event, businessId) => {
     const settings = ReservationService.getReservationSettings(businessId);
     return { success: true, settings };
   });
 
-  ipcMain.handle('reservation:update-settings', async (event, { businessId, settings }) => {
+  handle('reservation:update-settings', async (event, { businessId, settings }) => {
     try {
       console.log('IPC handler reservation:update-settings called with:', { businessId, settings });
       const result = ReservationService.updateReservationSettings(businessId, settings);
@@ -663,192 +939,192 @@ const setupIPC = async () => {
     }
   });
 
-  ipcMain.handle('reservation:set-enabled', async (event, { businessId, enabled }) => {
+  handle('reservation:set-enabled', async (event, { businessId, enabled }) => {
     return ReservationService.setReservationEnabled(businessId, enabled);
   });
 
   // Reservations - CRUD
-  ipcMain.handle('reservation:get-all', async (event, { businessId, startDate, endDate }) => {
+  handle('reservation:get-all', async (event, { businessId, startDate, endDate }) => {
     return ReservationService.getAllReservations(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('reservation:get-by-date', async (event, { businessId, date }) => {
+  handle('reservation:get-by-date', async (event, { businessId, date }) => {
     console.log('IPC: reservation:get-by-date called with businessId:', businessId, 'date:', date);
     const reservations = ReservationService.getReservationsByDate(businessId, date);
     console.log('IPC: Returning reservations:', reservations);
     return { success: true, reservations };
   });
 
-  ipcMain.handle('reservation:create', async (event, { businessId, reservationData }) => {
+  handle('reservation:create', async (event, { businessId, reservationData }) => {
     return ReservationService.createReservation(businessId, reservationData);
   });
 
-  ipcMain.handle('reservation:update', async (event, { businessId, reservationId, reservationData }) => {
+  handle('reservation:update', async (event, { businessId, reservationId, reservationData }) => {
     return ReservationService.updateReservation(businessId, reservationId, reservationData);
   });
 
-  ipcMain.handle('reservation:update-status', async (event, { businessId, reservationId, status }) => {
+  handle('reservation:update-status', async (event, { businessId, reservationId, status }) => {
     return ReservationService.updateReservationStatus(businessId, reservationId, status);
   });
 
-  ipcMain.handle('reservation:delete', async (event, { businessId, reservationId }) => {
+  handle('reservation:delete', async (event, { businessId, reservationId }) => {
     return ReservationService.deleteReservation(businessId, reservationId);
   });
 
-  ipcMain.handle('reservation:get-available-slots', async (event, { businessId, date, partySize }) => {
+  handle('reservation:get-available-slots', async (event, { businessId, date, partySize }) => {
     return ReservationService.getAvailableTimeSlots(businessId, date, partySize);
   });
 
   // Time Off Requests
-  ipcMain.handle('timeoff:get-all', async (event, { businessId, filters }) => {
+  handle('timeoff:get-all', async (event, { businessId, filters }) => {
     return TimeOffService.getAllTimeOffRequests(businessId, filters);
   });
 
-  ipcMain.handle('timeoff:get-employee', async (event, employeeId) => {
+  handle('timeoff:get-employee', async (event, employeeId) => {
     return TimeOffService.getEmployeeTimeOffRequests(employeeId);
   });
 
-  ipcMain.handle('timeoff:create', async (event, requestData) => {
+  handle('timeoff:create', async (event, requestData) => {
     return TimeOffService.createTimeOffRequest(requestData);
   });
 
-  ipcMain.handle('timeoff:review', async (event, { requestId, reviewData }) => {
+  handle('timeoff:review', async (event, { requestId, reviewData }) => {
     return TimeOffService.reviewTimeOffRequest(requestId, reviewData);
   });
 
-  ipcMain.handle('timeoff:delete', async (event, requestId) => {
+  handle('timeoff:delete', async (event, requestId) => {
     return TimeOffService.deleteTimeOffRequest(requestId);
   });
 
   // Employee Availability
-  ipcMain.handle('availability:get', async (event, employeeId) => {
+  handle('availability:get', async (event, employeeId) => {
     return TimeOffService.getEmployeeAvailability(employeeId);
   });
 
-  ipcMain.handle('availability:update', async (event, { employeeId, availabilityData }) => {
+  handle('availability:update', async (event, { employeeId, availabilityData }) => {
     return TimeOffService.updateEmployeeAvailability(employeeId, availabilityData);
   });
 
   // Tasks
-  ipcMain.handle('tasks:get-all', async (event, { businessId, filters }) => {
+  handle('tasks:get-all', async (event, { businessId, filters }) => {
     return TaskService.getAllTasks(businessId, filters);
   });
 
-  ipcMain.handle('tasks:get-employee', async (event, { employeeId, status }) => {
+  handle('tasks:get-employee', async (event, { employeeId, status }) => {
     return TaskService.getEmployeeTasks(employeeId, status);
   });
 
-  ipcMain.handle('tasks:create', async (event, taskData) => {
+  handle('tasks:create', async (event, taskData) => {
     return TaskService.createTask(taskData);
   });
 
-  ipcMain.handle('tasks:update', async (event, { taskId, taskData }) => {
+  handle('tasks:update', async (event, { taskId, taskData }) => {
     return TaskService.updateTask(taskId, taskData);
   });
 
-  ipcMain.handle('tasks:complete', async (event, { taskId, completedBy }) => {
+  handle('tasks:complete', async (event, { taskId, completedBy }) => {
     return TaskService.completeTask(taskId, completedBy);
   });
 
-  ipcMain.handle('tasks:delete', async (event, taskId) => {
+  handle('tasks:delete', async (event, taskId) => {
     return TaskService.deleteTask(taskId);
   });
 
   // Announcements
-  ipcMain.handle('announcements:get-all', async (event, { businessId, filters }) => {
+  handle('announcements:get-all', async (event, { businessId, filters }) => {
     return AnnouncementService.getAllAnnouncements(businessId, filters);
   });
 
-  ipcMain.handle('announcements:get-for-role', async (event, { businessId, role }) => {
+  handle('announcements:get-for-role', async (event, { businessId, role }) => {
     console.log('[IPC] announcements:get-for-role called with:', { businessId, role });
     const result = AnnouncementService.getAnnouncementsForRole(businessId, role);
     console.log('[IPC] announcements:get-for-role returning', result.length, 'announcements');
     return result;
   });
 
-  ipcMain.handle('announcements:create', async (event, announcementData) => {
+  handle('announcements:create', async (event, announcementData) => {
     console.log('[IPC] announcements:create called with:', announcementData);
     const result = AnnouncementService.createAnnouncement(announcementData);
     console.log('[IPC] announcements:create created:', result);
     return result;
   });
 
-  ipcMain.handle('announcements:update', async (event, { announcementId, announcementData }) => {
+  handle('announcements:update', async (event, { announcementId, announcementData }) => {
     return AnnouncementService.updateAnnouncement(announcementId, announcementData);
   });
 
-  ipcMain.handle('announcements:delete', async (event, announcementId) => {
+  handle('announcements:delete', async (event, announcementId) => {
     return AnnouncementService.deleteAnnouncement(announcementId);
   });
 
   // Shift Swap Requests
-  ipcMain.handle('shiftswap:get-all', async (event, { businessId, filters }) => {
+  handle('shiftswap:get-all', async (event, { businessId, filters }) => {
     return ShiftSwapService.getAllShiftSwapRequests(businessId, filters);
   });
 
-  ipcMain.handle('shiftswap:get-employee', async (event, employeeId) => {
+  handle('shiftswap:get-employee', async (event, employeeId) => {
     return ShiftSwapService.getEmployeeShiftSwapRequests(employeeId);
   });
 
-  ipcMain.handle('shiftswap:create', async (event, requestData) => {
+  handle('shiftswap:create', async (event, requestData) => {
     return ShiftSwapService.createShiftSwapRequest(requestData);
   });
 
-  ipcMain.handle('shiftswap:review', async (event, { requestId, reviewData }) => {
+  handle('shiftswap:review', async (event, { requestId, reviewData }) => {
     return ShiftSwapService.reviewShiftSwapRequest(requestId, reviewData);
   });
 
-  ipcMain.handle('shiftswap:cancel', async (event, { requestId, employeeId }) => {
+  handle('shiftswap:cancel', async (event, { requestId, employeeId }) => {
     return ShiftSwapService.cancelShiftSwapRequest(requestId, employeeId);
   });
 
-  ipcMain.handle('shiftswap:delete', async (event, requestId) => {
+  handle('shiftswap:delete', async (event, requestId) => {
     return ShiftSwapService.deleteShiftSwapRequest(requestId);
   });
 
   // ==================== ANALYTICS HANDLERS ====================
   
-  ipcMain.handle('analytics:sales', async (event, { businessId, startDate, endDate, groupBy }) => {
+  handle('analytics:sales', async (event, { businessId, startDate, endDate, groupBy }) => {
     return AnalyticsService.getSalesAnalytics(businessId, startDate, endDate, groupBy);
   });
 
-  ipcMain.handle('analytics:sales-trends', async (event, { businessId, currentStart, currentEnd, previousStart, previousEnd }) => {
+  handle('analytics:sales-trends', async (event, { businessId, currentStart, currentEnd, previousStart, previousEnd }) => {
     return AnalyticsService.getSalesTrends(businessId, currentStart, currentEnd, previousStart, previousEnd);
   });
 
-  ipcMain.handle('analytics:top-bottom-performers', async (event, { businessId, startDate, endDate, limit }) => {
+  handle('analytics:top-bottom-performers', async (event, { businessId, startDate, endDate, limit }) => {
     return AnalyticsService.getTopBottomPerformers(businessId, startDate, endDate, limit);
   });
 
-  ipcMain.handle('analytics:inventory', async (event, businessId) => {
+  handle('analytics:inventory', async (event, businessId) => {
     return AnalyticsService.getInventoryAnalytics(businessId);
   });
 
-  ipcMain.handle('analytics:waste', async (event, { businessId, startDate, endDate }) => {
+  handle('analytics:waste', async (event, { businessId, startDate, endDate }) => {
     return AnalyticsService.getWasteAnalytics(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('analytics:cost-analysis', async (event, { businessId, startDate, endDate }) => {
+  handle('analytics:cost-analysis', async (event, { businessId, startDate, endDate }) => {
     return AnalyticsService.getCostAnalysis(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('analytics:employee-performance', async (event, { businessId, startDate, endDate }) => {
+  handle('analytics:employee-performance', async (event, { businessId, startDate, endDate }) => {
     return AnalyticsService.getEmployeePerformance(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('analytics:peak-hours', async (event, { businessId, startDate, endDate }) => {
+  handle('analytics:peak-hours', async (event, { businessId, startDate, endDate }) => {
     return AnalyticsService.getPeakHoursAnalysis(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('analytics:customer-insights', async (event, { businessId, startDate, endDate }) => {
+  handle('analytics:customer-insights', async (event, { businessId, startDate, endDate }) => {
     return AnalyticsService.getCustomerInsights(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('analytics:financial-summary', async (event, { businessId, startDate, endDate }) => {
+  handle('analytics:financial-summary', async (event, { businessId, startDate, endDate }) => {
     return AnalyticsService.getFinancialSummary(businessId, startDate, endDate);
   });
 
-  ipcMain.handle('analytics:forecast', async (event, businessId) => {
+  handle('analytics:forecast', async (event, businessId) => {
     const data = AnalyticsService.getForecastData(businessId);
     const forecast = AnalyticsService.calculateForecast(data);
     return { historical: data, forecast };
@@ -858,51 +1134,51 @@ const setupIPC = async () => {
   // DASHBOARD IPC HANDLERS
   // ============================================
 
-  ipcMain.handle('dashboard:get-overview', async (event, businessId) => {
+  handle('dashboard:get-overview', async (event, businessId) => {
     return DashboardService.getDashboardOverview(businessId);
   });
 
-  ipcMain.handle('dashboard:get-sales-trend', async (event, { businessId, period }) => {
+  handle('dashboard:get-sales-trend', async (event, { businessId, period }) => {
     return DashboardService.getSalesTrend(businessId, period);
   });
 
-  ipcMain.handle('dashboard:get-top-performers', async (event, { businessId, period }) => {
+  handle('dashboard:get-top-performers', async (event, { businessId, period }) => {
     return DashboardService.getTopPerformers(businessId, period);
   });
 
-  ipcMain.handle('dashboard:get-inventory-status', async (event, businessId) => {
+  handle('dashboard:get-inventory-status', async (event, businessId) => {
     return DashboardService.getInventoryStatus(businessId);
   });
 
-  ipcMain.handle('dashboard:get-financial-summary', async (event, { businessId, period }) => {
+  handle('dashboard:get-financial-summary', async (event, { businessId, period }) => {
     return DashboardService.getFinancialSummary(businessId, period);
   });
 
-  ipcMain.handle('dashboard:get-upcoming-items', async (event, businessId) => {
+  handle('dashboard:get-upcoming-items', async (event, businessId) => {
     return DashboardService.getUpcomingItems(businessId);
   });
 
-  ipcMain.handle('dashboard:get-activity-feed', async (event, { businessId, limit }) => {
+  handle('dashboard:get-activity-feed', async (event, { businessId, limit }) => {
     return DashboardService.getActivityFeed(businessId, limit);
   });
 
-  ipcMain.handle('dashboard:get-alerts', async (event, businessId) => {
+  handle('dashboard:get-alerts', async (event, businessId) => {
     return DashboardService.getAlerts(businessId);
   });
 
-  ipcMain.handle('dashboard:get-live-orders', async (event, businessId) => {
+  handle('dashboard:get-live-orders', async (event, businessId) => {
     return DashboardService.getLiveOrders(businessId);
   });
 
-  ipcMain.handle('dashboard:get-profit-pulse', async (event, businessId) => {
+  handle('dashboard:get-profit-pulse', async (event, businessId) => {
     return DashboardService.getProfitPulse(businessId);
   });
 
-  ipcMain.handle('dashboard:get-goal-tracking', async (event, businessId) => {
+  handle('dashboard:get-goal-tracking', async (event, businessId) => {
     return DashboardService.getGoalTracking(businessId);
   });
 
-  ipcMain.handle('dashboard:get-complete', async (event, { businessId, userRole }) => {
+  handle('dashboard:get-complete', async (event, { businessId, userRole }) => {
     return DashboardService.getCompleteDashboard(businessId, userRole);
   });
 

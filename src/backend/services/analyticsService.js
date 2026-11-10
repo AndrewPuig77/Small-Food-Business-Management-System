@@ -138,6 +138,7 @@ const getInventoryAnalytics = (businessId) => {
              JOIN menu_items mi ON ti.menu_item_id = mi.id
              WHERE mi.name = i.name 
                AND t.business_id = ${businessId}
+               AND t.status = 'completed'
                AND t.created_at >= ${thirtyDaysAgoStr}),
             0
           ) AS FLOAT) / i.quantity
@@ -150,6 +151,7 @@ const getInventoryAnalytics = (businessId) => {
          JOIN menu_items mi ON ti.menu_item_id = mi.id
          WHERE mi.name = i.name 
            AND t.business_id = ${businessId}
+           AND t.status = 'completed'
            AND t.created_at >= ${thirtyDaysAgoStr}),
         0
       ) as sold_last_30_days,
@@ -287,6 +289,7 @@ const getEmployeePerformance = (businessId, startDate, endDate) => {
          FROM transactions t 
          WHERE t.cashier_id = e.id 
            AND t.business_id = ${businessId}
+           AND t.status = 'completed'
            AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}),
         0
       ) as total_sales,
@@ -297,6 +300,7 @@ const getEmployeePerformance = (businessId, startDate, endDate) => {
              FROM transactions t 
              WHERE t.cashier_id = e.id 
                AND t.business_id = ${businessId}
+               AND t.status = 'completed'
                AND t.created_at >= ${startDateTime} AND t.created_at <= ${endDateTime}),
             0
           ) / SUM(tl.hours_worked)

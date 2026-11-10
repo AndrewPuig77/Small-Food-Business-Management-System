@@ -119,6 +119,8 @@ class MenuService {
   static deleteItem(itemId) {
     try {
       const db = getDb();
+      require('./modifierService').removeItemLinks(itemId);
+      require('./recipeService').removeForMenuItem(itemId);
       db.exec(sql`DELETE FROM menu_items WHERE id = ${itemId}`);
       saveDatabase();
 
